@@ -43,8 +43,6 @@ def radialVelocity(spectrum, bestGuess):
     regimes and then find the mean/variance of that returned radial
     velocities. There is probably a better way to do it.
 
-    We need to decide if we do the radial velocity after the by-eye
-    verification or after the automatic guessing (or both?)
 
     Input:
     Spectrum object - Should have the wavelength, flux, and noise of the
