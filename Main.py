@@ -57,6 +57,8 @@ def radialVelocity(spectrum, bestGuess):
     the output file.
     """
 
+    # Do we want this as part of the Spectrum class instead?
+
     return rv
 
 
