@@ -19,6 +19,10 @@ autoSpTResults.tbl - list of the spectra with the results of the auto spectral t
 def radialVelocity(): 
     #Dylan's code goes here
 
+#function that compares the indices and gets a spectral type guess
+def guessSpecType():
+    #CAN TRANSLATE FROM HAMMER
+    #need to add in metallicity guess
 
 #Check for the correct path
 #CAN TRANSLATE
@@ -28,4 +32,22 @@ def radialVelocity():
 
 #Check if user wants a S/N cut
 #CAN TRANSLATE
+
+
+#Read in the files
+#Call the Spectrum object for each spectra in the list
+#Call the measurelines function in the Spectrum object to get the initial line measurements
+
+#Call the guessSpType function to get an inital guess of the spectral type
+
+#Call radialVelocity function
+#When we have an RV recall measurelines function in Spectrum object
+#Recall the guessSpType function to get a better guess of the spectral type and metallicity
+
+#Write results in autoSpTResults.tbl
+#Call the GUI to do the by eye spectral typing
+
+
+
+
 
