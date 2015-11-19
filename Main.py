@@ -12,7 +12,7 @@ spectraFilename - a list of the filenames of each of the spectra to be classifie
 and the corresponding filetype (i.e., sdssfits, fits, txt, etc.)
 
 Output: 
-autoSpTResults.tbl - list of the spectra with the results of the auto spectral typing and metallicity results. 
+autoSpTResults.tbl - list of the spectra with the results of the auto spectral typing, radial velocity and metallicity results. 
 """
 
 #function that does the radial velocity code
@@ -44,7 +44,7 @@ def guessSpecType():
 #When we have an RV recall measurelines function in Spectrum object
 #Recall the guessSpType function to get a better guess of the spectral type and metallicity
 
-#Write results in autoSpTResults.tbl
+#Write results in autoSpTResults.tbl (includes spectral type, metallicity and RV measurements)
 #Call the GUI to do the by eye spectral typing
 
 
