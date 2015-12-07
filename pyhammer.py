@@ -20,7 +20,7 @@ def findRadialVelocity(spectrum, bestGuess):
 
     This method works best when the wavelengths are logarithmically spaced,
     otherwise, a 2 pixel shift at the blue-end of the spectrum will return
-    a different radial velocity measurement than a 2 pixel shit at the red
+    a different radial velocity measurement than a 2 pixel shift at the red
     end of the spectrum.
 
     One thing that may be worth exploring is how to constrain the
@@ -539,7 +539,7 @@ if (__name__ == "__main__"):
 
         # User indicated that the full path to the spectra is in the
         # input file list
-        if (opt == '-f' or opt == '--flag'):
+        if (opt == '-f' or opt == '--full'):
             if (options['fullPath'] is not None):
                 sys.exit('Cannot supply -f and -p at the same time.')
             else:
