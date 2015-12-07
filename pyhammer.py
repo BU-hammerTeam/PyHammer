@@ -1,5 +1,3 @@
-
-
 import sys
 import os.path
 import getopt
@@ -52,7 +50,8 @@ def guessSpecType():
     # CAN TRANSLATE FROM HAMMER
     # need to add in metallicity guess
     # Might need to be in spectrum class, depending on its usage.
-    
+
+    print('Not Implemented')
 
 
 def main(options):
