@@ -51,7 +51,7 @@ class Spectrum(object):
             # Implement reading a sdss fits file
             print('Not Implemented')
             
-            self._vacToAir()
+            self._airToVac()
         elif (filetype == 'txt'):
             # Implement reading a txt file
             print('Not Implemented')
