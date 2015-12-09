@@ -70,6 +70,10 @@ class Spectrum(object):
     def _vacToAir(self):
         """
         A method to convert the wavelengths from vacuum to air
+        
+        [Aurora]- want to have an if statement that checks if the spectrum 
+        is already in vacuum or air.
+        Sloan, princeton are already in air but most other spectra are not. 
         """
 
         print('Not implemented')
@@ -79,6 +83,10 @@ class Spectrum(object):
         A method to interpolate the wavelength, flux and noise
         onto a logarithmic wavelength spacing. The observed spectrum
         and the templates need to be consistent with one another.
+        
+        [Aurora] need some if statement to check to see if the spectrum 
+        is in equal RV space. If it is not, we will want to choose the 
+        blue (lower RV) end to interpolate onto
         """
 
         print('Not Implemented')
