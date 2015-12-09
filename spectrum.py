@@ -67,9 +67,9 @@ class Spectrum(object):
         self._interpOntoGrid()
         return True
         
-    def _vacToAir(self):
+    def _airToVac(self):
         """
-        A method to convert the wavelengths from vacuum to air
+        A method to convert the wavelengths from air to vacuum
         
         [Aurora]- want to have an if statement that checks if the spectrum 
         is already in vacuum or air.
