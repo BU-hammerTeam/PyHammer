@@ -134,11 +134,11 @@ class Spectrum(object):
         indexDict['color-1'] = [8902.4437, 9102.4979, 7352.0249, 7552.0789]
         indexDict['another_color'] = [7352.0249, 7552.0789, 6101.6887, 6301.7424]
         
-        for index in indexDict:
+        for key, value in indexDict.items():
             #check if we should use the single or mutliple region version
             if len(index) == 4: 
-                numeratorIndex = np.where( self._wavelength > index[0] and self._wavelength < index[1])
-                denominatorIndex = np.where( self._wavelength > index[2] and self._wavelength < index[3])
+                numeratorIndex = np.where( self._wavelength > value[0] and self._wavelength < value[1])
+                denominatorIndex = np.where( self._wavelength > value[2] and self._wavelength < value[3])
                 
                 
             elif len(index) == 8: 
