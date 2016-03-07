@@ -103,6 +103,7 @@ class Spectrum(object):
         #create a dictionary for all the corresponding wavelengths of the absorption features
         indexDict = {}
         #list the indices for each important absorption feature: numlo, numhi, denomlo, denomhi 
+        # or for multi region features: num1lo, num1hi, num1weight, num2lo, num2hi, num2weight, denomlo, denomhi
         # THESE ARE ALL IN VACUUM and angstroms!!
         indexDict['CaK']  = [3924.8111, 3944.8163, 3944.8163, 3954.8189]
         indexDict['Cadel'] = [4087.8536, 4117.8618, 4137.8670, 4177.1771]
@@ -141,7 +142,7 @@ class Spectrum(object):
         #Loop through the indexDict and measure the lines
         for key, value in indexDict.items():
             #check if we should use the single or mutliple region version
-            if len(index) == 4: 
+            if len(value) == 4: 
                 #find the indices where the numerator and denominator start and end for each absorption feature
                 numeratorIndexLow = bisect.bisect_right( self._wavelength, value[0])
                 numeratorIndexHigh = bisect.bisect_right(self._wavelength, value[1])
@@ -150,7 +151,7 @@ class Spectrum(object):
                 denominatorIndexHigh = bisect.bisect_right(self._wavelength, value[3])
                 
                 #check to make sure the absorption features are within the wavelength regime of the spectrum
-                if len(self._wavelength) != numeratorIndexHigh and len(self._wavelength) != denominatorIndexHigh:
+                if len(self._wavelength) > numeratorIndexHigh and len(self._wavelength) > denominatorIndexHigh:
                     #calculate the mean fluxes of the numerator and denominator regimes
                     nummean = np.mean(self._flux[numeratorIndexLow:numeratorIndexHigh])
                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
@@ -161,14 +162,36 @@ class Spectrum(object):
                         index=nummean/denmean
                         measuredLinesDict[key] = index
                 
-            elif len(index) == 8: 
+            elif len(value) == 8: 
                       
+                #find the indices for the two numerators and denominators
+                num1IndexLow = bisect.bisect_right( self._wavelength, value[0])
+                num1IndexHigh = bisect.bisect_right(self._wavelength, value[1])
                 
+                num2IndexLow = bisect.bisect_right( self._wavelength, value[3])
+                num2IndexHigh = bisect.bisect_right(self._wavelength, value[4])
+                
+                denominatorIndexLow = bisect.bisect_right( self._wavelength, value[6])
+                denominatorIndexHigh = bisect.bisect_right(self._wavelength, value[7])
+                
+                #check to make sure the absorption features are within the wavelength regime of the spectrum
+                if len(self._wavelength) > num1IndexHigh and len(self._wavelength) > num2IndexHigh and len(self._wavelength) > denominatorIndexHigh:
+                    #calculate the mean fluxes of the numerator and denominator regimes
+                    num1mean = np.mean(self._flux[num1IndexLow:num1IndexHigh])
+                    num2mean = np.mean(self._flux[num2IndexLow:num2IndexHigh])
+                    combonum = value[2]*nu1mean + value[5]*num2mean
+                    denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
+                    
+                    #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
+                    #This uses the same keys as the indexDict dictionary
+                    if denmean > 0:
+                        index=combonum/denmean
+                        measuredLinesDict[key] = index
         
         
         print('Not implemented')
 
-        return lineIndices
+        return measuredLinesDict
 
     def shiftToRest(self, shift):
         """
