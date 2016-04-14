@@ -136,6 +136,8 @@ class Spectrum(object):
         indexDict['FeI8689'] = [8686.3853, 8696.3880, 8666.3799, 8676.3826]
         indexDict['color-1'] = [8902.4437, 9102.4979, 7352.0249, 7552.0789]
         indexDict['another_color'] = [7352.0249, 7552.0789, 6101.6887, 6301.7424]
+        #my guesses, find better values!
+        indexDict['FeH'] = [9880, 10000, 9820,9860]
         
         #make a dictionary for the measured indices
         measuredLinesDict = {}
