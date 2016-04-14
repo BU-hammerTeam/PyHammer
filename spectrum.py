@@ -118,6 +118,7 @@ class Spectrum(object):
         indexDict['NaD'] = [5881.6297, 5906.6364, 5911.6378, 5936.6445]
         indexDict['CaI6162'] = [6151.7021, 6176.7088, 6121.6941, 6146.7008]
         indexDict['Halpha'] = [6549.8090, 6579.8171, 6584.8184, 6614.8265]
+        indexDict['CaH2'] = [6815.8576, 6847.8664, 7043.9419, 7047.9430]
         indexDict['CaH3'] = [6961.9198, 6991.9279, 7043.9419, 7047.9430]
         indexDict['TiO5'] = [7127.9646, 7136.9670, 7043.9419, 7047.9430]
         indexDict['VO7434'] = [7432.0465, 7472.0573, 7552.0789, 7572.0843]
@@ -188,10 +189,19 @@ class Spectrum(object):
                         index=combonum/denmean
                         measuredLinesDict[key] = index
         
+        #now find the average flux in 5 different regions
+        fluxRegionIndex = [ [4550,4650],[5700,5800],[7480,7580],[9100,9200],[10100,10200] ]
+        avgFluxList = []
+        
+        for region in fluxRegionIndex: 
+            indexLow = bisect.bisect_right(self._wavelength, region[0])
+            indexHigh = bisect.bisect_right(self._wavelength, region[1]) 
+            avgFlux = np.mean(self._flux[indexLow:indexHigh])
+            avgFluxList.append(avgFlux) 
         
         print('Not implemented')
 
-        return measuredLinesDict
+        return measuredLinesDict, avgFluxList
 
     def shiftToRest(self, shift):
         """
