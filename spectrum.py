@@ -112,7 +112,6 @@ class Spectrum(object):
         indexDict['Hgam'] = [4333.7182, 4348.7222, 4356.2242, 4371.2281] 
         indexDict['FeI4383'] = [4379.8305, 4389.8331, 4356.2242, 4371.2281]
         indexDict['FeI4404'] = [4401.0358, 4411.0384, 4416.0397, 4426.0423]
-        indexDict['blue'] = [6101.6887, 6301.7424, 4501.2624, 4701.3153]
         indexDict['Hbeta'] = [4848.3542, 4878.3622, 4818.3463, 4848.3542]
         indexDict['MgI'] = [5154.1357, 5194.1463, 5101.4214, 5151.4348]
         indexDict['NaD'] = [5881.6297, 5906.6364, 5911.6378, 5936.6445]
@@ -134,10 +133,15 @@ class Spectrum(object):
         indexDict['CrH-A'] = [8582.3571, 8602.3626, 8623.3682, 8643.3736]
         indexDict['CaII8662'] = [8652.3761, 8677.3828, 8627.3693, 8652.3761]
         indexDict['FeI8689'] = [8686.3853, 8696.3880, 8666.3799, 8676.3826]
-        indexDict['color-1'] = [8902.4437, 9102.4979, 7352.0249, 7552.0789]
-        indexDict['another_color'] = [7352.0249, 7552.0789, 6101.6887, 6301.7424]
         #my guesses, find better values!
         indexDict['FeH'] = [9880, 10000, 9820,9860]
+        #color bands
+        indexDict['region1'] = [4550,4650,4160,4210]
+        indexDict['region2'] = [5700,5800,4160,4210]
+        indexDict['region3'] = [7480,7580,4160,4210]
+        indexDict['region4'] = [9100,9200,4160,4210]
+        indexDict['region5'] = [10100,10200,4160,4210]
+        
         
         #make a dictionary for the measured indices
         measuredLinesDict = {}
@@ -191,19 +195,10 @@ class Spectrum(object):
                         index=combonum/denmean
                         measuredLinesDict[key] = index
         
-        #now find the average flux in 5 different regions
-        fluxRegionIndex = [ [4550,4650],[5700,5800],[7480,7580],[9100,9200],[10100,10200] ]
-        avgFluxList = []
-        
-        for region in fluxRegionIndex: 
-            indexLow = bisect.bisect_right(self._wavelength, region[0])
-            indexHigh = bisect.bisect_right(self._wavelength, region[1]) 
-            avgFlux = np.mean(self._flux[indexLow:indexHigh])
-            avgFluxList.append(avgFlux) 
         
         print('Not implemented')
 
-        return measuredLinesDict, avgFluxList
+        return measuredLinesDict
 
     def shiftToRest(self, shift):
         """
