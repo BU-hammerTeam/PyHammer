@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 from spectrum import Spectrum
 import eyecheck
+import pdb
 
 def findRadialVelocity(spectrum, bestGuess):
     """
