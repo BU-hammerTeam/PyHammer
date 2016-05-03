@@ -186,7 +186,7 @@ class Spectrum(object):
                     #calculate the mean fluxes of the numerator and denominator regimes
                     num1mean = np.mean(self._flux[num1IndexLow:num1IndexHigh])
                     num2mean = np.mean(self._flux[num2IndexLow:num2IndexHigh])
-                    combonum = value[2]*nu1mean + value[5]*num2mean
+                    combonum = value[2]*num1mean + value[5]*num2mean
                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
                     
                     #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
@@ -196,7 +196,7 @@ class Spectrum(object):
                         measuredLinesDict[key] = index
         
         
-        print('Not implemented')
+        #print('Not implemented')
 
         return measuredLinesDict
 
@@ -216,13 +216,25 @@ class Spectrum(object):
 
     @property
     def flux(self):
-        return _flux
-
+        return self._flux
+        
+    @flux.setter
+    def flux(self, value):
+        self._flux = value        
+        
     @property
     def noise(self):
-        return _noise
+        return self._noise
+        
+    @noise.setter
+    def noise(self, value):
+        self._noise = value  
 
     @property
     def wavelength(self):
-        return _wavelength
+        return self._wavelength
+        
+    @wavelength.setter
+    def wavelength(self, value):
+        self._wavelength = value  
     
