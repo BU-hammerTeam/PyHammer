@@ -170,7 +170,7 @@ class Spectrum(object):
                     #This uses the same keys as the indexDict dictionary
                     if denmean > 0:
                         index=nummean/denmean
-                        var = index**2((num_std/nummean)**2 + (den_std/denmean)**2)
+                        var = index**2 * ((num_std/nummean)**2 + (den_std/denmean)**2)
                         indexList = [index, var]
                         measuredLinesDict[key] = indexList
                 
@@ -191,14 +191,20 @@ class Spectrum(object):
                     #calculate the mean fluxes of the numerator and denominator regimes
                     num1mean = np.mean(self._flux[num1IndexLow:num1IndexHigh])
                     num2mean = np.mean(self._flux[num2IndexLow:num2IndexHigh])
+                    num1_std = np.sum(1/(self._ivar[num1IndexLow:num1IndexHigh]))**(0.5)/len(self.__ivar[num1IndexLow:num1IndexHigh])
+                    num2_std = np.sum(1/(self._ivar[num2IndexLow:num2IndexHigh]))**(0.5)/len(self.__ivar[num2IndexLow:num1IndexHigh])
                     combonum = value[2]*num1mean + value[5]*num2mean
+                    combonum_std = (value[2]**2 * num1_std**2 + value[5]**2 * num2_std**2)**(0.5)
                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
+                    den_std = np.sum(1/(self._ivar[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self.__ivar[denominatorIndexLow:denominatorIndexHigh])
                     
                     #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
                     #This uses the same keys as the indexDict dictionary
                     if denmean > 0:
                         index=combonum/denmean
-                        measuredLinesDict[key] = index
+                        var = index**2 * ((combonum_std/combonum)**2 + (den_std/denmean)**2)
+                        indexList = [index, var]
+                        measuredLinesDict[key] = indexList
         
         
         #print('Not implemented')
