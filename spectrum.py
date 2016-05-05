@@ -16,7 +16,8 @@ class Spectrum(object):
     def __init__(self):
         self._wavelength = None
         self._flux = None
-        self._noise = None
+        #self._noise = None
+        self._ivar = None
 
     ##
     # Utility Methods
@@ -133,14 +134,13 @@ class Spectrum(object):
         indexDict['CrH-A'] = [8582.3571, 8602.3626, 8623.3682, 8643.3736]
         indexDict['CaII8662'] = [8652.3761, 8677.3828, 8627.3693, 8652.3761]
         indexDict['FeI8689'] = [8686.3853, 8696.3880, 8666.3799, 8676.3826]
-        #my guesses, find better values!
         indexDict['FeH'] = [9880, 10000, 9820,9860]
         #color bands
-        indexDict['region1'] = [4550,4650,4160,4210]
-        indexDict['region2'] = [5700,5800,4160,4210]
-        indexDict['region3'] = [7480,7580,4160,4210]
-        indexDict['region4'] = [9100,9200,4160,4210]
-        indexDict['region5'] = [10100,10200,4160,4210]
+        indexDict['region1'] = [4160,4210,7480,7580]
+        indexDict['region2'] = [4550,4650,7480,7580]
+        indexDict['region3'] = [5700,5800,7480,7580]
+        indexDict['region4'] = [9100,9200,7480,7580]
+        indexDict['region5'] = [10100,10200,7480,7580]
         
         
         #make a dictionary for the measured indices
@@ -151,7 +151,7 @@ class Spectrum(object):
             #check if we should use the single or mutliple region version
             if len(value) == 4: 
                 #find the indices where the numerator and denominator start and end for each absorption feature
-                numeratorIndexLow = bisect.bisect_right( self._wavelength, value[0])
+                numeratorIndexLow = bisect.bisect_right(self._wavelength, value[0])
                 numeratorIndexHigh = bisect.bisect_right(self._wavelength, value[1])
                 
                 denominatorIndexLow = bisect.bisect_right( self._wavelength, value[2])
@@ -162,12 +162,17 @@ class Spectrum(object):
                     #calculate the mean fluxes of the numerator and denominator regimes
                     nummean = np.mean(self._flux[numeratorIndexLow:numeratorIndexHigh])
                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
+                    #calculate the uncertainty in the region 
+                    num_std = np.sum(1/(self._ivar[numeratorIndexLow:numeratorIndexHigh]))**(0.5)/len(self.__ivar[numeratorIndexLow:numeratorIndexHigh])
+                    den_std = np.sum(1/(self._ivar[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self.__ivar[denominatorIndexLow:denominatorIndexHigh])
  
                     #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
                     #This uses the same keys as the indexDict dictionary
                     if denmean > 0:
                         index=nummean/denmean
-                        measuredLinesDict[key] = index
+                        var = index**2((num_std/nummean)**2 + (den_std/denmean)**2)
+                        indexList = [index, var]
+                        measuredLinesDict[key] = indexList
                 
             elif len(value) == 8: 
                       
