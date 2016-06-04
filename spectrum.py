@@ -163,8 +163,8 @@ class Spectrum(object):
                     nummean = np.mean(self._flux[numeratorIndexLow:numeratorIndexHigh])
                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
                     #calculate the uncertainty in the region 
-                    num_std = np.sum(1/(self._ivar[numeratorIndexLow:numeratorIndexHigh]))**(0.5)/len(self.__ivar[numeratorIndexLow:numeratorIndexHigh])
-                    den_std = np.sum(1/(self._ivar[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self.__ivar[denominatorIndexLow:denominatorIndexHigh])
+                    num_std = np.sum(1/(self._ivar[numeratorIndexLow:numeratorIndexHigh]))**(0.5)/len(self._ivar[numeratorIndexLow:numeratorIndexHigh])
+                    den_std = np.sum(1/(self._ivar[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self._ivar[denominatorIndexLow:denominatorIndexHigh])
  
                     #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
                     #This uses the same keys as the indexDict dictionary
@@ -191,12 +191,12 @@ class Spectrum(object):
                     #calculate the mean fluxes of the numerator and denominator regimes
                     num1mean = np.mean(self._flux[num1IndexLow:num1IndexHigh])
                     num2mean = np.mean(self._flux[num2IndexLow:num2IndexHigh])
-                    num1_std = np.sum(1/(self._ivar[num1IndexLow:num1IndexHigh]))**(0.5)/len(self.__ivar[num1IndexLow:num1IndexHigh])
-                    num2_std = np.sum(1/(self._ivar[num2IndexLow:num2IndexHigh]))**(0.5)/len(self.__ivar[num2IndexLow:num1IndexHigh])
+                    num1_std = np.sum(1/(self._ivar[num1IndexLow:num1IndexHigh]))**(0.5)/len(self._ivar[num1IndexLow:num1IndexHigh])
+                    num2_std = np.sum(1/(self._ivar[num2IndexLow:num2IndexHigh]))**(0.5)/len(self._ivar[num2IndexLow:num1IndexHigh])
                     combonum = value[2]*num1mean + value[5]*num2mean
                     combonum_std = (value[2]**2 * num1_std**2 + value[5]**2 * num2_std**2)**(0.5)
                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
-                    den_std = np.sum(1/(self._ivar[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self.__ivar[denominatorIndexLow:denominatorIndexHigh])
+                    den_std = np.sum(1/(self._ivar[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self._ivar[denominatorIndexLow:denominatorIndexHigh])
                     
                     #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
                     #This uses the same keys as the indexDict dictionary
@@ -234,12 +234,12 @@ class Spectrum(object):
         self._flux = value        
         
     @property
-    def noise(self):
-        return self._noise
+    def ivar(self):
+        return self._ivar
         
-    @noise.setter
-    def noise(self, value):
-        self._noise = value  
+    @ivar.setter
+    def ivar(self, value):
+        self._ivar = value  
 
     @property
     def wavelength(self):
