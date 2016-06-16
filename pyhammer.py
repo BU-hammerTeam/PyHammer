@@ -48,8 +48,9 @@ def findRadialVelocity(spectrum, bestGuess):
     flux = spectrum.flux
     
     #open the correct template spectrum 
+    #depending on what bestGuess returns this might need to be changed
     path = 'templates/'
-    if ((bestGuess[0] == 'O') or (bestGuess[0] == 'B') or (bestGuess[0] == 'L') or (bestGuess[0] == 'A' and bestGuess[1] < 3) or (bestGuess == 'M9)):
+    if ((bestGuess[0] == 'O') or (bestGuess[0] == 'B') or (bestGuess[0] == 'L') or (bestGuess[0] == 'A' and bestGuess[1] < 3) or (bestGuess == 'M9')):
         tempName = bestGuess + '.fits'
     elif (bestGuess[0] == 'A' and bestGuess[1] > 2) or (bestGuess[0] == 'F'):
         tempName = bestGuess + '_-1.0_Dwarf.fits'
@@ -67,7 +68,7 @@ def findRadialVelocity(spectrum, bestGuess):
     specRegion4 = np.where( (wave > 6500) & (wave < 7000) )
     specRegion5 = np.where( (wave > 7000) & (wave < 7500) )
     specRegion6 = np.where( (wave > 7500) & (wave < 8000) )
-    #noise regions
+    #noise regions: still not sure if we should have these or not
     noiseRegion1 = np.where( (wave > 5600) & (wave < 5700) )
     noiseRegion2 = np.where( (wave > 6800) & (wave < 6900) )
     noiseRegion3 = np.where( (wave > 7400) & (wave < 7500) )
