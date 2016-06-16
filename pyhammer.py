@@ -50,17 +50,19 @@ def findRadialVelocity(spectrum, bestGuess):
     #open the correct template spectrum 
     #depending on what bestGuess returns this might need to be changed
     path = 'templates/'
-    if ((bestGuess[0] == 'O') or (bestGuess[0] == 'B') or (bestGuess[0] == 'L') or (bestGuess[0] == 'A' and bestGuess[1] < 3) or (bestGuess == 'M9')):
+    if ((bestGuess[0] == 'O') or (bestGuess[0] == 'B') or (bestGuess[0] == 'L') or (bestGuess[0] == 'A' and float(bestGuess[1]) < 3) or (bestGuess == 'M9')):
         tempName = bestGuess + '.fits'
-    elif (bestGuess[0] == 'A' and bestGuess[1] > 2) or (bestGuess[0] == 'F'):
+    elif (bestGuess[0] == 'A' and float(bestGuess[1]) > 2) or (bestGuess[0] == 'F'):
         tempName = bestGuess + '_-1.0_Dwarf.fits'
-    elif (bestGuess[0] == 'K') or (bestGuess[0] == 'G') or (bestGuess[0] == 'M' and bestGuess[1] < 9):
+    elif (bestGuess[0] == 'K') or (bestGuess[0] == 'G') or (bestGuess[0] == 'M' and float(bestGuess[1]) < 9):
         tempName = bestGuess + '_0.0_Dwarf.fits'
         
     temp = fits.open(path+tempName)
-    tempFlux = temp[1].data['flux']
-    tempWave = temp[1].data['wave']
-
+    tempFluxOrig = temp[1].data['flux']
+    tempWave = 10**temp[1].data['loglam']
+    #put the template on the same wavelength scale as the spectrum
+    tempFlux = np.interp(wave, tempWave, tempFluxOrig)
+    
     # Get the regions for correlation
     specRegion1 = np.where( (wave > 5000) & (wave < 5500) )
     specRegion2 = np.where( (wave > 5500) & (wave < 6000) )
@@ -69,9 +71,12 @@ def findRadialVelocity(spectrum, bestGuess):
     specRegion5 = np.where( (wave > 7000) & (wave < 7500) )
     specRegion6 = np.where( (wave > 7500) & (wave < 8000) )
     #noise regions: still not sure if we should have these or not
-    noiseRegion1 = np.where( (wave > 5600) & (wave < 5700) )
-    noiseRegion2 = np.where( (wave > 6800) & (wave < 6900) )
-    noiseRegion3 = np.where( (wave > 7400) & (wave < 7500) )
+    noiseRegion1 = np.where( (wave > 5000) & (wave < 5100) )
+    noiseRegion2 = np.where( (wave > 5500) & (wave < 5600) )
+    noiseRegion3 = np.where( (wave > 6000) & (wave < 6100) )
+    noiseRegion4 = np.where( (wave > 6800) & (wave < 6900) )
+    noiseRegion5 = np.where( (wave > 7000) & (wave < 7100) )
+    noiseRegion6 = np.where( (wave > 7400) & (wave < 7500) )
     
 
 
@@ -101,7 +106,7 @@ def findRadialVelocity(spectrum, bestGuess):
     snr6 = np.mean(flux[noiseRegion3]) / np.std(flux[noiseRegion3])
 
     # Look for convergence of the radial velocities
-    rvs = np.array([radVel1, radVel2, radVel3, radVel4], radVel5], radVel6])
+    rvs = np.array([radVel1, radVel2, radVel3, radVel4, radVel5, radVel6])
     snrs = np.array([snr1, snr2, snr3, snr4, snr5, snr6])
     
     true = False
@@ -175,7 +180,6 @@ def xcorl(star,temp,range1,*args,**kwargs):
     #16-Jun-16 AYK   Added to hammer code
 
     # Set the defaults
-    pl = 0
     pr = 1
     fine = 0
     mult=0
@@ -185,7 +189,6 @@ def xcorl(star,temp,range1,*args,**kwargs):
     
     # Read the arguments
     for arg in args:
-        if arg.lower() == 'plot': pl = 1
         if arg.lower() == 'fine': fine = 1
         if arg.lower() == 'full': full = 1
     
@@ -201,7 +204,7 @@ def xcorl(star,temp,range1,*args,**kwargs):
     length = np.min([ln, ls])
     slen = length
     if range1 > (length-1)/2:
-        print 'Maximum allowable "range" for this case is', (length-1)/2
+        print( 'Maximum allowable "range" for this case is', (length-1)/2)
     newln = length - 2*range1  # Leave "RANGE" on ends for overhang.
 
     te = temp/(np.sum(temp)/ln)
@@ -211,7 +214,6 @@ def xcorl(star,temp,range1,*args,**kwargs):
     chi = np.zeros(2 * range1 + 1)
     
     if full == 1:
-        pl=1
         pr=1
 
     for j in range(-range1, range1+1):    # Goose step, baby
@@ -222,14 +224,6 @@ def xcorl(star,temp,range1,*args,**kwargs):
             dif = te[range1:newend+1] - st[range1+j:newend+j+1]
             chi[j+range1] = np.sum(dif*dif)
     xcr = chi
-
-     # Plotting
-    if pl == 1:
-        npt = len(chi)
-        xp = np.arange(npt) - npt/2
-        plt.plot(xp, chi)
-        #plt.plot(star)
-        #plt.plot(temp +.5)
     
     length = len(x) * 100
     xl = np.arange(length)
@@ -245,7 +239,7 @@ def xcorl(star,temp,range1,*args,**kwargs):
         mm = np.where(cp == minchi)
     shft = xp[mm[0]]
     if pr != 0:
-        print 'XCORL: The shift is: %10.2f'%(shft)
+        print( 'XCORL: The shift is: %10.2f'%(shft))
     if abs(shft) > range1:
         ff=1
         return
@@ -278,16 +272,11 @@ def xcorl(star,temp,range1,*args,**kwargs):
             mm = np.where(cp == minchi)
         fshft = xp[mm]
 
-        if pl == 1:
-            if np.max(cp) > np.max(chi) and mult == 1:
-                cp = cp * np.max(chi)/np.max(cp)
-            plt.plot(xp, cp)
         
         if pr != 0:
-            print 'XCORL: The final shift is: %10.f'%(fshft)
+            print( 'XCORL: The final shift is: %10.f'%(fshft))
     else: fshft=shft
     shft=fshft
-    if pl == 1: plt.show()
     return shft
 
 def guessSpecType():
