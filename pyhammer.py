@@ -101,9 +101,9 @@ def findRadialVelocity(spectrum, bestGuess):
     snr1 = np.mean(flux[noiseRegion1]) / np.std(flux[noiseRegion1])
     snr2 = np.mean(flux[noiseRegion2]) / np.std(flux[noiseRegion2])
     snr3 = np.mean(flux[noiseRegion3]) / np.std(flux[noiseRegion3])
-    snr4 = np.mean(flux[noiseRegion1]) / np.std(flux[noiseRegion1])
-    snr5 = np.mean(flux[noiseRegion2]) / np.std(flux[noiseRegion2])
-    snr6 = np.mean(flux[noiseRegion3]) / np.std(flux[noiseRegion3])
+    snr4 = np.mean(flux[noiseRegion4]) / np.std(flux[noiseRegion4])
+    snr5 = np.mean(flux[noiseRegion5]) / np.std(flux[noiseRegion5])
+    snr6 = np.mean(flux[noiseRegion6]) / np.std(flux[noiseRegion6])
 
     # Look for convergence of the radial velocities
     rvs = np.array([radVel1, radVel2, radVel3, radVel4, radVel5, radVel6])
@@ -278,6 +278,40 @@ def xcorl(star,temp,range1,*args,**kwargs):
     else: fshft=shft
     shft=fshft
     return shft
+    
+def shfour(sp, shift, *args):
+
+     #28-Feb-13 CAT   Ported to Python 
+    
+    # Set Defaults
+    pl = 0
+
+    # Read the arguments
+    for arg in args:
+        if arg.lower() == 'plot': pl = 1
+    
+    ln = len(sp)
+    nsp = sp
+    # Take the inverse Fourier transform and multiply by length to put it in IDL terms
+    fourtr = np.fft.ifft(nsp) * len(nsp)   
+    sig = np.arange(ln)/float(ln) - .5
+    sig = np.roll(sig, int(ln/2))
+    sh = sig*2. * np.pi * shift
+    
+    count=0
+    shfourtr = np.zeros( (len(sh), 2) )
+    complexarr2 = np.zeros( len(sh), 'complex' )
+    for a,b in zip(np.cos(sh), np.sin(sh)):
+        comps = complex(a,b)
+        #print comps
+        complexarr2[count] = comps
+        count+=1
+
+    shfourtr = complexarr2 * fourtr
+    newsp = np.fft.fft(shfourtr) / len(shfourtr)
+    newsp = newsp[0:ln]
+    
+    return newsp
 
 def guessSpecType():
     
