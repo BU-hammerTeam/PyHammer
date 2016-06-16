@@ -89,7 +89,7 @@ def findRadialVelocity(spectrum, bestGuess):
 
     # Convert to Radial Velocities
     pixel = wave[1]-wave[0]
-    wave0 = (wave[1]-wave[0]) / 2
+    wave0 = (wave[1]+wave[0]) / 2
     radVel1 = shift1 * pixel / wave0 * c
     radVel2 = shift2 * pixel / wave0 * c
     radVel3 = shift3 * pixel / wave0 * c
