@@ -246,7 +246,9 @@ class Spectrum(object):
         """
         Shift the observed wavelengths to the rest frame using the radial velocity
         """
-
+        
+        self._wavelength = self._wavelength/(shift/(2.998*10**5) + 1)
+        
         print('Not Implemented')
     
     # Define other methods in this class which are needed to process the spectra
