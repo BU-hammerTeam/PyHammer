@@ -64,28 +64,19 @@ def findRadialVelocity(spectrum, bestGuess):
     tempFlux = np.interp(wave, tempWave, tempFluxOrig)
     
     # Get the regions for correlation
-    specRegion1 = np.where( (wave > 5000) & (wave < 5500) )
-    specRegion2 = np.where( (wave > 5500) & (wave < 6000) )
-    specRegion3 = np.where( (wave > 6000) & (wave < 6500) )
-    specRegion4 = np.where( (wave > 6500) & (wave < 7000) )
-    specRegion5 = np.where( (wave > 7000) & (wave < 7500) )
-    specRegion6 = np.where( (wave > 7500) & (wave < 8000) )
+    specRegion1 = np.where( (wave > 5000) & (wave < 5000) )
+    specRegion2 = np.where( (wave > 6000) & (wave < 7000) )
+    specRegion3 = np.where( (wave > 7000) & (wave < 8000) )
     #noise regions: still not sure if we should have these or not
     noiseRegion1 = np.where( (wave > 5000) & (wave < 5100) )
-    noiseRegion2 = np.where( (wave > 5500) & (wave < 5600) )
-    noiseRegion3 = np.where( (wave > 6000) & (wave < 6100) )
-    noiseRegion4 = np.where( (wave > 6800) & (wave < 6900) )
-    noiseRegion5 = np.where( (wave > 7000) & (wave < 7100) )
-    noiseRegion6 = np.where( (wave > 7400) & (wave < 7500) )
+    noiseRegion2 = np.where( (wave > 6800) & (wave < 6900) )
+    noiseRegion3 = np.where( (wave > 7400) & (wave < 7500) )
     
 
 
     shift1 = xcorl(flux[specRegion1], tempFlux[specRegion1], 12, 'fine')
     shift2 = xcorl(flux[specRegion2], tempFlux[specRegion2], 12, 'fine')
     shift3 = xcorl(flux[specRegion3], tempFlux[specRegion3], 12, 'fine')
-    shift4 = xcorl(flux[specRegion4], tempFlux[specRegion4], 12, 'fine')
-    shift5 = xcorl(flux[specRegion5], tempFlux[specRegion5], 12, 'fine')
-    shift6 = xcorl(flux[specRegion6], tempFlux[specRegion6], 12, 'fine')
 
     # Convert to Radial Velocities
     pixel = wave[1]-wave[0]
@@ -93,21 +84,15 @@ def findRadialVelocity(spectrum, bestGuess):
     radVel1 = shift1 * pixel / wave0 * c
     radVel2 = shift2 * pixel / wave0 * c
     radVel3 = shift3 * pixel / wave0 * c
-    radVel4 = shift1 * pixel / wave0 * c
-    radVel5 = shift2 * pixel / wave0 * c
-    radVel6 = shift3 * pixel / wave0 * c
 
     # Let's look at the noise in the spectrum
     snr1 = np.mean(flux[noiseRegion1]) / np.std(flux[noiseRegion1])
     snr2 = np.mean(flux[noiseRegion2]) / np.std(flux[noiseRegion2])
     snr3 = np.mean(flux[noiseRegion3]) / np.std(flux[noiseRegion3])
-    snr4 = np.mean(flux[noiseRegion4]) / np.std(flux[noiseRegion4])
-    snr5 = np.mean(flux[noiseRegion5]) / np.std(flux[noiseRegion5])
-    snr6 = np.mean(flux[noiseRegion6]) / np.std(flux[noiseRegion6])
 
     # Look for convergence of the radial velocities
-    rvs = np.array([radVel1, radVel2, radVel3, radVel4, radVel5, radVel6])
-    snrs = np.array([snr1, snr2, snr3, snr4, snr5, snr6])
+    rvs = np.array([radVel1, radVel2, radVel3])
+    snrs = np.array([snr1, snr2, snr3])
     
     true = False
     firstTime = 1
@@ -168,6 +153,48 @@ def findRadialVelocity(spectrum, bestGuess):
 
     return rvFinal
     
+def shfour(sp, shift, *args):
+
+    # shift of sp by (arbitrary, fractional) shift, result in newsp
+    
+    # Set Defaults
+    pl = 0
+
+    # Read the arguments
+    for arg in args:
+        if arg.lower() == 'plot': pl = 1
+    
+    ln = len(sp)
+    nsp = sp
+    
+    # Take the inverse Fourier transform and multiply by length to put it in IDL terms
+    fourtr = np.fft.ifft(nsp) * len(nsp)   
+    sig = np.arange(ln)/float(ln) - .5
+    sig = np.roll(sig, int(ln/2))
+    sh = sig*2. * np.pi * shift
+    
+    count=0
+    shfourtr = np.zeros( (len(sh), 2) )
+    complexarr2 = np.zeros( len(sh), 'complex' )
+    for a,b in zip(np.cos(sh), np.sin(sh)):
+        comps = complex(a,b)
+        complexarr2[count] = comps
+        count+=1
+
+    shfourtr = complexarr2 * fourtr
+
+    # Take the Fourier transform
+    newsp = np.fft.fft(shfourtr) / len(shfourtr)
+    newsp = newsp[0:ln]
+    
+    # Plot it
+    if pl == 1:
+        plt.plot(sp)
+        plt.plot(newsp-.5)
+        plt.show()
+    
+    return newsp
+    
 def xcorl(star,temp,range1,*args,**kwargs):
     #12-Jun-92 JAV	Added minchi parameter and logic.
     #17-Jun-92 JAV	Added "Max. allowable range" error message.
@@ -178,27 +205,23 @@ def xcorl(star,temp,range1,*args,**kwargs):
     #23-Oct-01 GB   Added /full keyword to simplify the call
     #28-Feb-13 CAT   Ported to Python
     #16-Jun-16 AYK   Added to hammer code
-
     # Set the defaults
+    pl = 0
     pr = 1
     fine = 0
     mult=0
-    fshft=0
     full=0
     ff = 0
+    fshft = 0
     
     # Read the arguments
     for arg in args:
+        if arg.lower() == 'plot': pl = 1
         if arg.lower() == 'fine': fine = 1
         if arg.lower() == 'full': full = 1
-    
-    # Read the keywords
-    for key in kwargs:
-        if key.lower() == 'mult':
-            mult = kwargs[key]
-        if key.lower() == 'fshft':
-            fshft = kwargs[key]
-            
+        if arg.lower() == 'fshft': fshft = 1
+        if arg.lower() == 'mult': mult = 1
+    #pdb.set_trace() 
     ln = len(temp)
     ls = len(star)
     length = np.min([ln, ls])
@@ -207,6 +230,7 @@ def xcorl(star,temp,range1,*args,**kwargs):
         print( 'Maximum allowable "range" for this case is', (length-1)/2)
     newln = length - 2*range1  # Leave "RANGE" on ends for overhang.
 
+    # Normalize
     te = temp/(np.sum(temp)/ln)
     st = star/(np.sum(star)/ls) # Be normal already!
     newend = range1 + newln - 1
@@ -214,6 +238,7 @@ def xcorl(star,temp,range1,*args,**kwargs):
     chi = np.zeros(2 * range1 + 1)
     
     if full == 1:
+        pl=1
         pr=1
 
     for j in range(-range1, range1+1):    # Goose step, baby
@@ -224,6 +249,14 @@ def xcorl(star,temp,range1,*args,**kwargs):
             dif = te[range1:newend+1] - st[range1+j:newend+j+1]
             chi[j+range1] = np.sum(dif*dif)
     xcr = chi
+
+     # Plotting
+    if pl == 1:
+        npt = len(chi)
+        xp = np.arange(npt) - npt/2
+        plt.plot(xp, chi)
+        #plt.plot(star)
+        #plt.plot(temp +.5)
     
     length = len(x) * 100
     xl = np.arange(length)
@@ -231,6 +264,7 @@ def xcorl(star,temp,range1,*args,**kwargs):
     xp = xl[0:length-99]
     function2 = interp1d(x, chi, kind='cubic')
     cp = function2(xp)
+    
     if mult != 0:
         minchi = np.max(cp)
         mm = np.where(cp == minchi)
@@ -238,12 +272,14 @@ def xcorl(star,temp,range1,*args,**kwargs):
         minchi = np.min(cp)
         mm = np.where(cp == minchi)
     shft = xp[mm[0]]
+    
     if pr != 0:
         print( 'XCORL: The shift is: %10.2f'%(shft))
     if abs(shft) > range1:
         ff=1
         return
-    if fshft != 0: shft = fshft
+    
+    if mult != 0: shft = fshft
 
     if fine != 0:
         nf = fine*20+1
@@ -272,46 +308,22 @@ def xcorl(star,temp,range1,*args,**kwargs):
             mm = np.where(cp == minchi)
         fshft = xp[mm]
 
+        if pl == 1:
+            if np.max(cp) > np.max(chi) and mult == 1:
+                cp = cp * np.max(chi)/np.max(cp)
+            plt.plot(xp, cp)
         
         if pr != 0:
-            print( 'XCORL: The final shift is: %10.f'%(fshft))
+            print( 'XCORL: The final shift is: %10.2f'%(fshft))
+            
     else: fshft=shft
     shft=fshft
-    return shft
-    
-def shfour(sp, shift, *args):
+    if pl == 1: plt.show()
+    return shft[0]
 
-     #28-Feb-13 CAT   Ported to Python 
-    
-    # Set Defaults
-    pl = 0
 
-    # Read the arguments
-    for arg in args:
-        if arg.lower() == 'plot': pl = 1
     
-    ln = len(sp)
-    nsp = sp
-    # Take the inverse Fourier transform and multiply by length to put it in IDL terms
-    fourtr = np.fft.ifft(nsp) * len(nsp)   
-    sig = np.arange(ln)/float(ln) - .5
-    sig = np.roll(sig, int(ln/2))
-    sh = sig*2. * np.pi * shift
     
-    count=0
-    shfourtr = np.zeros( (len(sh), 2) )
-    complexarr2 = np.zeros( len(sh), 'complex' )
-    for a,b in zip(np.cos(sh), np.sin(sh)):
-        comps = complex(a,b)
-        #print comps
-        complexarr2[count] = comps
-        count+=1
-
-    shfourtr = complexarr2 * fourtr
-    newsp = np.fft.fft(shfourtr) / len(shfourtr)
-    newsp = newsp[0:ln]
-    
-    return newsp
 
 def guessSpecType():
     
