@@ -49,14 +49,45 @@ class Spectrum(object):
             # Implement reading a regular fits file
             print('Not Implemented')
             
-        elif (filetype == 'ssdsfits'):
-            # Implement reading a sdss fits file
-            print('Not Implemented')
+        elif (filetype == 'DR7fits'):
+            # Implement reading a sdss DR7 fits file
+            #print('Not Implemented')
+            spec = fits.open(filename)
+            self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
+            self._flux = spec[0].data[0]
+            self._ivar = spec[0].data[2]
+            #self._airToVac()
             
-            self._airToVac()
+        elif (filetype == 'DR12fits'): 
+            # Implement reading a sdss DR7 fits file
+            spec = fits.open(filename) 
+            self._wavelength = 10**spec[1].data['loglam']
+            self._flux = spec[1].data['flux']
+            self._ivar = spec[1].data['ivar']
+            
         elif (filetype == 'txt'):
             # Implement reading a txt file
-            print('Not Implemented')
+            #print('Not Implemented')
+            f = open(filename)
+            data = tbl.read()
+            f.close()
+            lineList = data.splitlines()
+            
+            wave = []
+            flux = []
+            ivar = []
+            for line in LineList:
+                l = line.split()
+                wave.append(l[0])
+                flux.append(l[1])
+                if len(l) > 2: 
+                    ivar.append(l[2])
+                    
+            self._wavelength = np.asarray(wave) 
+            self._flux = np.asarray(flux) 
+            if len(ivar) > 0: 
+                self._ivar = np.asarray(ivar) 
+            
             
         else:
             # The user supplied an option not accounted for
