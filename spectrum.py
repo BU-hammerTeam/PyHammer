@@ -18,8 +18,7 @@ class Spectrum(object):
     def __init__(self):
         self._wavelength = None
         self._flux = None
-        #self._noise = None
-        self._ivar = None
+        self._var = None
         self._guess = None
         
         ###########################################
@@ -92,7 +91,7 @@ class Spectrum(object):
             spec = fits.open(filename)
             self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
             self._flux = spec[0].data[0]
-            self._ivar = spec[0].data[2]
+            self._var = 1/(spec[0].data[2])
             #self._airToVac()
             
         elif (filetype == 'DR12fits'): 
@@ -100,7 +99,7 @@ class Spectrum(object):
             spec = fits.open(filename) 
             self._wavelength = 10**spec[1].data['loglam']
             self._flux = spec[1].data['flux']
-            self._ivar = spec[1].data['ivar']
+            self._var = 1/(spec[1].data['ivar'])
             
         elif (filetype == 'txt'):
             # Implement reading a txt file
@@ -112,18 +111,19 @@ class Spectrum(object):
             
             wave = []
             flux = []
-            ivar = []
+            var = []
             for line in LineList:
                 l = line.split()
                 wave.append(l[0])
                 flux.append(l[1])
-                if len(l) > 2: 
-                    ivar.append(l[2])
+                if len(l) > 2:
+                    err = l[2]
+                    var.append(err**2)
                     
             self._wavelength = np.asarray(wave) 
             self._flux = np.asarray(flux) 
             if len(ivar) > 0: 
-                self._ivar = np.asarray(ivar) 
+                self._var = np.asarray(var) 
             
             
         else:
@@ -308,6 +308,7 @@ class Spectrum(object):
     def shiftToRest(self, shift):
         """
         Shift the observed wavelengths to the rest frame using the radial velocity
+        **Shift needs to be in km/s**
         """
         
         self._wavelength = self._wavelength/(shift/(2.998*10**5) + 1)
