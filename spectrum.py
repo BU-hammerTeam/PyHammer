@@ -1,6 +1,8 @@
 import numpy as np
 from astropy.io import fits
 import bisect
+import pickle
+import os
 
 class Spectrum(object):
     """
@@ -16,7 +18,42 @@ class Spectrum(object):
     def __init__(self):
         self._wavelength = None
         self._flux = None
-        self._noise = None
+        self._var = None
+        self._guess = None
+        
+        ###########################################
+        #Not the best way to do this. Shouldn't
+        #need to read in template data for each 
+        #spectrum. Common Block?
+        ###########################################
+        
+        #Read in indices measured from templates
+        #tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
+        #lines is a list of 2D arrays with indices and variances for each line
+        # index for each spectrum that goes into a template
+        thisDir, thisFile = os.path.split(__file__)
+        pklPath = os.path.join(thisDir, "resources", "tempLines.pickle")        
+        with open(pklPath, 'rb') as pklFile:
+            tempLines = pickle.load(pklFile)
+        
+        #Get averages and stddevs for each line for each template
+        avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
+        avgs[:,:] = np.nan
+        stds = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
+        stds[:,:] = np.nan
+        for i, ilines in enumerate(tempLines[4]):
+            weights = 1.0/np.array(ilines)[:,:,1]
+            nonzeroweights = np.sum(weights != 0, 0)
+            weightedsum = np.nansum(np.array(ilines)[:,:,0] * weights, 0)
+            sumofweights = np.nansum(weights, 0)
+            avgs[i] = weightedsum / sumofweights
+            stds[i] = np.sqrt( np.nansum(weights * (np.array(ilines)[:,:,0] - avgs[i])**2.0, 0)
+                              / ( ((nonzeroweights-1.0)/nonzeroweights)
+                                  * sumofweights ) )
+                                  
+        self._tempLines = tempLines
+        self._tempLineAvgs = avgs
+        self._tempLineVars = stds**2.0
 
     ##
     # Utility Methods
@@ -48,14 +85,46 @@ class Spectrum(object):
             # Implement reading a regular fits file
             print('Not Implemented')
             
-        elif (filetype == 'ssdsfits'):
-            # Implement reading a sdss fits file
-            print('Not Implemented')
+        elif (filetype == 'DR7fits'):
+            # Implement reading a sdss DR7 fits file
+            #print('Not Implemented')
+            spec = fits.open(filename)
+            self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
+            self._flux = spec[0].data[0]
+            self._var = 1/(spec[0].data[2])
+            #self._airToVac()
+            
+        elif (filetype == 'DR12fits'): 
+            # Implement reading a sdss DR7 fits file
+            spec = fits.open(filename) 
+            self._wavelength = 10**spec[1].data['loglam']
+            self._flux = spec[1].data['flux']
+            self._var = 1/(spec[1].data['ivar'])
             
             self._airToVac()
         elif (filetype == 'txt'):
             # Implement reading a txt file
-            print('Not Implemented')
+            #print('Not Implemented')
+            f = open(filename)
+            data = tbl.read()
+            f.close()
+            lineList = data.splitlines()
+            
+            wave = []
+            flux = []
+            var = []
+            for line in LineList:
+                l = line.split()
+                wave.append(l[0])
+                flux.append(l[1])
+                if len(l) > 2:
+                    err = l[2]
+                    var.append(err**2)
+                    
+            self._wavelength = np.asarray(wave) 
+            self._flux = np.asarray(flux) 
+            if len(ivar) > 0: 
+                self._var = np.asarray(var) 
             
         else:
             # The user supplied an option not accounted for
@@ -199,10 +268,37 @@ class Spectrum(object):
         print('Not implemented')
 
         return measuredLinesDict
+        
+    def guessSpecType(self):
+    
+        #Measure lines
+        linesDict = self.measureLines()
+        
+        #Recast values to simple 2D array
+        #lines = np.array(list(linesDict.values()))
+        lines = np.array(list(linesDict.values()))[np.argsort(list(linesDict.keys()))]
+        
+        #Weight by uncertainty in object lines and template lines
+        weights = 1.0 / (np.sqrt(self._tempLineVars) + np.sqrt(lines[:,1]))
+        
+        #print(lines)
+        #print(weights)
+        
+        #Find best fit
+        iguess = np.nanargmin(np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / np.nansum(weights**2, 1))
+        
+        #print(iguess)
+        
+        #Save guess as dict       
+        self._guess = {'spt':self._tempLines[0][iguess], # Spectral type - 0 for O to 6 for M
+                       'sub':self._tempLines[1][iguess], # Spectral subtype
+                       'feh':self._tempLines[2][iguess], # Metallicity
+                       'lum':self._tempLines[3][iguess]} # Luminosity class - 3 for giant, 5 for MS        
 
     def shiftToRest(self, shift):
         """
         Shift the observed wavelengths to the rest frame using the radial velocity
+        **Shift needs to be in km/s**
         """
 
         print('Not Implemented')
@@ -224,5 +320,17 @@ class Spectrum(object):
 
     @property
     def wavelength(self):
-        return _wavelength
+        return self._wavelength
+        
+    @wavelength.setter
+    def wavelength(self, value):
+        self._wavelength = value
+        
+    @property
+    def lines(self):
+        return self._lines   
+
+    @property
+    def guess(self):
+        return self._guess 
     
