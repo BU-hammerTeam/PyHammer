@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 from spectrum import Spectrum
 import eyecheck
+import pdb
 
 def findRadialVelocity(spectrum, bestGuess):
     """
@@ -40,10 +41,289 @@ def findRadialVelocity(spectrum, bestGuess):
     add the radialvelocity to the spectrum object? Or report just report it in
     the output file.
     """
+    
+    #Get the flux and wavelength from the spectrum object 
+    #This should already be interpolated onto a log scale and normalized to 8000A (where templates are normalized)
+    wave = spectrum.lam
+    flux = spectrum.flux
+    
+    #open the correct template spectrum 
+    #depending on what bestGuess returns this might need to be changed
+    path = 'templates/'
+    if ((bestGuess[0] == 'O') or (bestGuess[0] == 'B') or (bestGuess[0] == 'L') or (bestGuess[0] == 'A' and float(bestGuess[1]) < 3) or (bestGuess == 'M9')):
+        tempName = bestGuess + '.fits'
+    elif (bestGuess[0] == 'A' and float(bestGuess[1]) > 2) or (bestGuess[0] == 'F'):
+        tempName = bestGuess + '_-1.0_Dwarf.fits'
+    elif (bestGuess[0] == 'K') or (bestGuess[0] == 'G') or (bestGuess[0] == 'M' and float(bestGuess[1]) < 9):
+        tempName = bestGuess + '_0.0_Dwarf.fits'
+        
+    temp = fits.open(path+tempName)
+    tempFluxOrig = temp[1].data['flux']
+    tempWave = 10**temp[1].data['loglam']
+    #put the template on the same wavelength scale as the spectrum
+    tempFlux = np.interp(wave, tempWave, tempFluxOrig)
+    
+    # Get the regions for correlation
+    specRegion1 = np.where( (wave > 5000) & (wave < 5000) )
+    specRegion2 = np.where( (wave > 6000) & (wave < 7000) )
+    specRegion3 = np.where( (wave > 7000) & (wave < 8000) )
+    #noise regions: still not sure if we should have these or not
+    noiseRegion1 = np.where( (wave > 5000) & (wave < 5100) )
+    noiseRegion2 = np.where( (wave > 6800) & (wave < 6900) )
+    noiseRegion3 = np.where( (wave > 7400) & (wave < 7500) )
+    
 
-    # Do we want this as part of the Spectrum class instead?
 
-    return rv
+    shift1 = xcorl(flux[specRegion1], tempFlux[specRegion1], 12, 'fine')
+    shift2 = xcorl(flux[specRegion2], tempFlux[specRegion2], 12, 'fine')
+    shift3 = xcorl(flux[specRegion3], tempFlux[specRegion3], 12, 'fine')
+
+    # Convert to Radial Velocities
+    pixel = wave[1]-wave[0]
+    wave0 = (wave[1]+wave[0]) / 2
+    radVel1 = shift1 * pixel / wave0 * c
+    radVel2 = shift2 * pixel / wave0 * c
+    radVel3 = shift3 * pixel / wave0 * c
+
+    # Let's look at the noise in the spectrum
+    snr1 = np.mean(flux[noiseRegion1]) / np.std(flux[noiseRegion1])
+    snr2 = np.mean(flux[noiseRegion2]) / np.std(flux[noiseRegion2])
+    snr3 = np.mean(flux[noiseRegion3]) / np.std(flux[noiseRegion3])
+
+    # Look for convergence of the radial velocities
+    rvs = np.array([radVel1, radVel2, radVel3])
+    snrs = np.array([snr1, snr2, snr3])
+    
+    true = False
+    firstTime = 1
+    broke = False
+    while true == False:
+        trueCount = 0
+        chi = []
+        
+        for rv_ in rvs:
+            #Start with highest signal-to-noise value
+            if firstTime == 1: 
+                rvmed = rvs[np.where(snrs == np.max(snrs))]
+            else: 
+                rvmed = np.median( rvs )
+            if rv_ == rvmed: 
+                continue
+            if rvmed < 0:
+                number = -10
+                #print 'RV', rv_, 'MEDIAN', rvmed, 'LIMITS', rvmed + number,  rvmed - number, 'WITHIN?', rv_ > rvmed + number and rv_ < rvmed - number
+                if rv_ < (rvmed + number) or rv_ > (rvmed - number):
+                    chi.append( [rv_ , abs( rv_ - rvmed )] )
+                    #rvs = np.delete(rvs, np.where(rvs == rv_))
+                    trueCount += 1
+            else:
+                number = 10
+                #print 'RV', rv_, 'MEDIAN', rvmed, 'LIMITS', rvmed + number,  rvmed - number, 'WITHIN?', rv_ < rvmed + number and rv_ > rvmed - number
+                if rv_ > (rvmed + number) or rv_ < (rvmed - number):
+                    chi.append( [rv_ , abs( rv_ - rvmed )] )
+                    #rvs = np.delete(rvs, np.where(rvs == rv_))
+                    trueCount += 1
+        #print 'TRUECOUNT', trueCount
+        firstTime = 0
+        if trueCount == 0:
+            true = True
+            break
+        if trueCount == 2:
+            true=True
+            print('BROKEN')
+            broke = True
+            break
+        #print 'START CHI'
+        chi = np.array(chi)
+        #print chi
+        #print chi[:,1]
+        #print np.max(chi[:,1])
+        #print chi[:,0][np.where(chi[:,1] == np.max(chi[:,1]))]
+        #print np.where(rvs == chi[:,0][np.where(chi[:,1] == np.max(chi[:,1]))])[0]
+        #print 'DROPPING', rvs[np.where(rvs == chi[:,0][np.where(chi[:,1] == np.max(chi[:,1]))])[0]]
+        #print 'LENGTH', len(chi)
+        if len(chi) > 0:
+            #print 'DELETING'
+            rvs = np.delete(rvs, np.where(rvs == chi[:,0][np.where(chi[:,1] == np.max(chi[:,1]))])[0])
+        #print 'End', rvs
+        if trueCount == 0: 
+            true = True
+    #print rvs
+    rvFinal = np.mean( rvs )
+
+    return rvFinal
+    
+def shfour(sp, shift, *args):
+
+    # shift of sp by (arbitrary, fractional) shift, result in newsp
+    
+    # Set Defaults
+    pl = 0
+
+    # Read the arguments
+    for arg in args:
+        if arg.lower() == 'plot': pl = 1
+    
+    ln = len(sp)
+    nsp = sp
+    
+    # Take the inverse Fourier transform and multiply by length to put it in IDL terms
+    fourtr = np.fft.ifft(nsp) * len(nsp)   
+    sig = np.arange(ln)/float(ln) - .5
+    sig = np.roll(sig, int(ln/2))
+    sh = sig*2. * np.pi * shift
+    
+    count=0
+    shfourtr = np.zeros( (len(sh), 2) )
+    complexarr2 = np.zeros( len(sh), 'complex' )
+    for a,b in zip(np.cos(sh), np.sin(sh)):
+        comps = complex(a,b)
+        complexarr2[count] = comps
+        count+=1
+
+    shfourtr = complexarr2 * fourtr
+
+    # Take the Fourier transform
+    newsp = np.fft.fft(shfourtr) / len(shfourtr)
+    newsp = newsp[0:ln]
+    
+    # Plot it
+    if pl == 1:
+        plt.plot(sp)
+        plt.plot(newsp-.5)
+        plt.show()
+    
+    return newsp
+    
+def xcorl(star,temp,range1,*args,**kwargs):
+    #12-Jun-92 JAV	Added minchi parameter and logic.
+    #17-Jun-92 JAV	Added "Max. allowable range" error message.
+    #24-Aug-92 JAV	Supressed output of blank line when print keyword absent.
+    #3-Jan-97 GB    Added "fine" (# pixs finely resolved) and "mult" options
+    #  these give finer resolution to the peak, and use products instead of diffs.
+    #8-Jan-97 GB	Added "fshft" to force one of a double peak
+    #23-Oct-01 GB   Added /full keyword to simplify the call
+    #28-Feb-13 CAT   Ported to Python
+    #16-Jun-16 AYK   Added to hammer code
+    # Set the defaults
+    pl = 0
+    pr = 1
+    fine = 0
+    mult=0
+    full=0
+    ff = 0
+    fshft = 0
+    
+    # Read the arguments
+    for arg in args:
+        if arg.lower() == 'plot': pl = 1
+        if arg.lower() == 'fine': fine = 1
+        if arg.lower() == 'full': full = 1
+        if arg.lower() == 'fshft': fshft = 1
+        if arg.lower() == 'mult': mult = 1
+    #pdb.set_trace() 
+    ln = len(temp)
+    ls = len(star)
+    length = np.min([ln, ls])
+    slen = length
+    if range1 > (length-1)/2:
+        print( 'Maximum allowable "range" for this case is', (length-1)/2)
+    newln = length - 2*range1  # Leave "RANGE" on ends for overhang.
+
+    # Normalize
+    te = temp/(np.sum(temp)/ln)
+    st = star/(np.sum(star)/ls) # Be normal already!
+    newend = range1 + newln - 1
+    x = np.arange(2 * range1 + 1) - range1
+    chi = np.zeros(2 * range1 + 1)
+    
+    if full == 1:
+        pl=1
+        pr=1
+
+    for j in range(-range1, range1+1):    # Goose step, baby
+        if mult == 1:
+            dif = te[range1:newend+1] * st[range1+j:newend+j+1]
+            chi[j+range1] = np.sum(abs(dif))
+        else:
+            dif = te[range1:newend+1] - st[range1+j:newend+j+1]
+            chi[j+range1] = np.sum(dif*dif)
+    xcr = chi
+
+     # Plotting
+    if pl == 1:
+        npt = len(chi)
+        xp = np.arange(npt) - npt/2
+        plt.plot(xp, chi)
+        #plt.plot(star)
+        #plt.plot(temp +.5)
+    
+    length = len(x) * 100
+    xl = np.arange(length)
+    xl = xl/100. - range1
+    xp = xl[0:length-99]
+    function2 = interp1d(x, chi, kind='cubic')
+    cp = function2(xp)
+    
+    if mult != 0:
+        minchi = np.max(cp)
+        mm = np.where(cp == minchi)
+    else:
+        minchi = np.min(cp)
+        mm = np.where(cp == minchi)
+    shft = xp[mm[0]]
+    
+    if pr != 0:
+        print( 'XCORL: The shift is: %10.2f'%(shft))
+    if abs(shft) > range1:
+        ff=1
+        return
+    
+    if mult != 0: shft = fshft
+
+    if fine != 0:
+        nf = fine*20+1
+        rf = fine*10.
+        nc = -1
+        fchi = np.zeros(nf)
+        xl = np.zeros(nf)
+        for j in range(int(-rf), int(rf+1)):
+            xl[nc+1] = shft + j/10.
+            nst = shfour(st, -xl[nc+1])
+            nc += 1
+            if mult == 1:
+                dif = nst[range1:newend+1] * te[range1:newend+1]
+                fchi[nc] = np.sum(abs(dif))
+            else:
+                dif = nst[range1:newend+1] - te[range1:newend+1]
+                fchi[nc] = np.sum(dif*dif)
+        xp = np.arange( (nf-1) * 100 + 1) / 1000. + shft - fine
+        function3 = interp1d(xl, fchi, kind='cubic')
+        cp = function3(xp)
+        if mult == 1:
+            minchi = np.max(cp)
+            mm = np.where(cp == minchi)
+        else:
+            minchi = np.min(cp)
+            mm = np.where(cp == minchi)
+        fshft = xp[mm]
+
+        if pl == 1:
+            if np.max(cp) > np.max(chi) and mult == 1:
+                cp = cp * np.max(chi)/np.max(cp)
+            plt.plot(xp, cp)
+        
+        if pr != 0:
+            print( 'XCORL: The final shift is: %10.2f'%(fshft))
+            
+    else: fshft=shft
+    shft=fshft
+    if pl == 1: plt.show()
+    return shft[0]
+
+
+    
+    
 
 def guessSpecType():
     
