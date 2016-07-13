@@ -84,10 +84,16 @@ class Spectrum(object):
 
         if (filetype == 'fits'):
             # Implement reading a regular fits file
+            # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
+            # Need error vs variance keyword
+            spec = fits.open(filename) 
+            self._flux = spec[0].data[0]
+            self._wavelength = ( spec[0].header['CRVAL1'] - (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(spec[0].data[0]),1))
+            
             print('Not Implemented')
             
         elif (filetype == 'DR7fits'):
-            # Implement reading a sdss DR7 fits file
+            # Implement reading a sdss EDR through DR8 fits file
             #print('Not Implemented')
             spec = fits.open(filename)
             self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
@@ -96,15 +102,17 @@ class Spectrum(object):
             #self._airToVac()
             
         elif (filetype == 'DR12fits'): 
-            # Implement reading a sdss DR7 fits file
+            # Implement reading a sdss DR9 through DR12 fits file
             spec = fits.open(filename) 
             self._wavelength = 10**spec[1].data['loglam']
             self._flux = spec[1].data['flux']
             self._var = 1/(spec[1].data['ivar'])
+            #self._airToVac()
             
-            self._airToVac()
         elif (filetype == 'txt'):
             # Implement reading a txt file
+            # Need to add in a Keyword to have the user be able to input error but assume variance
+            # Also want a vacuum keyword! 
             #print('Not Implemented')
             f = open(filename)
             data = tbl.read()
