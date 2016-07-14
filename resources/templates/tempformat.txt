@@ -1,1 +1,58 @@
-DESCRIPTION OF TEMPLATE FORMAT HERE
+DESCRIPTION OF TEMPLATE FORMAT
+
+Primary HDU (HDU 0) contains comments with basic information about the templates: 
+
+SIMPLE  =                    T / conforms to FITS standard                      
+BITPIX  =                    8 / array data type                                
+NAXIS   =                    0 / number of array dimensions                     
+EXTEND  =                    T                                                  
+COMMENT Photometry from 28 objects                                              
+COMMENT Template made from 31 Co-added individual BOSS (SDSS) spectra           
+COMMENT All added templated had 0.0 > FeH > -0.5dex      
+
+First table extension (HDU 1) contains the spectrum information: 
+
+XTENSION= 'BINTABLE'           / binary table extension                         
+BITPIX  =                    8 / array data type                                
+NAXIS   =                    2 / number of array dimensions                     
+NAXIS1  =                   12 / length of dimension 1                          
+NAXIS2  =                61618 / length of dimension 2                          
+PCOUNT  =                    0 / number of group parameters                     
+GCOUNT  =                    1 / number of groups                               
+TFIELDS =                    3 / number of table fields                         
+TTYPE1  = 'LogLam  '                                                            
+TFORM1  = 'E       '                                                            
+TTYPE2  = 'Flux    '                                                            
+TFORM2  = 'E       '                                                            
+TTYPE3  = 'Std     '                                                            
+TFORM3  = 'E       '    
+
+where the first field, LogLam contains the wavelength grid in log spacing, the second field contains the corresponding co-added flux grid, and the third field contains the propagated error reported by BOSS for each spectrum co-added. 
+
+Second table extension (HDU 2) contains properties of the templates (color information, effective temperature, surface gravity when applicable): 
+
+XTENSION= 'BINTABLE'           / binary table extension                         
+BITPIX  =                    8 / array data type                                
+NAXIS   =                    2 / number of array dimensions                     
+NAXIS1  =                   24 / length of dimension 1                          
+NAXIS2  =                    3 / length of dimension 2                          
+PCOUNT  =                    0 / number of group parameters                     
+GCOUNT  =                    1 / number of groups                               
+TFIELDS =                    6 / number of table fields                         
+TTYPE1  = 'u-g     '                                                            
+TFORM1  = 'E       '                                                            
+TTYPE2  = 'g-r     '                                                            
+TFORM2  = 'E       '                                                            
+TTYPE3  = 'r-i     '                                                            
+TFORM3  = 'E       '                                                            
+TTYPE4  = 'i-z     '                                                            
+TFORM4  = 'E       '                                                            
+TTYPE5  = 'Teff    '                                                            
+TFORM5  = 'E       '                                                            
+TTYPE6  = 'Log_g   '                                                            
+TFORM6  = 'E       ' 
+
+Each of these properties contains an array with 3 entries. The first is the average value of the property (i.e. average u-g color for all co-added spectra), the second is the propagated error in the photometry reported by BOSS, and the third is the standard deviation of all the values averaged together. 
+
+
+
