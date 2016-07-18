@@ -150,10 +150,29 @@ class Spectrum(object):
         """
         A method to convert the wavelengths from air to vacuum
         
+        Code originally in IDL (AIRTOVAC.pro) then translated into python 
+        in pyAstronomy python library. 
+        
         [Aurora]- want to have an if statement that checks if the spectrum 
         is already in vacuum or air.
-        Sloan, princeton are already in air but most other spectra are not. 
+        Sloan, princeton are already in vacuum but most other spectra are not. 
         """
+        
+        sigma2 = (1.e4/wave)**2.                      #Convert to wavenumber squared
+
+        # Compute conversion factor
+        # Wavelength values below 2000 A will not be 
+        # altered.  Uses the IAU standard for conversion given in Morton 
+        # (1991 Ap.J. Suppl. 77, 119)
+
+        fact = 1. + 6.4328e-5 + 2.94981e-2/(146.-sigma2) + 2.5540e-4/(41.-sigma2)
+
+        fact = fact*(wave >= 2000.) + 1.*(wave < 2000.)
+
+        wave = wave*fact              #Convert Wavelength
+
+  return wave
+
         print('Not implemented')
 
     def _interpOntoGrid(self, log = True, tfile = 'default', tlog = True):
