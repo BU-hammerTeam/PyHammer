@@ -422,11 +422,11 @@ class Spectrum(object):
 
     @property
     def flux(self):
-        return _flux
+        return self._flux
 
     @property
     def var(self):
-        return _var
+        return self._var
 
     @property
     def wavelength(self):
