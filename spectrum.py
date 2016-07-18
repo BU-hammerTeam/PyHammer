@@ -26,8 +26,8 @@ class Spectrum(object):
         #tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
         #lines is a list of 2D arrays with indices and variances for each line
         # index for each spectrum that goes into a template
-        thisDir, thisFile = os.path.split(__file__)
-        pklPath = os.path.join(thisDir, "resources", "tempLines.pickle")        
+        self.thisDir, thisFile = os.path.split(__file__)
+        pklPath = os.path.join(self.thisDir, "resources", "tempLines.pickle")        
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
@@ -218,7 +218,7 @@ class Spectrum(object):
         """
         #Grab an sample template to get wavelengths for interpolation
         if tfile == 'default':
-            template = fits.open('resources/sample_template.fits')
+            template = fits.open(os.path.join(self.thisDir, "resources", "sample_template.fits"))
         else:
             template = fits.open(tfile)
         
@@ -412,8 +412,8 @@ class Spectrum(object):
         return _flux
 
     @property
-    def noise(self):
-        return _noise
+    def var(self):
+        return _var
 
     @property
     def wavelength(self):
