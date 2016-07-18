@@ -22,12 +22,6 @@ class Spectrum(object):
         self._var = None
         self._guess = None
         
-        ###########################################
-        #Not the best way to do this. Shouldn't
-        #need to read in template data for each 
-        #spectrum. Common Block?
-        ###########################################
-        
         #Read in indices measured from templates
         #tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
         #lines is a list of 2D arrays with indices and variances for each line
