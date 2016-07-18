@@ -146,12 +146,18 @@ class Spectrum(object):
         self._interpOntoGrid()
         return True
         
-    def _airToVac(self):
+    def _airToVac(self, self._wavelength):
         """
         A method to convert the wavelengths from air to vacuum
         
         Code originally in IDL (AIRTOVAC.pro) then translated into python 
         in pyAstronomy python library. 
+        
+        Input: 
+        wavelength array originally in air [Angstroms]
+        
+        Output:
+        wavelength array in vacuum [Angstroms]
         
         [Aurora]- want to have an if statement that checks if the spectrum 
         is already in vacuum or air.
@@ -383,10 +389,19 @@ class Spectrum(object):
     def shiftToRest(self, shift):
         """
         Shift the observed wavelengths to the rest frame using the radial velocity
-        **Shift needs to be in km/s**
+        
+        Input: 
+        Radial velocity float [km/s]
+        
+        Output: 
+        Rest frame wavelength array 
         """
-
-        print('Not Implemented')
+        
+        restWave = self._wavelength / (shift / (2.998*10**5) + 1)
+        
+        return restWave
+        
+        #print('Not Implemented')
     
     # Define other methods in this class which are needed to process the spectra
 
