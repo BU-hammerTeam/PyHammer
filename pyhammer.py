@@ -8,9 +8,9 @@ from spectrum import Spectrum
 import eyecheck
 import pdb
 
-def findRadialVelocity(spectrum, bestGuess):
+def findRadialVelocity(spectrum):
     """
-    findRadialVelocity(spectrum, bestGuess)
+    findRadialVelocity(spectrum)
 
     Description:
     Uses the cross-correlation technique. Most likely there is a pre-built
@@ -44,18 +44,44 @@ def findRadialVelocity(spectrum, bestGuess):
     
     #Get the flux and wavelength from the spectrum object 
     #This should already be interpolated onto a log scale and normalized to 8000A (where templates are normalized)
-    wave = spectrum.lam
-    flux = spectrum.flux
+    wave = Spectrum.wavelength
+    flux = Spectrum.flux
+    bestGuess = Spectrum.guess
     
     #open the correct template spectrum 
-    #depending on what bestGuess returns this might need to be changed
-    path = 'templates/'
-    if ((bestGuess[0] == 'O') or (bestGuess[0] == 'B') or (bestGuess[0] == 'L') or (bestGuess[0] == 'A' and float(bestGuess[1]) < 3) or (bestGuess == 'M9')):
-        tempName = bestGuess + '.fits'
-    elif (bestGuess[0] == 'A' and float(bestGuess[1]) > 2) or (bestGuess[0] == 'F'):
-        tempName = bestGuess + '_-1.0_Dwarf.fits'
-    elif (bestGuess[0] == 'K') or (bestGuess[0] == 'G') or (bestGuess[0] == 'M' and float(bestGuess[1]) < 9):
-        tempName = bestGuess + '_0.0_Dwarf.fits'
+    # I have it only using the spectral type and subtype for the original guess 
+    # so I just cross correlate to the most common metallicity template for each spectral class
+    path = 'resources/templates/'
+    #Spectral type O 
+    if bestGuess['spt'] == 0:
+        tempName = 'O' + str(bestGuess['sub']) + '.fits'
+    #Spectral type B
+    elif bestGuess['spt'] == 1: 
+        tempName = 'B' + str(bestGuess['sub']) + '.fits'
+    #Spectral types A0, A1, A2 (where there is no metallicity changes)
+    elif bestGuess['spt'] == 2 and float(bestGuess['sub']) < 3:
+        tempName = 'A' + str(bestGuess['sub']) + '.fits'
+    #Spectral type A3 through A9
+    elif bestGuess['spt'] == 2 and float(bestGuess['sub']) > 2: 
+        tempName = 'A' + str(bestGuess['sub']) + '_-1.0_Dwarf.fits'
+    #Spectral type F
+    elif bestGuess['spt'] == 3: 
+        tempName = 'F' + str(bestGuess['sub']) + '_-1.0_Dwarf.fits'
+    #Spectral type G
+    elif bestGuess['spt'] == 4: 
+        tempName = 'G' + str(bestGuess['sub']) + '_0.0_Dwarf.fits'
+    #Spectral type K 
+    elif bestGuess['spt'] == 5: 
+        tempName = 'K' + str(bestGuess['sub']) + '_0.0_Dwarf.fits'
+    #Spectral type M (0 through 8) 
+    elif bestGuess['spt'] == 6 and float(bestGuess['sub']) < 9: 
+        tempName = 'M' + str(bestGuess['sub']) + '_0.0_Dwarf.fits'
+    #Spectral type M9 (no metallicity)
+    elif bestGuess['spt'] == 6 and bestGuess['sub'] == 9: 
+        tempName = 'M' + str(bestGuess['sub']) + '.fits'
+    #Spectral type L
+    elif bestGuess['spt'] == 7: 
+        tempName = 'L' + str(bestGuess['sub']) + '.fits'
         
     temp = fits.open(path+tempName)
     tempFluxOrig = temp[1].data['flux']
