@@ -379,15 +379,12 @@ class Spectrum(object):
         Shift the observed wavelengths to the rest frame using the radial velocity
         
         Input: 
-        Radial velocity float [km/s]
-        
-        Output: 
-        Rest frame wavelength array 
+        Calculated radial velocity float [km/s]
         """
         
-        restWave = self._wavelength / (shift / (2.998*10**5) + 1)
+        self._wavelength = self._wavelength / (shift / (2.998*10**5) + 1)
         
-        return restWave
+        return 
         
         #print('Not Implemented')
     
