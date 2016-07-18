@@ -169,8 +169,8 @@ class Spectrum(object):
 
         print('Not implemented')
 
-    def _interpOntoGrid(self, log = True, tfile = 'default', tlog = True):
-        import pdb
+    def _interpOntoGrid(self, log = False, tfile = 'default', tlog = True):
+    
         """
         
         Description:
@@ -230,15 +230,15 @@ class Spectrum(object):
             
         #Interpolate onto the logarithmic grid with a cubic spline fit
         if log == True:
-            func = interpolate.interp1d(10**self.wavelength, self.flux, kind='cubic', bounds_error = False)
-            noisefunc = interpolate.interp1d(10**self.wavelength, self.noise, kind = 'cubic', bounds_error = False)
-        elif log == False:
-            func = interpolate.interp1d(self.wavelength, self.flux, kind='cubic', bounds_error = False)
-            noisefunc = interpolate.interp1d(self.wavelength, self.noise, kind='cubic', bounds_error = False)
+            func = interpolate.interp1d(10**self._wavelength, self._flux, kind='cubic', bounds_error = False)
+            noisefunc = interpolate.interp1d(10**self._wavelength, self._var, kind = 'cubic', bounds_error = False)
+        else:
+            func = interpolate.interp1d(self._wavelength, self._flux, kind='cubic', bounds_error = False)
+            noisefunc = interpolate.interp1d(self._wavelength, self._var, kind='cubic', bounds_error = False)
         
         #Convert the wavelength grid to log lambda
-        self.wavelength = np.log10(grid)
-        self.flux = func(grid)
+        self._wavelength = np.log10(grid)
+        self._flux = func(grid)
 
     def measureLines(self):
         """
