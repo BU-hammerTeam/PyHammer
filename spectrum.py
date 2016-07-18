@@ -230,15 +230,18 @@ class Spectrum(object):
             
         #Interpolate onto the logarithmic grid with a cubic spline fit
         if log == True:
-            func = interpolate.interp1d(10**self._wavelength, self._flux, kind='cubic', bounds_error = False)
-            noisefunc = interpolate.interp1d(10**self._wavelength, self._var, kind = 'cubic', bounds_error = False)
+            func = interpolate.InterpolatedUnivariateSpline(10**self._wavelength, self._flux, k=5)
+            noisefunc = interpolate.InterpolatedUnivariateSpline(10**self._wavelength, self._var, k=5)
         else:
-            func = interpolate.interp1d(self._wavelength, self._flux, kind='cubic', bounds_error = False)
-            noisefunc = interpolate.interp1d(self._wavelength, self._var, kind='cubic', bounds_error = False)
+            func = interpolate.InterpolatedUnivariateSpline(self._wavelength, self._flux, k=5)
+            noisefunc = interpolate.InterpolatedUnivariateSpline(self._wavelength, self._var, k=5)
         
+        print('created function')
         #Convert the wavelength grid to log lambda
-        self._wavelength = np.log10(grid)
+        self._wavelength = grid
         self._flux = func(grid)
+        self._var = noisefunc(grid) 
+        print('interpolation done!')
 
     def measureLines(self):
         """
