@@ -146,25 +146,19 @@ class Spectrum(object):
         self._interpOntoGrid()
         return True
         
-    def _airToVac(self, self._wavelength):
+    def _airToVac(self):
         """
         A method to convert the wavelengths from air to vacuum
         
         Code originally in IDL (AIRTOVAC.pro) then translated into python 
         in pyAstronomy python library. 
         
-        Input: 
-        wavelength array originally in air [Angstroms]
-        
-        Output:
-        wavelength array in vacuum [Angstroms]
-        
         [Aurora]- want to have an if statement that checks if the spectrum 
         is already in vacuum or air.
         Sloan, princeton are already in vacuum but most other spectra are not. 
         """
         
-        sigma2 = (1.e4/wave)**2.                      #Convert to wavenumber squared
+        sigma2 = (1.e4/self._wavelength)**2.                      #Convert to wavenumber squared
 
         # Compute conversion factor
         # Wavelength values below 2000 A will not be 
@@ -173,11 +167,11 @@ class Spectrum(object):
 
         fact = 1. + 6.4328e-5 + 2.94981e-2/(146.-sigma2) + 2.5540e-4/(41.-sigma2)
 
-        fact = fact*(wave >= 2000.) + 1.*(wave < 2000.)
+        fact = fact*(self._wavelength >= 2000.) + 1.*(self._wavelength < 2000.)
 
-        wave = wave*fact              #Convert Wavelength
+        self._wavelength = self._wavelength*fact              #Convert Wavelength
 
-  return wave
+        return 
 
         print('Not implemented')
 
@@ -403,6 +397,18 @@ class Spectrum(object):
         
         #print('Not Implemented')
     
+    def normalizeFlux(self): 
+        
+        """
+        normalize the observed flux at 8000 Angstroms (where the templates are all normalized) 
+        for better comparisons to templates
+        """
+        
+        normIndex = bisect.bisect_right(self._wavelength, 8000)
+        normFactor = self._flux[normIndex]
+        self._flux = self._flux/normFactor
+        
+        return 
     # Define other methods in this class which are needed to process the spectra
 
 
