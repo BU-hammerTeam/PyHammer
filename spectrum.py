@@ -752,10 +752,10 @@ class Spectrum(object):
         self._flux = self._flux/normFactor
         
         #now cut off at the same place as templates
-        StartIndex = bisect.bisect_right(self._wavelength, 3650) 
-        StopIndex = bisect.bisect_right(self._wavelength, 10200)
-        self._wavelength = self._wavelength[StartIndex:StopIndex]
-        self._flux = self._flux[StartIndex:StopIndex]
+        #StartIndex = bisect.bisect_right(self._wavelength, 3650) 
+        #StopIndex = bisect.bisect_right(self._wavelength, 10200)
+        #self._wavelength = self._wavelength[StartIndex:StopIndex]
+        #self._flux = self._flux[StartIndex:StopIndex]
         
         return 
     # Define other methods in this class which are needed to process the spectra
