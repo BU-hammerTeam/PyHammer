@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import interpolate
+from scipy.interpolate import interp1d
 from astropy.io import fits
 import bisect
 import pickle
@@ -469,7 +470,7 @@ class Spectrum(object):
         tempFlux = np.interp(wave, tempWave, tempFluxOrig)
 
         # Get the regions for correlation
-        specRegion1 = np.where( (wave > 5000) & (wave < 5000) )
+        specRegion1 = np.where( (wave > 5000) & (wave < 6000) )
         specRegion2 = np.where( (wave > 6000) & (wave < 7000) )
         specRegion3 = np.where( (wave > 7000) & (wave < 8000) )
         #noise regions: still not sure if we should have these or not
@@ -486,6 +487,7 @@ class Spectrum(object):
         # Convert to Radial Velocities
         pixel = wave[1]-wave[0]
         wave0 = (wave[1]+wave[0]) / 2
+        c = 2.998 * 10**5
         radVel1 = shift1 * pixel / wave0 * c
         radVel2 = shift2 * pixel / wave0 * c
         radVel3 = shift3 * pixel / wave0 * c
@@ -535,7 +537,7 @@ class Spectrum(object):
                 break
             if trueCount == 2:
                 true=True
-                print('BROKEN')
+                #print('BROKEN')
                 broke = True
                 break
             #print 'START CHI'
@@ -611,31 +613,34 @@ class Spectrum(object):
         #28-Feb-13 CAT   Ported to Python
         #16-Jun-16 AYK   Added to hammer code
         # Set the defaults
-        pl = 0
-        pr = 1
+        # Set the defaults
+        pr = 0
         fine = 0
         mult=0
+        fshft=0
         full=0
         ff = 0
-        fshft = 0
 
         # Read the arguments
         for arg in args:
-            if arg.lower() == 'plot': pl = 1
             if arg.lower() == 'fine': fine = 1
             if arg.lower() == 'full': full = 1
-            if arg.lower() == 'fshft': fshft = 1
-            if arg.lower() == 'mult': mult = 1
-        #pdb.set_trace() 
+
+        # Read the keywords
+        for key in kwargs:
+            if key.lower() == 'mult':
+                mult = kwargs[key]
+            if key.lower() == 'fshft':
+                fshft = kwargs[key]
+
         ln = len(temp)
         ls = len(star)
         length = np.min([ln, ls])
         slen = length
         if range1 > (length-1)/2:
-            print( 'Maximum allowable "range" for this case is', (length-1)/2)
+            print( 'Maximum allowable "range" for this case is' + str((length-1)/2))
         newln = length - 2*range1  # Leave "RANGE" on ends for overhang.
 
-        # Normalize
         te = temp/(np.sum(temp)/ln)
         st = star/(np.sum(star)/ls) # Be normal already!
         newend = range1 + newln - 1
@@ -643,7 +648,6 @@ class Spectrum(object):
         chi = np.zeros(2 * range1 + 1)
 
         if full == 1:
-            pl=1
             pr=1
 
         for j in range(-range1, range1+1):    # Goose step, baby
@@ -655,13 +659,6 @@ class Spectrum(object):
                 chi[j+range1] = np.sum(dif*dif)
         xcr = chi
 
-         # Plotting
-        if pl == 1:
-            npt = len(chi)
-            xp = np.arange(npt) - npt/2
-            plt.plot(xp, chi)
-            #plt.plot(star)
-            #plt.plot(temp +.5)
 
         length = len(x) * 100
         xl = np.arange(length)
@@ -669,7 +666,6 @@ class Spectrum(object):
         xp = xl[0:length-99]
         function2 = interp1d(x, chi, kind='cubic')
         cp = function2(xp)
-
         if mult != 0:
             minchi = np.max(cp)
             mm = np.where(cp == minchi)
@@ -677,14 +673,13 @@ class Spectrum(object):
             minchi = np.min(cp)
             mm = np.where(cp == minchi)
         shft = xp[mm[0]]
-
         if pr != 0:
             print( 'XCORL: The shift is: %10.2f'%(shft))
         if abs(shft) > range1:
             ff=1
             return
-
-        if mult != 0: shft = fshft
+        if fshft != 0:
+            shft = fshft
 
         if fine != 0:
             nf = fine*20+1
@@ -713,18 +708,12 @@ class Spectrum(object):
                 mm = np.where(cp == minchi)
             fshft = xp[mm]
 
-            if pl == 1:
-                if np.max(cp) > np.max(chi) and mult == 1:
-                    cp = cp * np.max(chi)/np.max(cp)
-                plt.plot(xp, cp)
-
             if pr != 0:
                 print( 'XCORL: The final shift is: %10.2f'%(fshft))
-
-        else: fshft=shft
+        else:
+            fshft=shft
         shft=fshft
-        if pl == 1: plt.show()
-        return shft[0]
+        return shft
     
     def shiftToRest(self, shift):
         """
