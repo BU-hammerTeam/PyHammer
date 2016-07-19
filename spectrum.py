@@ -479,9 +479,9 @@ class Spectrum(object):
 
 
 
-        shift1 = xcorl(flux[specRegion1], tempFlux[specRegion1], 12, 'fine')
-        shift2 = xcorl(flux[specRegion2], tempFlux[specRegion2], 12, 'fine')
-        shift3 = xcorl(flux[specRegion3], tempFlux[specRegion3], 12, 'fine')
+        shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 12, 'fine')
+        shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 12, 'fine')
+        shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 12, 'fine')
 
         # Convert to Radial Velocities
         pixel = wave[1]-wave[0]
@@ -558,7 +558,7 @@ class Spectrum(object):
 
         return rvFinal
 
-    def shfour(sp, shift, *args):
+    def shfour(self, sp, shift, *args):
 
         # shift of sp by (arbitrary, fractional) shift, result in newsp
 
@@ -600,7 +600,7 @@ class Spectrum(object):
 
         return newsp
 
-    def xcorl(star,temp,range1,*args,**kwargs):
+    def xcorl(self, star,temp,range1,*args,**kwargs):
         #12-Jun-92 JAV	Added minchi parameter and logic.
         #17-Jun-92 JAV	Added "Max. allowable range" error message.
         #24-Aug-92 JAV	Supressed output of blank line when print keyword absent.
@@ -694,7 +694,7 @@ class Spectrum(object):
             xl = np.zeros(nf)
             for j in range(int(-rf), int(rf+1)):
                 xl[nc+1] = shft + j/10.
-                nst = shfour(st, -xl[nc+1])
+                nst = self.shfour(st, -xl[nc+1])
                 nc += 1
                 if mult == 1:
                     dif = nst[range1:newend+1] * te[range1:newend+1]
