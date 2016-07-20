@@ -58,7 +58,8 @@ def main(options):
             # Remove extra whitespace and other unwanted characters and split
             fname, ftype = ' '.join(line.strip().split()).split(' ')
 
-            # Now read in the current file
+            # Now read in the current file (this process reads in the file, converts air to 
+            # vac when necessary and interpolates onto the template grid)
             success = spec.readFile(options['spectraPath']+fname, ftype)
 
             # If the attempt at reading the file did not succeed, then we
@@ -74,37 +75,57 @@ def main(options):
             ### OUTLINE OF PROCESS ###
             ##########################
             
-            # Interpolate the observed spectrum to be logarithmically spaced.
-            # Use interpSpec in spectrum class
+            # Normalize the input spectrum to the same place where the templates are normalized (8000A)
+            spec.normalizeFlux()
+            
+            # Call guessSpecType function for the initial guess
+            # this function measures the lines then makes a guess of all parameters
+            spec.guessSpecType()
 
-            # Call the Spectrum.measureLines() function on the Spectrum object to get
-            # the initial line measurements
-
-            # Call the guessSpecType function to get an inital guess of the spectral type
-
-            # Call findRadialVelocity function
+            # Call findRadialVelocity function using the initial guess
+            shift = spec.findRadialVelocity()
 
             # Call a Spectrum.shiftToRest() that shifts the spectrum to rest
-            # wavelengths.
+            # wavelengths
+            spec.shiftToRest(shift)
             
-            # Repeat the Spectrum.measurelines() on using the new rest-calibrated
-            # spectrum.
-
-            # Repeat guessSpecType function to get a better guess of the spectral type
-            # and metallicity
+            # Repeat guessSpecType function to get a better guess of the spectral 
+            # type and metallicity 
+            spec.guessSpecType()
 
             # End of the automatic guessing. We should have:
-            #    1) Spectrum object with observed wavelength, flux, noise
+            #    1) Spectrum object with observed wavelength, flux, var
             #    2) rest wavelength
             #    3) Spectral type (guessed)
             #    4) radial velocity and uncertainty,
             #    5) metallicity estimate,
-            #    6) and line indice measurements.
+            #    6) and line indice measurements
             #    7) (eventually reddening?)
 
             # Write results in autoSpTResults.tbl
             # (includes spectral type, metallicity and RV measurements)
-
+            
+            #translate the numbered spectral types into letters
+            spt = spec.guess['spt']
+            if spt == 0: 
+                letterSpt = 'O'
+            elif spt == 1: 
+                letterSpt = 'B'
+            elif spt == 2: 
+                letterSpt = 'A'
+            elif spt == 3: 
+                letterSpt = 'F' 
+            elif spt == 4: 
+                letterSpt = 'G'
+            elif spt == 5: 
+                letterSpt = 'K'
+            elif spt == 6: 
+                letterSpt = 'M'
+            elif spt = 7: 
+                letterSpt = 'L'
+            
+            #write the file
+            outfile.write(fname + ' ' + str(shift) + ' ' + letterSpt + str(spec.guess['sub']) + ' ' + str(spec.guess['feh']) + ' \n')
             ######################
             ### END OF OUTLINE ###
             ######################
