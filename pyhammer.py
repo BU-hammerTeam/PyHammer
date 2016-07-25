@@ -51,8 +51,8 @@ def main(options):
         # Open and setup the output files
         outfile = open(options['outfile'], 'w')
         rejectfile = open(options['rejectfile'], 'w')
-        outfile.write('Filename\t\tFile Type\t\tSpectra S/N\t\tSpectral Type\n')
-        rejectfile.write('Filename\t\tFile Type\t\tSpectra S/N\n')
+        outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed Metallicity,User Spectral Type,User Metallicity\n')
+        rejectfile.write('#Filename,File Type,Spectra S/N\n')
 
         for line in infile:
             # Remove extra whitespace and other unwanted characters and split
@@ -61,12 +61,12 @@ def main(options):
 
             # Now read in the current file (this process reads in the file, converts air to 
             # vac when necessary and interpolates onto the template grid)
-            success = spec.readFile(options['spectraPath']+fname, ftype)
+            success, message = spec.readFile(options['spectraPath']+fname, ftype)
 
             # If the attempt at reading the file did not succeed, then we
             # should just continue
             if not success:
-                rejectfile.write(fname + '\t' + ftype + '\tN/A\n')
+                rejectfile.write(fname + ',' + ftype + ',N/A\n')
                 continue
 
             # Now that we have the necessary data in the spec object, let's
@@ -75,6 +75,11 @@ def main(options):
             ##########################
             ### OUTLINE OF PROCESS ###
             ##########################
+            # Calculate the signal to noise of the spectrum to potentially reject
+            snVal = spec.calcSN()
+            if snVal < options['sncut']:
+                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                continue
             
             # Normalize the input spectrum to the same place where the templates are normalized (8000A)
             spec.normalizeFlux()
@@ -111,7 +116,7 @@ def main(options):
             letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'].index(spt)
             
             #write the file
-            outfile.write(fname + ' ' + str(shift) + ' ' + letterSpt + str(spec.guess['sub']) + ' ' + str(spec.guess['feh']) + ' \n')
+            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) + ',' + str(spec.guess['feh']) + ',nan,nan' + ' \n')
             ######################
             ### END OF OUTLINE ###
             ######################

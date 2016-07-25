@@ -124,20 +124,20 @@ class Eyecheck(object):
             #self.templateStd = hdulist[1].data['std']
 
             plt.plot(self.templateLoglam, self.templateFlux, '-k', label = 'Template')
-            templateName = os.path.split(templateFile)[1][:-5].replace('_','\:')
+            templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
         else:
             plt.plot([],[], '-k', label = 'Template')
             templateName = 'N/A'
 
         plt.xlabel(r'$\mathrm{log_{10}(wavelength)}$', fontsize = 16)
-        plt.ylabel(r'$\mathrm{Normalized\:Flux}$', fontsize = 16)
-        plt.title(r'$\mathrm{Template:\:' + templateName + '}$', fontsize = 16)
+        plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
+        plt.title(r'$\mathrm{Template:\;' + templateName + '}$', fontsize = 16)
         plt.xlim([3.5,4.05])
         plt.legend(loc = 0).get_frame().set_alpha(0)
-        plt.tight_layout()
+        # Need to fix:
+        #plt.tight_layout()
         plt.draw()
-        plt.show(block = False)
-
+        
         self.xlim = plt.gca().get_xlim()
         self.ylim = plt.gca().get_ylim()
 

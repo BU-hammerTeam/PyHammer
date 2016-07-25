@@ -54,10 +54,26 @@ class Spectrum(object):
     ##
     # Utility Methods
     #
+    def calcSN(self):
+        """
+        calcSN()
+        
+        Description:
+        TBD
+        
+        Input:
+        TBD
+        
+        Output:
+        SN for the spectrum.
+        """
+        
+        return SN_Val
+    
     
     def readFile(self, filename, filetype = 'fits'):
         """
-        readFIle(filename, filetype = 'fits')
+        readFile(filename, filetype = 'fits')
 
         Description:
         This method will read in the file provided by
@@ -76,21 +92,33 @@ class Spectrum(object):
         Output:
         A boolean indicating the success of reading the file.
         """
-
+        
         if (filetype == 'fits'):
             # Implement reading a regular fits file
             # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
             # Need error vs variance keyword
-            spec = fits.open(filename) 
-            self._flux = spec[0].data[0]
-            self._wavelength = ( spec[0].header['CRVAL1'] - (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(spec[0].data[0]),1))
+            try:
+                spec = fits.open(filename) 
+            except IOError as e:
+                errorMessage = 'readFile: Unable to read in the file. ' + e.strerror
+                return False, errorMessage
+            try:
+                self._flux = spec[0].data[0]
+                self._wavelength = ( spec[0].header['CRVAL1'] - (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(spec[0].data[0]),1))
+            except as e:
+                errorMessage = 'readFile: There is a formatting issue in the file being read in. ' + e.strerror
+                return False, errorMessage
             
             print('Not Implemented')
             
         elif (filetype == 'DR7fits'):
             # Implement reading a sdss EDR through DR8 fits file
             #print('Not Implemented')
-            spec = fits.open(filename)
+            try:
+                spec = fits.open(filename)
+            except:
+                errorMessage = 'readFile: Unable to read in the file.'
+                return False, errorMessage
             self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
             self._flux = spec[0].data[0]
             self._var = 1/(spec[0].data[2])
@@ -135,11 +163,11 @@ class Spectrum(object):
             # in this method. Just skip the file.
             print('Warning: "' + filename + '" with file type "' + filetype +
                   '" is not readable. Skipping over this file.', flush = True)
-            return False
+            return False, ''
 
         
         self._interpOntoGrid()
-        return True
+        return True, ''
         
     def _airToVac(self):
         """
