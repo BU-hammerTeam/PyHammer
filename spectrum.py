@@ -27,7 +27,7 @@ class Spectrum(object):
         #tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
         #lines is a list of 2D arrays with indices and variances for each line
         # index for each spectrum that goes into a template
-        self.thisDir, thisFile = os.path.split(__file__)
+        self.thisDir, _ = os.path.split(__file__)
         pklPath = os.path.join(self.thisDir, "resources", "tempLines.pickle")        
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
