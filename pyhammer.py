@@ -5,7 +5,7 @@ import numpy as np
 import tkinter as tk
 from tkinter import ttk
 from spectrum import Spectrum
-import eyecheck
+from eyecheck import Eyecheck
 import pdb
 
 
@@ -42,7 +42,7 @@ def main(options):
 
     # If the user has decided to not skip to the eyecheck, let's
     # do some processing
-    if (not options['eyecheck']):
+    if not options['eyecheck']:
     
         # Open the input file and define a Spectrum object
         infile = open(options['infile'], 'r')
@@ -56,7 +56,8 @@ def main(options):
 
         for line in infile:
             # Remove extra whitespace and other unwanted characters and split
-            fname, ftype = ' '.join(line.strip().split()).split(' ')
+            pdb.set_trace()
+            fname, ftype = line.strip().rsplit(' ',1)
 
             # Now read in the current file (this process reads in the file, converts air to 
             # vac when necessary and interpolates onto the template grid)
@@ -64,7 +65,7 @@ def main(options):
 
             # If the attempt at reading the file did not succeed, then we
             # should just continue
-            if (not success):
+            if not success:
                 rejectfile.write(fname + '\t' + ftype + '\tN/A\n')
                 continue
 
@@ -107,22 +108,7 @@ def main(options):
             
             #translate the numbered spectral types into letters
             spt = spec.guess['spt']
-            if spt == 0: 
-                letterSpt = 'O'
-            elif spt == 1: 
-                letterSpt = 'B'
-            elif spt == 2: 
-                letterSpt = 'A'
-            elif spt == 3: 
-                letterSpt = 'F' 
-            elif spt == 4: 
-                letterSpt = 'G'
-            elif spt == 5: 
-                letterSpt = 'K'
-            elif spt == 6: 
-                letterSpt = 'M'
-            elif spt = 7: 
-                letterSpt = 'L'
+            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'].index(spt)
             
             #write the file
             outfile.write(fname + ' ' + str(shift) + ' ' + letterSpt + str(spec.guess['sub']) + ' ' + str(spec.guess['feh']) + ' \n')
@@ -136,7 +122,7 @@ def main(options):
         rejectfile.close()
     
     # At this point, we should call up the GUI to do the eyechecking.
-    eyecheck.main()
+    Eyecheck(spec, options)
 
 def showHelpWindow(root, helpText):
     """
@@ -160,7 +146,7 @@ def showHelpWindow(root, helpText):
     
     label = ttk.Label(helpWindow, text = helpText, font = '-size 10')
     label.grid(row = 0, column = 0, padx = 2, pady = 2)
-    but = ttk.Button(helpWindow, text = 'OK', command = lambda: helpWindow.destroy())
+    but = ttk.Button(helpWindow, text = 'OK', command = helpWindow.destroy)
     but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
     helpWindow.rowconfigure(1, minsize = 40)
 
@@ -211,10 +197,13 @@ def startGui(options):
             options['fullPath'] = True
             options['spectraPath'] = ''
         options['eyecheck'] = (eyecheck.get() == 1)
-        if (options['eyecheck'] or sncut == ''):
+        if (options['eyecheck'] or sncut.get() == ''):
             options['sncut'] = None
         else:
-            options['sncut'] = float(sncut.get())
+            try:
+                options['sncut'] = float(sncut.get())
+            except ValueError as e:
+                options['sncut'] = None
         
         root.destroy()
 
@@ -387,14 +376,14 @@ def startCmd(options):
     #
 
     # Get the input filename if one was not provided
-    if (options['infile'] is None):
+    if options['infile'] is None:
         options['infile'] = input('Please enter the filename which contains the spectra list: ')
 
     # Check whehter the input file list contains the full path if
     # the user didn't already specify.
-    if (options['fullPath'] is None):
+    if options['fullPath'] is None:
         ans = input('Does your input list give the full path to each spectrum? (y/n): ')
-        if (ans == 'y' or ans == 'Y'):
+        if ans == 'y' or ans == 'Y':
             options['fullPath'] = True
             options['spectraPath'] = ''
         else:
