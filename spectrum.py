@@ -476,10 +476,10 @@ class Spectrum(object):
             tempName = 'F' + str(bestGuess['sub']) + '_-1.0_Dwarf.fits'
         #Spectral type G
         elif bestGuess['spt'] == 4: 
-            tempName = 'G' + str(bestGuess['sub']) + '_0.0_Dwarf.fits'
+            tempName = 'G' + str(bestGuess['sub']) + '_+0.0_Dwarf.fits'
         #Spectral type K 
         elif bestGuess['spt'] == 5: 
-            tempName = 'K' + str(bestGuess['sub']) + '_0.0_Dwarf.fits'
+            tempName = 'K' + str(bestGuess['sub']) + '_+0.0_Dwarf.fits'
         #Spectral type M (0 through 8) 
         elif bestGuess['spt'] == 6 and float(bestGuess['sub']) < 9: 
             tempName = 'M' + str(bestGuess['sub']) + '_+0.0_Dwarf.fits'
