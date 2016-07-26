@@ -113,7 +113,8 @@ def main(options):
             
             #translate the numbered spectral types into letters
             spt = spec.guess['spt']
-            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'].index(spt)
+            specList = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
+            letterSpt = specList[spt]
             
             #write the file
             outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) + ',' + str(spec.guess['feh']) + ',nan,nan' + ' \n')
