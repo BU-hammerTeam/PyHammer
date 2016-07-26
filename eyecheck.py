@@ -27,8 +27,11 @@ class Eyecheck(object):
         # Figure Components
         plt.ion()
         plt.style.use('ggplot') # Just makes it look nice
-        self.xlim = []          # Store these to determine if user has zoomed
-        self.ylim = []
+        self.full_xlim = None          # Store these to determine if user has zoomed
+        self.full_ylim = None
+        self.zoomed_xlim = None
+        self.zoomed_ylim = None
+        self.zoomed = False
         self.updatePlot()
         
         # Call the method for setting up the GUI layout
@@ -110,36 +113,61 @@ class Eyecheck(object):
         self.root.protocol('WM_DELETE_WINDOW', self._exit)
 
     def updatePlot(self):
-
-        plt.figure('Pyhammer Spectrum Matching', figsize = (12,6))
+        # Before updating the plot, check the current axis limits. If they're
+        # set to the full limit values, then the plot wasn't zoomed in on when
+        # they moved to a new plot. If the limits are different, they've zoomed
+        # in and we should store the current plot limits so we can set them
+        # to these limits at the end.
+        if self.full_xlim is not None:
+            if (self.full_xlim == plt.gca().get_xlim() and
+                self.full_ylim == plt.gca().get_ylim()):
+                self.zoomed = False
+            else:
+                self.zoomed = True
+                self.zoomed_xlim = plt.gca().get_xlim()
+                self.zoomed_ylim = plt.gca().get_ylim()
+        
+        # Do some initial plotting tasks
+        fig = plt.figure('Pyhammer Spectrum Matching', figsize = (12,6))
         plt.cla()   # Clear the plot
-
+        if plt.get_current_fig_manager().toolbar._active != 'ZOOM':
+        # Make it so the zoom button is selected by default
+            plt.get_current_fig_manager().toolbar.zoom()
+            
         # Determine which, if any, file to load
         templateFile = self.getTemplateFile()
 
+        # Plot everything up
         if templateFile is not None:
             hdulist = fits.open(templateFile)
             self.templateLoglam = hdulist[1].data['loglam']
             self.templateFlux = hdulist[1].data['flux']
             #self.templateStd = hdulist[1].data['std']
 
-            plt.plot(self.templateLoglam, self.templateFlux, '-k', label = 'Template')
+            plt.plot(self.templateLoglam[::10], self.templateFlux[::10], '-k', label = 'Template')
             templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
         else:
             plt.plot([],[], '-k', label = 'Template')
             templateName = 'N/A'
 
-        plt.xlabel(r'$\mathrm{log_{10}(wavelength)}$', fontsize = 16)
+        # Set some axis settings
+        plt.xlabel(r'$\mathrm{log_{10}(wavelength / \mathring{A})}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
         plt.title(r'$\mathrm{Template:\;' + templateName + '}$', fontsize = 16)
         plt.xlim([3.5,4.05])
         plt.legend(loc = 0).get_frame().set_alpha(0)
-        # Need to fix:
-        #plt.tight_layout()
+        plt.subplots_adjust(left = 0.075, right = 0.975, top = 0.9, bottom = 0.15)
+        # Set the plot limits
+        self.full_xlim = plt.gca().get_xlim()
+        self.full_ylim = plt.gca().get_ylim()
+        fig.canvas.toolbar.push_current()       # Push the current full zoom level to the stack
+        if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
+            plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
+            plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
+            fig.canvas.toolbar.push_current()   # Push the current, zoomed level to the stack so it shows up first
+
         plt.draw()
         
-        self.xlim = plt.gca().get_xlim()
-        self.ylim = plt.gca().get_ylim()
 
     ##
     # Menu Item Callbacks
