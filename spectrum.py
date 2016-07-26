@@ -59,14 +59,13 @@ class Spectrum(object):
         calcSN()
         
         Description:
-        TBD
-        
-        Input:
-        TBD
+        calculates the median signal to noise of the spectrum 
+        uses formula SNR = mu/sigma
         
         Output:
         SN for the spectrum.
         """
+        SN_Val = np.median(self._flux)/np.median((self._var)**0.5)
         
         return SN_Val
     
@@ -483,7 +482,7 @@ class Spectrum(object):
             tempName = 'K' + str(bestGuess['sub']) + '_0.0_Dwarf.fits'
         #Spectral type M (0 through 8) 
         elif bestGuess['spt'] == 6 and float(bestGuess['sub']) < 9: 
-            tempName = 'M' + str(bestGuess['sub']) + '_0.0_Dwarf.fits'
+            tempName = 'M' + str(bestGuess['sub']) + '_+0.0_Dwarf.fits'
         #Spectral type M9 (no metallicity)
         elif bestGuess['spt'] == 6 and bestGuess['sub'] == 9: 
             tempName = 'M' + str(bestGuess['sub']) + '.fits'
