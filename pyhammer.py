@@ -4,6 +4,7 @@ import getopt
 import numpy as np
 import tkinter as tk
 from tkinter import ttk
+import csv
 from spectrum import Spectrum
 from eyecheck import Eyecheck
 import pdb
@@ -40,13 +41,15 @@ def main(options):
     typing, radial velocity and metallicity results.
     """
 
+    # Create a Spectrum object
+    spec = Spectrum()
+
     # If the user has decided to not skip to the eyecheck, let's
     # do some processing
     if not options['eyecheck']:
     
-        # Open the input file and define a Spectrum object
+        # Open the input file
         infile = open(options['infile'], 'r')
-        spec = Spectrum()
 
         # Open and setup the output files
         outfile = open(options['outfile'], 'w')
@@ -56,7 +59,6 @@ def main(options):
 
         for line in infile:
             # Remove extra whitespace and other unwanted characters and split
-            pdb.set_trace()
             fname, ftype = line.strip().rsplit(' ',1)
 
             # Now read in the current file (this process reads in the file, converts air to 
@@ -76,10 +78,11 @@ def main(options):
             ### OUTLINE OF PROCESS ###
             ##########################
             # Calculate the signal to noise of the spectrum to potentially reject
-            snVal = spec.calcSN()
-            if snVal < options['sncut']:
-                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                continue
+            if options['sncut'] is not None:
+                snVal = spec.calcSN()
+                if snVal < options['sncut']:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    continue
             
             # Normalize the input spectrum to the same place where the templates are normalized (8000A)
             spec.normalizeFlux()
@@ -196,6 +199,8 @@ def startGui(options):
         with the options being passed to it.
         """
         options['infile'] = infile.get()
+        options['outfile'] = outfile.get()
+        options['rejectfile'] = rejectfile.get()
         if (fullPath.get() == 0):
             options['fullPath'] = False
             options['spectraPath'] = spectraPath.get()
@@ -231,17 +236,17 @@ def startGui(options):
 
     # Define the label
     label = ttk.Label(root, text = 'Spectra List\nFilename:')
-    label.grid(row = 0, column = 0, padx = (2,1), pady = 1)
+    label.grid(row = 0, column = 0, padx = (2,1), pady = 1, stick = 'w')
 
     # Define the entry box
-    infile = tk.StringVar();
+    infile = tk.StringVar()
     infile.set('' if options['infile'] is None else options['infile'])
     entry = ttk.Entry(root, textvariable = infile, width = 40)
     entry.grid(row = 0, column = 1, columnspan = 3,  padx = 1, pady = 1)
 
     # Define the help text and button for this section
     infileHelpText = \
-        'You should enter the full path to the input file\n' \
+        'You should include the full path to the input file\n' \
         'which contains a list of spectra files to process.\n' \
         'However, if the input file is located in the pyhammer.\n' \
         'folder, then simply the filename will suffice.'
@@ -249,18 +254,64 @@ def startGui(options):
                    command = lambda: showHelpWindow(root, infileHelpText))
     b.grid(row = 0, column = 4, padx = (1,2), pady = 1)
 
+    # --- Output Filename ---
+
+    # Define the label
+    label = ttk.Label(root, text = 'Output\nFilename:')
+    label.grid(row = 1, column = 0, padx = (2,1), pady = 1, stick = 'w')
+
+    # Define the entry box
+    outfile = tk.StringVar(value = options['outfile'])
+    entry = ttk.Entry(root, textvariable = outfile, width = 40)
+    entry.grid(row = 1, column = 1, columnspan = 3,  padx = 1, pady = 1)
+
+    # Define the help text and button for this section
+    outfileHelpText = \
+        'You should include the full path to the output file\n' \
+        'which will contain the results of PyHammer. However,\n' \
+        'if no path is supplied, the file will be saved to the\n' \
+        'the pyhammer folder. The output file is, by default,\n' \
+        'set to PyHammerResults.csv unless specified otherwise.\n' \
+        'The output filetype should be a .csv file.'
+    b = ttk.Button(root, text = '?', width = 2,
+                   command = lambda: showHelpWindow(root, outfileHelpText))
+    b.grid(row = 1, column = 4, padx = (1,2), pady = 1)
+
+    # --- Reject Filename ---
+
+    # Define the label
+    label = ttk.Label(root, text = 'Reject\nFilename:')
+    label.grid(row = 2, column = 0, padx = (2,1), pady = 1, stick = 'w')
+
+    # Define the entry box
+    rejectfile = tk.StringVar(value = options['rejectfile'])
+    entry = ttk.Entry(root, textvariable = rejectfile, width = 40)
+    entry.grid(row = 2, column = 1, columnspan = 3,  padx = 1, pady = 1)
+
+    # Define the help text and button for this section
+    rejectfileHelpText = \
+        'You should include the full path to the reject file\n' \
+        'which will contain the list of any spectra unable to\n' \
+        'be classified. However, if no path is supplied, the\n' \
+        'file will be saved to the the pyhammer folder. The\n' \
+        'reject file is, by default, set to RejectSpectra.csv\n' \
+        'unless specified otherwise. The reject filetype should\n' \
+        'be a .csv file.'
+    b = ttk.Button(root, text = '?', width = 2,
+                   command = lambda: showHelpWindow(root, rejectfileHelpText))
+    b.grid(row = 2, column = 4, padx = (1,2), pady = 1)
     
     # --- Spectra File Path ---
 
     # Define the label
     label = ttk.Label(root, text = 'Spectra File\nPath:')
-    label.grid(row = 2, column = 0, padx = (2,1), pady = 1)
+    label.grid(row = 4, column = 0, padx = (2,1), pady = 1)
 
     # Define the entry box
-    spectraPath = tk.StringVar();
+    spectraPath = tk.StringVar()
     spectraPath.set('' if options['spectraPath'] is None else options['spectraPath'])
     sPathEntry = ttk.Entry(root, textvariable = spectraPath, width = 40)
-    sPathEntry.grid(row = 2, column = 1, columnspan = 3,  padx = 1, pady = 1)
+    sPathEntry.grid(row = 4, column = 1, columnspan = 3,  padx = 1, pady = 1)
     sPathEntry.configure(state = ('disabled' if options['fullPath'] else 'normal'))
 
     # Define the help text and button for this section
@@ -270,24 +321,24 @@ def startGui(options):
         'to each spectra filename.'
     b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, spectraPathHelpText))
-    b.grid(row = 2, column = 4, padx = (1,2), pady = 1)
+    b.grid(row = 4, column = 4, padx = (1,2), pady = 1)
 
 
     # --- Full Path ---
 
     # Define the label
     label = ttk.Label(root, text = 'Spectra list contains the full path:')
-    label.grid(row = 1, column = 0, columnspan = 2, padx = 2, pady = 2, stick = 'w')
+    label.grid(row = 3, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
 
     # Define the radiobuttons
     fullPath = tk.IntVar()
     fullPath.set(0 if options['fullPath'] == None else options['fullPath'])
     rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = fullPath,
                                  command = lambda: setState(sPathEntry, fullPath))
-    rbuttonYes.grid(row = 1, column = 2, padx = 1, pady = 1)
+    rbuttonYes.grid(row = 3, column = 2, padx = 1, pady = 1)
     rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = fullPath,
                                 command = lambda: setState(sPathEntry, fullPath))
-    rbuttonNo.grid(row = 1, column = 3, padx = 1, pady = 1)
+    rbuttonNo.grid(row = 3, column = 3, padx = 1, pady = 1)
 
     # Define the help text and button for this section
     fullPathHelpText = \
@@ -296,20 +347,20 @@ def startGui(options):
         'will need to specify the full path to the spectra.'
     b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, fullPathHelpText))
-    b.grid(row = 1, column = 4, padx = (1,2), pady = 1)
+    b.grid(row = 3, column = 4, padx = (1,2), pady = 1)
 
 
     # --- S/N Cutoff ---
 
     # Define the label
     label = ttk.Label(root, text = 'S/N Cutoff:')
-    label.grid(row = 4, column = 0, padx = (2,1), pady = 1)
+    label.grid(row = 6, column = 0, padx = (2,1), pady = (2,1), stick = 'w')
 
     # Define the entry box
-    sncut = tk.StringVar();
+    sncut = tk.StringVar()
     sncut.set('' if options['sncut'] is None else options['sncut'])
     sncutEntry = ttk.Entry(root, textvariable = sncut, width = 40)
-    sncutEntry.grid(row = 4, column = 1, columnspan = 3,  padx = 1, pady = (4,1))
+    sncutEntry.grid(row = 6, column = 1, columnspan = 3,  padx = 1, pady = (2,1))
     sncutEntry.configure(state = ('disabled' if options['eyecheck'] else 'normal'))
 
     # Define the help text and button for this section
@@ -320,24 +371,24 @@ def startGui(options):
         'option does not apply if you choose to skip to the eyecheck.'
     b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, sncutHelpText))
-    b.grid(row = 4, column = 4, padx = (1,2), pady = (4,1))
+    b.grid(row = 6, column = 4, padx = (1,2), pady = (2,1))
 
     
     # --- Skip to Eye Check ---
     
     # Define the label
     label = ttk.Label(root, text = 'Skip to eyecheck:')
-    label.grid(row = 3, column = 0, columnspan = 2, padx = 2, pady = 2, stick = 'w')
+    label.grid(row = 5, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
 
     # Define the radiobuttons
     eyecheck = tk.IntVar()
     eyecheck.set(0 if options['eyecheck'] == None else options['eyecheck'])
     rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = eyecheck,
                                  command = lambda: setState(sncutEntry, eyecheck))
-    rbuttonYes.grid(row = 3, column = 2, padx = 1, pady = 1)
+    rbuttonYes.grid(row = 5, column = 2, padx = 1, pady = 1)
     rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = eyecheck,
                                 command = lambda: setState(sncutEntry, eyecheck))
-    rbuttonNo.grid(row = 3, column = 3, padx = 1, pady = 1)
+    rbuttonNo.grid(row = 5, column = 3, padx = 1, pady = 1)
 
     # Define the help text and button for this section
     eyecheckHelpText = \
@@ -346,15 +397,15 @@ def startGui(options):
         'than re-running the classification algorithm again.'
     b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, eyecheckHelpText))
-    b.grid(row = 3, column = 4, padx = (1,2), pady = 1)
+    b.grid(row = 5, column = 4, padx = (1,2), pady = 1)
 
     
     # --- Start Button ---
     b = ttk.Button(root, text = 'START',
                    command = lambda: goToMain(root, infile, fullPath,
                                               spectraPath, eyecheck, sncut))
-    b.grid(row = 5, column = 0, columnspan = 5, sticky = 'nswe', padx = 5, pady = 5)
-    root.rowconfigure(5, minsize = 40)
+    b.grid(row = 7, column = 0, columnspan = 5, sticky = 'nswe', padx = 5, pady = 5)
+    root.rowconfigure(7, minsize = 40)
 
     root.mainloop()
 
@@ -424,14 +475,15 @@ if (__name__ == "__main__"):
         # The file doesn't exist. Let's create it and display the welcome message
         f = open('resources/runbefore', 'w')
         f.close()
-        print('Welcome to pyhammer, a tool for spectral classification!\n'
+        print('Welcome to PyHammer, a tool for spectral classification!\n'
               'First time users should run this program with the -h flag '
               'to learn more information.', flush = True)
     
     # Define default options
-    options = {'infile': None, 'outfile': 'pyhammerResults.txt',
-               'rejectfile': 'rejectSpectra.txt', 'fullPath': None,
-               'spectraPath': None, 'eyecheck': None, 'sncut': None}
+    options = {'infile': None, 'outfile': 'PyHammerResults.csv',
+               'rejectfile': 'RejectSpectra.csv', 'fullPath': None,
+               'spectraPath': None, 'eyecheck': None, 'sncut': None,
+               'useGUI': None}
     
     ##
     # Check input conditions
@@ -448,7 +500,7 @@ if (__name__ == "__main__"):
         # Help option is chosen
         if (opt == '-h' or opt == '--help'):
 
-            print(('\nWelcome to the pyhammer, a tool for spectral '
+            print(('\nWelcome to the PyHammer, a tool for spectral '
                    'classification.\n'
                    
                    '\nOptions:\n'
@@ -475,7 +527,7 @@ if (__name__ == "__main__"):
                    '-o, --outfile\t\t'
                    'The full path to the output file or a filename\n'
                    '\t\t\t\t\twhich outputs to the pyhammer folder. If nothing is\n'
-                   '\t\t\t\t\tprovided, the default pyhammerResults.txt will be\n'
+                   '\t\t\t\t\tprovided, the default pyhammerResults.csv will be\n'
                    '\t\t\t\t\tcreated in the pyhammer folder.\n'
 
                    '-p, --path\t\t\t'
@@ -487,7 +539,7 @@ if (__name__ == "__main__"):
                    'The full path to the file where reject spectra will\n'
                    '\t\t\t\t\tbe listed or a filename which outputs to the\n'
                    '\t\t\t\t\tpyhammer folder . If nothing is provided, the\n'
-                   '\t\t\t\t\tdefault rejectSpectra.txt will be created in the\n'
+                   '\t\t\t\t\tdefault rejectSpectra.csv will be created in the\n'
                    '\t\t\t\t\tpyhammer folder.\n'
 
                    '-s, --sncut\t\t\t'
@@ -512,7 +564,7 @@ if (__name__ == "__main__"):
         # input file list
         if (opt == '-f' or opt == '--full'):
             if (options['fullPath'] is not None):
-                sys.exit('Cannot supply -f and -p at the same time.')
+                sys.exit('Cannot supply -f and -p at the same time. Use -h for more info.')
             else:
                 options['fullPath'] = True
                 options['spectraPath'] = ''
@@ -520,7 +572,7 @@ if (__name__ == "__main__"):
         # User provided a path to prepend to the spectra file names
         if (opt == '-p' or opt == '--path'):
             if (options['fullPath'] is not None):
-                sys.exit('Cannot supply -f and -p at the same time.')
+                sys.exit('Cannot supply -f and -p at the same time. Use -h for more info.')
             else:
                 options['fullPath'] = False
                 options['spectraPath'] = arg
@@ -531,34 +583,40 @@ if (__name__ == "__main__"):
         # User indicated they want to skip to the eyecheck
         if (opt == '-e' or opt == '--eyecheck'):
             if (options['sncut'] is not None):
-                sys.exit('Flag -s is unnecessary when -e is provided.')
+                sys.exit('Flag -s is unnecessary when -e is provided. Use -h for more info.')
             else:
                 options['eyecheck'] = True
 
         # User indicates they want a S/N cut to be applied
         if (opt == '-s' or opt == '--sncut'):
             if (options['eyecheck'] == True):
-                sys.exit('Flag -s is unnecessary when -e is provided.')
+                sys.exit('Flag -s is unnecessary when -e is provided. Use -h for more info.')
             else:
                 options['eyecheck'] = False
                 options['sncut'] = arg
-                
-    
-    # Now check whether user requested command line or GUI interface
-    for opt, arg in opts:
-        
+
         # Command line interface is requested.
         if (opt == '-c' or opt == '--cmd'):
-            startCmd(options)
-            sys.exit(0)
-
+            if (options['useGUI'] is not None):
+                sys.exit('Cannot supply -c and -g at the same time. Use -h for more info.')
+            else:
+                options['useGUI'] = False
+        
         # GUI interface is requested.
         if (opt == '-g' or opt == '--gui'):
-            startGui(options)
-            sys.exit(0)
+            if (options['useGUI'] is not None):
+                sys.exit('Cannot supply -c and -g at the same time. Use -h for more info.')
+            else:
+                options['useGUI'] = True
 
-    # If no interface is chosen, run on the command line by default
-    startCmd(options)
+    if options['useGUI']:
+        startGui(options)
+    elif not options['useGUI']:
+        startCmd(options)
+    else:
+        # If no interface is chosen, use the GUI by default
+        options['useGUI'] = True
+        startGui(options)
 
 else:
     
