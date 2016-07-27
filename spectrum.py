@@ -54,21 +54,6 @@ class Spectrum(object):
     ##
     # Utility Methods
     #
-    def calcSN(self):
-        """
-        calcSN()
-        
-        Description:
-        calculates the median signal to noise of the spectrum 
-        uses formula SNR = mu/sigma
-        
-        Output:
-        SN for the spectrum.
-        """
-        SN_Val = np.median(self._flux)/np.median((self._var)**0.5)
-        
-        return SN_Val
-    
     
     def readFile(self, filename, filetype = 'fits'):
         """
@@ -99,74 +84,103 @@ class Spectrum(object):
             try:
                 spec = fits.open(filename) 
             except IOError as e:
-                errorMessage = 'readFile: Unable to read in the file. ' + e.strerror
+                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
                 return False, errorMessage
             try:
                 self._flux = spec[0].data[0]
                 self._wavelength = ( spec[0].header['CRVAL1'] - (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(spec[0].data[0]),1))
-            except as e:
-                errorMessage = 'readFile: There is a formatting issue in the file being read in. ' + e.strerror
+            except Exception as e:
+                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
                 return False, errorMessage
-            
-            print('Not Implemented')
             
         elif (filetype == 'DR7fits'):
             # Implement reading a sdss EDR through DR8 fits file
-            #print('Not Implemented')
             try:
                 spec = fits.open(filename)
-            except:
-                errorMessage = 'readFile: Unable to read in the file.'
+            except IOError as e:
+                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
                 return False, errorMessage
-            self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
-            self._flux = spec[0].data[0]
-            self._var = 1/(spec[0].data[2])
-            #self._airToVac()
+            try:
+                self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
+                self._flux = spec[0].data[0]
+                self._var = 1/(spec[0].data[2])
+                #self._airToVac()
+            except Exception as e:
+                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
+                return False, errorMessage
             
         elif (filetype == 'DR12fits'): 
             # Implement reading a sdss DR9 through DR12 fits file
-            spec = fits.open(filename) 
-            self._wavelength = 10**spec[1].data['loglam']
-            self._flux = spec[1].data['flux']
-            self._var = 1/(spec[1].data['ivar'])
-            #self._airToVac()
+            try:
+                spec = fits.open(filename)
+            except IOError as e:
+                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
+                return False, errorMessage
+            try:
+                self._wavelength = 10**spec[1].data['loglam']
+                self._flux = spec[1].data['flux']
+                self._var = 1/(spec[1].data['ivar'])
+                #self._airToVac()
+            except Exception as e:
+                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
+                return False, errorMessage
             
         elif (filetype == 'txt'):
             # Implement reading a txt file
             # Need to add in a Keyword to have the user be able to input error but assume variance
             # Also want a vacuum keyword! 
-            #print('Not Implemented')
-            f = open(filename)
-            data = tbl.read()
-            f.close()
-            lineList = data.splitlines()
-            
-            wave = []
-            flux = []
-            var = []
-            for line in LineList:
-                l = line.split()
-                wave.append(l[0])
-                flux.append(l[1])
-                if len(l) > 2:
-                    err = l[2]
-                    var.append(err**2)
-                    
-            self._wavelength = np.asarray(wave) 
-            self._flux = np.asarray(flux) 
-            if len(ivar) > 0: 
-                self._var = np.asarray(var) 
+            try:
+                f = open(filename)
+            except IOError as e:
+                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
+                return False, errorMessage
+            try:
+                data = tbl.read()
+                f.close()
+                lineList = data.splitlines()
+                
+                wave = []
+                flux = []
+                var = []
+                for line in LineList:
+                    l = line.split()
+                    wave.append(l[0])
+                    flux.append(l[1])
+                    if len(l) > 2:
+                        err = l[2]
+                        var.append(err**2)
+                        
+                self._wavelength = np.asarray(wave) 
+                self._flux = np.asarray(flux) 
+                if len(ivar) > 0: 
+                    self._var = np.asarray(var) 
+            except Exception as e:
+                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
+                return False, errorMessage
             
         else:
             # The user supplied an option not accounted for
             # in this method. Just skip the file.
-            print('Warning: "' + filename + '" with file type "' + filetype +
-                  '" is not readable. Skipping over this file.', flush = True)
-            return False, ''
-
+            errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
+            return False, errorMessage
         
         self._interpOntoGrid()
         return True, ''
+
+    def calcSN(self):
+        """
+        calcSN()
+        
+        Description:
+        calculates the median signal to noise of the spectrum 
+        uses formula SNR = mu/sigma
+        
+        Output:
+        SN for the spectrum.
+        """
+        signalToNoise = np.median(self._flux)/np.median((self._var)**0.5)
+        
+        return signalToNoise
         
     def _airToVac(self):
         """
@@ -180,7 +194,7 @@ class Spectrum(object):
         Sloan, princeton are already in vacuum but most other spectra are not. 
         """
         
-        sigma2 = (1.e4/self._wavelength)**2.                      #Convert to wavenumber squared
+        sigma2 = (1.e4/self._wavelength)**2.                #Convert to wavenumber squared
 
         # Compute conversion factor
         # Wavelength values below 2000 A will not be 
@@ -191,7 +205,7 @@ class Spectrum(object):
 
         fact = fact*(self._wavelength >= 2000.) + 1.*(self._wavelength < 2000.)
 
-        self._wavelength = self._wavelength*fact              #Convert Wavelength
+        self._wavelength = self._wavelength*fact            #Convert Wavelength
 
         return 
 
