@@ -365,6 +365,13 @@ class Spectrum(object):
                          var = index**2 * ((num_std/nummean)**2 + (den_std/denmean)**2)
                          indexList = [index, var]
                          measuredLinesDict[key] = indexList
+                     else:
+                         indexList = [0,np.inf]
+                         measuredLinesDict[key] = indexList
+                else:
+                     indexList = [0,np.inf]
+                     measuredLinesDict[key] = indexList
+                         
                  
              elif len(value) == 8: 
                        
@@ -397,6 +404,12 @@ class Spectrum(object):
                          var = index**2 * ((combonum_std/combonum)**2 + (den_std/denmean)**2)
                          indexList = [index, var]
                          measuredLinesDict[key] = indexList
+                     else:
+                         indexList = [0,np.inf]
+                         measuredLinesDict[key] = indexList
+                 else:
+                     indexList = [0,np.inf]
+                     measuredLinesDict[key] = indexList
          
          
          #print('Not implemented')
