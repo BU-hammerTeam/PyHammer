@@ -164,7 +164,6 @@ class Spectrum(object):
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
             return False, errorMessage
         
-        self._interpOntoGrid()
         return True, ''
 
     def calcSN(self):
@@ -210,80 +209,6 @@ class Spectrum(object):
         return 
 
         print('Not implemented')
-
-    def _interpOntoGrid(self, log = False, tfile = 'default', tlog = True):
-    
-        """
-        
-        Description:
-        A method to interpolate the wavelength, flux and noise
-        onto a logarithmic wavelength spacing. The observed spectrum
-        and the templates need to be consistent with one another.
-        
-        Input:
-        
-        log   - [Boolean Keyword] Set to true if wavelength for spectra is in log space.
-                Default is True.
-        
-        tfile - [Optional] The name + path to a file containing a sample
-                   template spectral different than the defaults provided.
-        
-        tlog  - [Boolean Keyword] Set to true if the wavelength for template spectra
-                is in log space. Default is True (Default spectra are in log).
-        
-        Output:
-        A spectra interpolated onto a logarithmic grid.
-        
-        Notes:
-        All wavelengths should be in angstroms or log angstroms with the correct log/tlog tag.
-        
-        The wavelength information is taken from sample_template.fits in the
-        resources folder. If using a different spectral library than the default
-        provided with this code, can change the keyword.
-        
-        If the custom template is NOT in log lambda space, the column containing the wavelength 
-        information MUST be labeled 'Lambda'
-        
-        The interpolation is done using cubic spline interpolation, which
-        should provide accurate interpolation without a large investment of
-        computing time. (see arXiv:1301.4843[astro-ph.SR])
-        
-        [Aurora] need some if statement to check to see if the spectrum 
-        is in equal RV space. If it is not, we will want to choose the 
-        blue (lower RV) end to interpolate onto
-        
-        This comment is related to the resolution of the bins, equal sized bins
-        in log space are not equal in normal space.
-        
-        The default template is linearly binned in velocity space -> log(lambda) space
-        
-        """
-        #Grab an sample template to get wavelengths for interpolation
-        if tfile == 'default':
-            template = fits.open(os.path.join(self.thisDir, "resources", "sample_template.fits"))
-        else:
-            template = fits.open(tfile)
-        
-        #Transform the wavelength grid from the sample to a linear grid if it's in log space
-        if tlog == True:
-            grid = 10**template[1].data['LogLam']
-        elif tlog == False:
-            grid = template[1].data['Lambda']
-            
-        #Interpolate onto the logarithmic grid with a cubic spline fit
-        if log == True:
-            func = interpolate.InterpolatedUnivariateSpline(10**self._wavelength, self._flux, k=5)
-            noisefunc = interpolate.InterpolatedUnivariateSpline(10**self._wavelength, self._var, k=5)
-        else:
-            func = interpolate.InterpolatedUnivariateSpline(self._wavelength, self._flux, k=5)
-            noisefunc = interpolate.InterpolatedUnivariateSpline(self._wavelength, self._var, k=5)
-        
-        print('created function')
-        #Convert the wavelength grid to log lambda
-        self._wavelength = grid
-        self._flux = func(grid)
-        self._var = noisefunc(grid) 
-        print('interpolation done!')
 
     def measureLines(self):
          """
@@ -518,38 +443,38 @@ class Spectrum(object):
             tempName = 'L' + str(bestGuess['sub']) + '.fits'
 
         temp = fits.open(path+tempName)
-        tempFluxOrig = temp[1].data['flux']
+        tempFlux = temp[1].data['flux']
         tempWave = 10**temp[1].data['loglam']
         #put the template on the same wavelength scale as the spectrum
-        tempFlux = np.interp(wave, tempWave, tempFluxOrig)
+        interpFlux = np.interp(tempWave, wave, flux)
 
         # Get the regions for correlation
-        specRegion1 = np.where( (wave > 5000) & (wave < 6000) )
-        specRegion2 = np.where( (wave > 6000) & (wave < 7000) )
-        specRegion3 = np.where( (wave > 7000) & (wave < 8000) )
+        specRegion1 = np.where( (tempWave > 5000) & (tempWave < 6000) )
+        specRegion2 = np.where( (tempWave > 6000) & (tempWave < 7000) )
+        specRegion3 = np.where( (tempWave > 7000) & (tempWave < 8000) )
         #noise regions: still not sure if we should have these or not
-        noiseRegion1 = np.where( (wave > 5000) & (wave < 5100) )
-        noiseRegion2 = np.where( (wave > 6800) & (wave < 6900) )
-        noiseRegion3 = np.where( (wave > 7400) & (wave < 7500) )
+        noiseRegion1 = np.where( (tempWave > 5000) & (tempWave < 5100) )
+        noiseRegion2 = np.where( (tempWave > 6800) & (tempWave < 6900) )
+        noiseRegion3 = np.where( (tempWave > 7400) & (tempWave < 7500) )
 
 
 
-        shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 12, 'fine')
-        shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 12, 'fine')
-        shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 12, 'fine')
+        shift1 = self.xcorl(interpFlux[specRegion1], tempFlux[specRegion1], 12, 'fine')
+        shift2 = self.xcorl(interpFlux[specRegion2], tempFlux[specRegion2], 12, 'fine')
+        shift3 = self.xcorl(interpFlux[specRegion3], tempFlux[specRegion3], 12, 'fine')
 
         # Convert to Radial Velocities
-        pixel = wave[1]-wave[0]
-        wave0 = (wave[1]+wave[0]) / 2
+        pixel = tempWave[1]-tempWave[0]
+        wave0 = (tempWave[1]+tempWave[0]) / 2
         c = 2.998 * 10**5
         radVel1 = shift1 * pixel / wave0 * c
         radVel2 = shift2 * pixel / wave0 * c
         radVel3 = shift3 * pixel / wave0 * c
 
         # Let's look at the noise in the spectrum
-        snr1 = np.mean(flux[noiseRegion1]) / np.std(flux[noiseRegion1])
-        snr2 = np.mean(flux[noiseRegion2]) / np.std(flux[noiseRegion2])
-        snr3 = np.mean(flux[noiseRegion3]) / np.std(flux[noiseRegion3])
+        snr1 = np.mean(interpFlux[noiseRegion1]) / np.std(interpFlux[noiseRegion1])
+        snr2 = np.mean(interpFlux[noiseRegion2]) / np.std(interpFlux[noiseRegion2])
+        snr3 = np.mean(interpFlux[noiseRegion3]) / np.std(interpFlux[noiseRegion3])
 
         # Look for convergence of the radial velocities
         rvs = np.array([radVel1, radVel2, radVel3])
@@ -771,7 +696,7 @@ class Spectrum(object):
     
     def shiftToRest(self, shift):
         """
-        Shift the observed wavelengths to the rest frame using the radial velocity
+        Shift the observed wavelengths to the rest frame in the same grid as the templates using the radial velocity
         
         Input: 
         Calculated radial velocity float [km/s]
