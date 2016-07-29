@@ -293,7 +293,7 @@ class Spectrum(object):
                      else:
                          indexList = [0,np.inf]
                          measuredLinesDict[key] = indexList
-                else:
+                 else:
                      indexList = [0,np.inf]
                      measuredLinesDict[key] = indexList
                          
