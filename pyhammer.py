@@ -49,13 +49,22 @@ def main(options):
     if not options['eyecheck']:
     
         # Open the input file
-        infile = open(options['infile'], 'r')
+        try:
+            infile = open(options['infile'], 'r')
+        except IOError as e:
+            notifyUser(options['useGUI'], str(e))
+            return
 
         # Open and setup the output files
         outfile = open(options['outfile'], 'w')
         rejectfile = open(options['rejectfile'], 'w')
         outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed Metallicity,User Spectral Type,User Metallicity\n')
         rejectfile.write('#Filename,File Type,Spectra S/N\n')
+
+        # Define the string to contain all failure messages. These will be compiled
+        # and printed once at the end
+        rejectMessage = 'The following is a list of rejected spectra\n' \
+                        'along with the reason for its rejection.\n\n'
 
         for line in infile:
             # Remove extra whitespace and other unwanted characters and split
@@ -69,6 +78,7 @@ def main(options):
             # should just continue
             if not success:
                 rejectfile.write(fname + ',' + ftype + ',N/A\n')
+                rejectMessage += 'FILE: ' + fname + '  REASON: ' + message
                 continue
 
             # Now that we have the necessary data in the spec object, let's
@@ -82,6 +92,7 @@ def main(options):
                 snVal = spec.calcSN()
                 if snVal < options['sncut']:
                     rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '  REASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut'])
                     continue
             
             # Normalize the input spectrum to the same place where the templates are normalized (8000A)
@@ -116,8 +127,7 @@ def main(options):
             
             #translate the numbered spectral types into letters
             spt = spec.guess['spt']
-            specList = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
-            letterSpt = specList[spt]
+            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spt]
             
             #write the file
             outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) + ',' + str(spec.guess['feh']) + ',nan,nan' + ' \n')
@@ -133,18 +143,57 @@ def main(options):
     # At this point, we should call up the GUI to do the eyechecking.
     Eyecheck(spec, options)
 
-def showHelpWindow(root, helpText):
+def notifyUser(useGUI, message):
     """
-    showHelpWindow(root, helpText)
-
     Description:
-    This brings up a new window derived from root
-    that displays helpText and has a button to close
-    the window when user is done.
+        A method for handling sending messages to the
+        user during the execution of the main function.
+        The reason for making this a separate function
+        is to handle where we need to send the message.
+        If the user started using a GUI, we want to
+        use a GUI to notify them, otherwise, if they
+        were using the command line, print to the command
+        line.
 
     Input:
-    root     - A tkinter Tk() window
-    helpText - This should be a string to display
+        useGUI: A boolean indicating whether or not to
+            use a GUI to notify the user. This is set
+            in the options dict.
+        message: The message to present to the user.
+    """
+
+    if not useGUI:
+        # Simple case, just print the message.
+        print(message)
+    else:
+        # More involved case, create a tk window to
+        # display the message.
+        root = tk.Tk()
+        root.title('PyHammer Notification')
+        root.iconbitmap(r'resources\sun.ico')
+        root.resizable(False,False)
+        root.geometry('+100+100')
+        
+        label = ttk.Label(root, text = message, font = '-size 10')
+        label.grid(row = 0, column = 0, padx = 2, pady = 2)
+        but = ttk.Button(root, text = 'OK', command = root.destroy)
+        but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
+        root.rowconfigure(1, minsize = 40)
+        root.columnconfigure(0, minsize = 200)
+
+        root.mainloop()
+
+def showHelpWindow(root, helpText):
+    """
+    Description:
+        This brings up a new window derived from root
+        that displays helpText and has a button to close
+        the window when user is done.
+
+    Input:
+        root: A tkinter Tk() window to derive the new
+            help window from
+        helpText: This should be a string to display
     """
     
     helpWindow = tk.Toplevel(root)
@@ -198,9 +247,9 @@ def startGui(options):
         This will then progress to calling the main function
         with the options being passed to it.
         """
-        options['infile'] = infile.get()
-        options['outfile'] = outfile.get()
-        options['rejectfile'] = rejectfile.get()
+        options['infile'] = infile.get() + ('.csv' if infile.get()[-4:] != '.csv' else '')
+        options['outfile'] = outfile.get() + ('.csv' if outfile.get()[-4:] != '.csv' else '')
+        options['rejectfile'] = rejectfile.get() + ('.csv' if rejectfile.get()[-4:] != '.csv' else '')
         if (fullPath.get() == 0):
             options['fullPath'] = False
             options['spectraPath'] = spectraPath.get()
@@ -227,7 +276,7 @@ def startGui(options):
 
     # Define the main window settings
     root = tk.Tk()
-    root.title('PyHammer')
+    root.title('PyHammer Settings')
     root.iconbitmap(r'resources\sun.ico')
     root.resizable(False,False)
     root.geometry('+100+100')
@@ -414,17 +463,17 @@ def startCmd(options):
     startCmd(options)
 
     Description:
-    This provides command line inputs for the user
-    to enter options. It will only ask questions
-    about options the user has not already specified
-    at run time. This will then pass the updated
-    options to the main function.
+        This provides command line inputs for the user
+        to enter options. It will only ask questions
+        about options the user has not already specified
+        at run time. This will then pass the updated
+        options to the main function.
 
     Inputs:
-    options  - A dict containing the options the
-               user can specify. These may already
-               have default values if they were
-               provided on the command line.
+        options: A dict containing the options the
+            user can specify. These may already
+            have default values if they were
+            provided on the command line.
     """
 
     ##
@@ -435,12 +484,27 @@ def startCmd(options):
     # Get the input filename if one was not provided
     if options['infile'] is None:
         options['infile'] = input('Please enter the filename which contains the spectra list: ')
+        options['infile'] += '.csv' if options['infile'][-4:] != '.csv' else ''
+
+    # Ask user if they want to change the results file and what to use if they do.
+    if options['outfile'] == 'PyHammerResults.csv':
+        ans = input('The results file is set to PyHammerResults.csv. Do you want to change it? (y/n): ')
+        if ans.lower() == 'y':
+            options['outfile'] = input('Please enter the filename for the results file: ')
+            options['outfile'] += '.csv' if options['outfile'][-4:] != '.csv' else ''
+
+    # Ask user if they want to change the reject file and what to use if they do.
+    if options['rejectfile'] == 'RejectSpectra.csv':
+        ans = input('The reject file is set to RejectSpectra.csv. Do you want to change it? (y/n): ')
+        if ans.lower() == 'y':
+            options['rejectfile'] = input('Please enter the filename for the reject file: ')
+            options['rejectfile'] += '.csv' if options['rejectfile'][-4:] != '.csv' else ''    
 
     # Check whehter the input file list contains the full path if
     # the user didn't already specify.
     if options['fullPath'] is None:
         ans = input('Does your input list give the full path to each spectrum? (y/n): ')
-        if ans == 'y' or ans == 'Y':
+        if ans.lower() == 'y':
             options['fullPath'] = True
             options['spectraPath'] = ''
         else:
@@ -454,15 +518,20 @@ def startCmd(options):
     # to checking by eye, if they have not already specified.
     if (options['eyecheck'] is None):
         ans = input('Do you want to skip straight to eye-checking? (y/n): ')
-        options['eyecheck'] = True if ans == 'y' or ans == 'Y' else False
+        options['eyecheck'] = (ans.lower() == 'y')
 
     # Asks the user if they want to apply a S/N cut when classifying the spectra.
     # This only applies if they chose not to skip the auto-classification
     if (options['eyecheck'] == False and options['sncut'] is None):
         ans = input('Do you want to supply a S/N cut when auto-classifying? (y/n): ')
-        if (ans == 'y' or ans == 'Y'):
-            ans = input('Choose a S/N cutoff (~3-5 recommended): ')
-            options['sncut'] = float(ans)
+        if ans.lower() == 'y':
+            while True:
+                ans = input('Choose a S/N cutoff (~3-5 recommended): ')
+                try:
+                    options['sncut'] = float(ans)
+                    break
+                except Error as e:
+                    print(e.strerror, flush = True)
 
     # Now that all the options have been set, let's get started
     main(options)
@@ -471,7 +540,7 @@ if (__name__ == "__main__"):
 
     # Check if this is the first time this code has been executed by looking
     # for the runbefore file in the resources folder
-    if (not os.path.isfile('resources/runbefore')):
+    if not os.path.isfile('resources/runbefore'):
         # The file doesn't exist. Let's create it and display the welcome message
         f = open('resources/runbefore', 'w')
         f.close()
