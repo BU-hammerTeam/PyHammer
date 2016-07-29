@@ -11,10 +11,10 @@ class Spectrum(object):
     Spectrum Class
 
     Description:
-    This is a spectrum class which defines the spectrum object, containing
-    information about the wavelength, flux, and error for a given spectrm.
-    Because knowledge of only one spectrum is necessary at any one time,
-    a single object can be used and new spectra can be loaded into the object.
+        This is a spectrum class which defines the spectrum object, containing
+        information about the wavelength, flux, and error for a given spectrum.
+        Because knowledge of only one spectrum is necessary at any one time,
+        a single object can be used and new spectra can be loaded into the object.
     """
     
     def __init__(self):
@@ -23,9 +23,9 @@ class Spectrum(object):
         self._var = None
         self._guess = None
         
-        #Read in indices measured from templates
-        #tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
-        #lines is a list of 2D arrays with indices and variances for each line
+        # Read in indices measured from templates
+        # tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
+        # lines is a list of 2D arrays with indices and variances for each line
         # index for each spectrum that goes into a template
         self.thisDir, _ = os.path.split(__file__)
         pklPath = os.path.join(self.thisDir, "resources", "tempLines.pickle")        
@@ -84,13 +84,13 @@ class Spectrum(object):
             try:
                 spec = fits.open(filename) 
             except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
                 self._flux = spec[0].data[0]
                 self._wavelength = ( spec[0].header['CRVAL1'] - (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(spec[0].data[0]),1))
             except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
         elif (filetype == 'DR7fits'):
@@ -98,7 +98,7 @@ class Spectrum(object):
             try:
                 spec = fits.open(filename)
             except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
                 self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
@@ -106,7 +106,7 @@ class Spectrum(object):
                 self._var = 1/(spec[0].data[2])
                 #self._airToVac()
             except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
         elif (filetype == 'DR12fits'): 
@@ -114,7 +114,7 @@ class Spectrum(object):
             try:
                 spec = fits.open(filename)
             except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
                 self._wavelength = 10**spec[1].data['loglam']
@@ -122,7 +122,7 @@ class Spectrum(object):
                 self._var = 1/(spec[1].data['ivar'])
                 #self._airToVac()
             except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
         elif (filetype == 'txt'):
@@ -132,7 +132,7 @@ class Spectrum(object):
             try:
                 f = open(filename)
             except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
                 data = tbl.read()
@@ -155,7 +155,7 @@ class Spectrum(object):
                 if len(ivar) > 0: 
                     self._var = np.asarray(var) 
             except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '. ' + e.strerror
+                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
         else:
@@ -177,6 +177,7 @@ class Spectrum(object):
         Output:
         SN for the spectrum.
         """
+        
         signalToNoise = np.median(self._flux)/np.median((self._var)**0.5)
         
         return signalToNoise
@@ -193,22 +194,18 @@ class Spectrum(object):
         Sloan, princeton are already in vacuum but most other spectra are not. 
         """
         
-        sigma2 = (1.e4/self._wavelength)**2.                #Convert to wavenumber squared
+        sigma2 = (1E4/self._wavelength)**2.                 #Convert to wavenumber squared
 
         # Compute conversion factor
         # Wavelength values below 2000 A will not be 
         # altered.  Uses the IAU standard for conversion given in Morton 
         # (1991 Ap.J. Suppl. 77, 119)
 
-        fact = 1. + 6.4328e-5 + 2.94981e-2/(146.-sigma2) + 2.5540e-4/(41.-sigma2)
+        fact = 1. + 6.4328E-5 + 2.94981E-2/(146.-sigma2) + 2.5540E-4/(41.-sigma2)
 
         fact = fact*(self._wavelength >= 2000.) + 1.*(self._wavelength < 2000.)
 
         self._wavelength = self._wavelength*fact            #Convert Wavelength
-
-        return 
-
-        print('Not implemented')
 
     def measureLines(self):
          """
@@ -293,7 +290,7 @@ class Spectrum(object):
                      else:
                          indexList = [0,np.inf]
                          measuredLinesDict[key] = indexList
-                else:
+                 else:
                      indexList = [0,np.inf]
                      measuredLinesDict[key] = indexList
                          
@@ -335,9 +332,6 @@ class Spectrum(object):
                  else:
                      indexList = [0,np.inf]
                      measuredLinesDict[key] = indexList
-         
-         
-         #print('Not implemented')
  
          return measuredLinesDict
         
@@ -702,11 +696,9 @@ class Spectrum(object):
         Calculated radial velocity float [km/s]
         """
         
-        self._wavelength = self._wavelength / (shift / (2.998*10**5) + 1)
+        self._wavelength = self._wavelength / (shift / (299792.458) + 1)
         
         return 
-        
-        #print('Not Implemented')
     
     def normalizeFlux(self): 
         
