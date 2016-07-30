@@ -130,7 +130,7 @@ def main(options):
             letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spt]
             
             #write the file
-            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) + ',' + str(spec.guess['feh']) + ',nan,nan' + ' \n')
+            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) + ',' + str(spec.guess['feh']) + ',nan,nan' + '\n')
             ######################
             ### END OF OUTLINE ###
             ######################
