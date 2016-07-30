@@ -5,6 +5,7 @@ from astropy.io import fits
 import bisect
 import pickle
 import os
+from math import log10, e
 
 class Spectrum(object):
     """
@@ -164,6 +165,7 @@ class Spectrum(object):
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
             return False, errorMessage
         
+        self.interpOntoGrid()
         return True, ''
 
     def calcSN(self):
@@ -207,6 +209,39 @@ class Spectrum(object):
 
         self._wavelength = self._wavelength*fact            #Convert Wavelength
 
+        return 
+
+        print('Not implemented')
+
+    def interpOntoGrid(self): 
+         """
+        A method to put the spectra onto the same grid as the templates
+        (5km/s equally space bins)
+
+        Input:
+        raw flux and wavelength
+
+        Output:
+        interpolated flux, wavelength grid
+
+        """
+        #Make the wavelength grid (resolution of template grids)
+        waveGrid = 10**(5*log10(e)/(2.998*10**5) * np.arange(0,65000) + 3.55)
+
+        #interpolate flux and variance onto the wavelength grid
+        interpFlux = np.interp(waveGrid, self._wavelength, self._flux)
+        interpVar = np.interp(waveGrid, self._wavelength, self._var) 
+
+        #cut the grids off at 3650 and 10200 like the templates
+        startIndex = bisect.bisect_right(waveGrid, 3650)
+        stopIndex = bisect.bisect_right(waveGrid,10200)
+
+        self._wavelength = waveGrid[startIndex:stopIndex]
+        self._flux = interpFlux[startIndex:stopIndex]
+        self._var = interpVar[startIndex:stopIndex]
+
+        return
+        
     def measureLines(self):
          """
          A method to reproduce the functionality of the measureGoodLines
@@ -439,27 +474,25 @@ class Spectrum(object):
         temp = fits.open(path+tempName)
         tempFlux = temp[1].data['flux']
         tempWave = 10**temp[1].data['loglam']
-        #put the template on the same wavelength scale as the spectrum
-        interpFlux = np.interp(tempWave, wave, flux)
 
         # Get the regions for correlation
-        specRegion1 = np.where( (tempWave > 5000) & (tempWave < 6000) )
-        specRegion2 = np.where( (tempWave > 6000) & (tempWave < 7000) )
-        specRegion3 = np.where( (tempWave > 7000) & (tempWave < 8000) )
+        specRegion1 = np.where( (wave > 5000) & (wave < 6000) )
+        specRegion2 = np.where( (wave > 6000) & (wave < 7000) )
+        specRegion3 = np.where( (wave > 7000) & (wave < 8000) )
         #noise regions: still not sure if we should have these or not
-        noiseRegion1 = np.where( (tempWave > 5000) & (tempWave < 5100) )
-        noiseRegion2 = np.where( (tempWave > 6800) & (tempWave < 6900) )
-        noiseRegion3 = np.where( (tempWave > 7400) & (tempWave < 7500) )
+        noiseRegion1 = np.where( (wave > 5000) & (wave < 5100) )
+        noiseRegion2 = np.where( (wave > 6800) & (wave < 6900) )
+        noiseRegion3 = np.where( (wave > 7400) & (wave < 7500) )
 
 
 
-        shift1 = self.xcorl(interpFlux[specRegion1], tempFlux[specRegion1], 12, 'fine')
-        shift2 = self.xcorl(interpFlux[specRegion2], tempFlux[specRegion2], 12, 'fine')
-        shift3 = self.xcorl(interpFlux[specRegion3], tempFlux[specRegion3], 12, 'fine')
+        shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 12, 'fine')
+        shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 12, 'fine')
+        shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 12, 'fine')
 
         # Convert to Radial Velocities
-        pixel = tempWave[1]-tempWave[0]
-        wave0 = (tempWave[1]+tempWave[0]) / 2
+        pixel = wave[1]-wave[0]
+        wave0 = (wave[1]+wave[0]) / 2
         c = 2.998 * 10**5
         radVel1 = shift1 * pixel / wave0 * c
         radVel2 = shift2 * pixel / wave0 * c
