@@ -3,13 +3,30 @@ from tkinter import ttk
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
+import time
 import os
+import csv
+import pdb
 
 class Eyecheck(object):
 
     def __init__(self, specObj, options):
+        # Store input variables
         self.specObj = specObj
         self.options = options
+        # Open the infile and read it into a list
+        self.inData = []
+        with open(options['infile'], 'r') as file:
+            for line in file:
+                self.inData.append(line.strip().rsplit(' ',1))
+        # Open the outfile and read it into a list
+        with open(options['outfile'], 'r') as file:
+            reader = csv.reader(file)
+            self.outData = list(reader)[1:] # Ignore the header line
+        # Define User's spectrum data
+        self.specIndex = 0
+        self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
+                              self.inData[self.specIndex][1]) # Ignore returned values
         # Useful information
         self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
         self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -41,12 +58,21 @@ class Eyecheck(object):
         self.root.mainloop()
 
     def _exit(self):
+        # Write the outData to the output file
+        with open(options['outfile'], 'w') as outfile:
+            outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed Metallicity,User Spectral Type,User Metallicity\n')
+            for i, spectra in enumerate(self.outData):
+                for j, col in enumerate(spectra):
+                    outfile.write(col)
+                    if j < 5: outfile.write(',')
+                if i < len(self.outData)-1: outfile.write('\n')
+        # Close down the GUI and plot window
         self.root.destroy()
         plt.close('all')
 
     def setupGUI(self):
         # Set the root window properties
-        self.root.title('PyHammer Plot Options')
+        self.root.title('PyHammer Eyecheck')
         self.root.iconbitmap(r'resources\sun.ico')
         self.root.resizable(False, False)
         self.root.geometry('+100+100')
@@ -87,7 +113,7 @@ class Eyecheck(object):
                                                      command = lambda: self.callback_metalRadioChange(True)))
             self.metalButtons[-1].grid(row = 2, column = ind+1, sticky = 'nesw')
             
-        # Define the buttons for interacting with the data (e.g., flag it, done, back):
+        # Define the buttons for interacting with the data (e.g., flag it, next, back):
         ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 3, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 3, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw')
@@ -95,14 +121,14 @@ class Eyecheck(object):
         ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 5, column = 1, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 5, column = 3, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Smooth', underline = 0, command = self.callback_smooth).grid(row = 5, column = 5, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Done', command = self.callback_done).grid(row = 5, column = 7, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 5, column = 9, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 5, column = 7, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 5, column = 9, columnspan = 2, sticky = 'nesw')
 
         # Set the key bindings
         self.root.bind('o', lambda event: self.callback_odd())
         self.root.bind('b', lambda event: self.callback_bad())
         self.root.bind('s', lambda event: self.callback_smooth())
-        self.root.bind('<Return>', lambda event: self.callback_done())
+        self.root.bind('<Return>', lambda event: self.callback_next())
         self.root.bind('k', lambda event: self.callback_back())
         self.root.bind('<Left>', lambda event: self.callback_earlier())
         self.root.bind('<Right>', lambda event: self.callback_later())
@@ -111,6 +137,11 @@ class Eyecheck(object):
 
         # Set the close protocol to call this class' personal exit function
         self.root.protocol('WM_DELETE_WINDOW', self._exit)
+
+        # Force the GUI to appear as a top level window, on top of all other windows
+        self.root.lift()
+        self.root.call('wm', 'attributes', '.', '-topmost', True)
+        self.root.after_idle(self.root.call, 'wm', 'attributes', '.', '-topmost', False)
 
     def updatePlot(self):
         # Before updating the plot, check the current axis limits. If they're
@@ -131,13 +162,13 @@ class Eyecheck(object):
         fig = plt.figure('Pyhammer Spectrum Matching', figsize = (12,6))
         plt.cla()   # Clear the plot
         if plt.get_current_fig_manager().toolbar._active != 'ZOOM':
-        # Make it so the zoom button is selected by default
+            # Make it so the zoom button is selected by default
             plt.get_current_fig_manager().toolbar.zoom()
             
-        # Determine which, if any, file to load
+        # Determine which, if any, template file to load
         templateFile = self.getTemplateFile()
 
-        # Plot everything up
+        # Plot the template
         if templateFile is not None:
             hdulist = fits.open(templateFile)
             self.templateLoglam = hdulist[1].data['loglam']
@@ -149,11 +180,14 @@ class Eyecheck(object):
         else:
             plt.plot([],[], '-k', label = 'Template')
             templateName = 'N/A'
+        # Plot the user's data
+        plt.plot(self.specObj.loglam, self.specObj.normFlux, '-r', label = 'Your Spectrum')
+        spectraName = os.path.basename(self.inData[self.specIndex][0])[:-5]
 
         # Set some axis settings
         plt.xlabel(r'$\mathrm{log_{10}(wavelength / \mathring{A})}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
-        plt.title(r'$\mathrm{Template:\;' + templateName + '}$', fontsize = 16)
+        plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName + '}$', fontsize = 16)
         plt.xlim([3.5,4.05])
         plt.legend(loc = 0).get_frame().set_alpha(0)
         plt.subplots_adjust(left = 0.075, right = 0.975, top = 0.9, bottom = 0.15)
@@ -219,24 +253,39 @@ class Eyecheck(object):
         but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
         infoWindow.rowconfigure(1, minsize = 40)
 
+
     ##
     # Button and Key Press Callbacks
     #
     
     def callback_odd(self):
-        print('Someone pushed an odd button.')
+        # Store the custom name designation from the user
+        choice = OddWindow(self.root, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'])
+        self.root.wait_window(choice.oddWindow)
+        self.outData[self.specIndex][4] = choice.name
+        self.outData[self.specIndex][5] = 'nan'
+        # Move to the next spectra
+        self.moveToNextSpectrum()
         
     def callback_bad(self):
-        print('Someone pushed a bad button.')
+        # Store BAD as the user's choices
+        self.outData[self.specIndex][4] = 'BAD'
+        self.outData[self.specIndex][5] = 'BAD'
+        # Move to the next spectra
+        self.moveToNextSpectrum()
         
     def callback_smooth(self):
         print('Someone pushed a smooth button.')
         
-    def callback_done(self):
-        print('Someone pushed a done button.')
+    def callback_next(self):
+        # Store the choice for the current spectra
+        self.outData[self.specIndex][4] = self.specType[self.specState.get()] + str(self.subState.get())
+        self.outData[self.specIndex][5] = self.metalType[self.metalState.get()]
+        # Move to the next spectra
+        self.moveToNextSpectrum()
         
     def callback_back(self):
-        print('Someone pushed a back button.') 
+        self.moveToPreviousSpectrum()
     
     def callback_earlier(self):
         curSub  = self.subState.get()
@@ -331,6 +380,29 @@ class Eyecheck(object):
     # Utility Methods
     #
 
+    def moveToNextSpectrum(self):
+        print(self.specIndex,'Move to next')
+        if self.specIndex+1 >= len(self.inData):
+            modal = ModalWindow(self.root, 'PyHammer', "You've classified all the spectra. Are you finished?")
+            self.root.wait_window(modal.modalWindow)
+            if modal.choice == 'Yes':
+                self._exit()
+        else:
+            self.specIndex += 1
+            self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
+                                  self.inData[self.specIndex][1]) # Ignore returned values from readFile
+            self.updatePlot()
+            print(self.specIndex, 'test next')
+
+    def moveToPreviousSpectrum(self):
+        print(self.specIndex,'Move to previous')
+        if self.specIndex > 0:
+            self.specIndex -= 1
+            self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
+                                  self.inData[self.specIndex][1]) # Ignore returned values from readFile
+            self.updatePlot()
+            print(self.specIndex, 'test back')
+
     def getTemplateFile(self, specState = None, subState = None, metalState = None):
         # If values weren't passed in for certain states, assume we should
         # use what is chosen on the GUI
@@ -364,3 +436,85 @@ class Eyecheck(object):
 
         # Return None if file could not be found
         return None
+
+
+class ModalWindow(object):
+
+    def __init__(self, parent, title, text):
+        self.choice = None
+
+        # Setup the window
+        self.modalWindow = tk.Toplevel(parent)
+        self.modalWindow.title(title)
+        self.modalWindow.iconbitmap(r'resources\sun.ico')
+        self.modalWindow.resizable(False, False)
+        self.modalWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
+
+        # Setup the widgets in the window
+        label = ttk.Label(self.modalWindow, text = text, font = '-size 10')
+        label.grid(row = 0, column = 0, columnspan = 2, padx = 2, pady = 2)
+        
+        but = ttk.Button(self.modalWindow, text = 'Yes', command = self.choiceYes)
+        but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
+
+        but = ttk.Button(self.modalWindow, text = 'No', command = self.choiceNo)
+        but.grid(row = 1, column = 1, sticky = 'nsew', padx = 2, pady = 5)
+
+        self.modalWindow.rowconfigure(1, minsize = 40)
+
+    def choiceYes(self):
+        self.choice = 'Yes'
+        self.modalWindow.destroy()
+
+    def choiceNo(self):
+        self.choice = 'No'
+        self.modalWindow.destroy()
+
+
+class OddWindow(object):
+
+    def __init__(self, parent, choices):
+        self.name = None
+        self.choices = choices
+        self.radioChoice = tk.IntVar(value = 0)
+        self.customName = tk.StringVar()
+        self.label = tk.StringVar(value = 'Choose Odd Type')
+
+        # Setup the window
+        self.oddWindow = tk.Toplevel(parent)
+        self.oddWindow.title('')
+        self.oddWindow.iconbitmap(r'resources\sun.ico')
+        self.oddWindow.resizable(False, False)
+        self.oddWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
+
+        # Setup the widgets in the window
+        tk.Label(self.oddWindow, textvariable = self.label, justify = 'center').grid(row = 0, column = 0)
+        
+        for i, c in enumerate(choices):
+            temp = ttk.Radiobutton(self.oddWindow, text = c, variable = self.radioChoice, value = i)
+            temp.grid(row = i+1, column = 0, padx = 10, sticky = 'nesw')
+            
+        temp = ttk.Radiobutton(self.oddWindow, text = '', variable = self.radioChoice, value = i+1)
+        temp.grid(row = i+2, column = 0, padx = 10, sticky = 'nesw')
+        
+        temp = ttk.Entry(self.oddWindow, textvariable = self.customName, width = 10)
+        temp.grid(row = i+2, column = 0, padx = 30, sticky = 'w')
+
+        but = ttk.Button(self.oddWindow, text = 'OK', command = self.done)
+        but.grid(row = i+3, column = 0, sticky = 'nsew', padx = 2, pady = 5)
+        self.oddWindow.rowconfigure(i+3, minsize = 40)
+        self.oddWindow.columnconfigure(0, minsize = 175)
+
+    def done(self):
+        if self.radioChoice.get() < len(self.choices):
+            self.name = self.choices[self.radioChoice.get()]
+        else:
+            if self.customName.get() == '':
+                self.label.set('Enter Text for Custom Name')
+                self.oddWindow.bell()
+                self.oddWindow.after(1500, lambda: self.label.set('Choose Odd Type'))
+                return
+            else:
+                self.name = self.customName.get()
+        self.oddWindow.destroy()
+        
