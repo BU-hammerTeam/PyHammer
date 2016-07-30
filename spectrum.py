@@ -5,7 +5,6 @@ from astropy.io import fits
 import bisect
 import pickle
 import os
-from math import log10, e
 
 class Spectrum(object):
     """
@@ -211,10 +210,8 @@ class Spectrum(object):
 
         return 
 
-        print('Not implemented')
-
     def interpOntoGrid(self): 
-         """
+        """
         A method to put the spectra onto the same grid as the templates
         (5km/s equally space bins)
 
@@ -225,8 +222,9 @@ class Spectrum(object):
         interpolated flux, wavelength grid
 
         """
-        #Make the wavelength grid (resolution of template grids)
-        waveGrid = 10**(5*log10(e)/(2.998*10**5) * np.arange(0,65000) + 3.55)
+        # Make the wavelength grid (resolution of template grids)
+        # Note log10(e) = 0.43429448190325182
+        waveGrid = 10**(5*0.43429448190325182/(299792.458) * np.arange(0,65000) + 3.55)
 
         #interpolate flux and variance onto the wavelength grid
         interpFlux = np.interp(waveGrid, self._wavelength, self._flux)
@@ -763,12 +761,20 @@ class Spectrum(object):
         return self._flux
 
     @property
+    def normFlux(self):
+        return self.flux / np.trapz(self.flux, x = self.wavelength)
+
+    @property
     def var(self):
         return self._var
 
     @property
     def wavelength(self):
         return self._wavelength
+
+    @property
+    def loglam(self):
+        return np.log10(self._wavelength)
         
     @wavelength.setter
     def wavelength(self, value):
