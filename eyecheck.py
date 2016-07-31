@@ -35,21 +35,21 @@ class Eyecheck(object):
         self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
         # GUI Components
         self.root = tk.Tk()
-        self.selTemplateOnly = tk.BooleanVar(value = True)
-        self.specState  = tk.IntVar(value = 4)  # Define an int to keep track of each state
-        self.subState   = tk.IntVar(value = 5)
-        self.metalState = tk.IntVar(value = 4)
+        self.spectrumEntry = tk.StringVar(value = os.path.basename(self.inData[self.specIndex][0]))
+        self.specState  = tk.IntVar(value = self.specType.index(self.outData[self.specIndex][2][0]))
+        self.subState   = tk.IntVar(value = int(self.outData[self.specIndex][2][1]))
+        self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex][3]))
         self.subButtons = []            # We keep track of these radio buttons so
         self.metalButtons = []          # they can be enabled and disabled if need be
         # Figure Components
         plt.ion()
-        plt.style.use('ggplot') # Just makes it look nice
-        self.full_xlim = None          # Store these to determine if user has zoomed
+        plt.style.use('ggplot')         # Just makes it look nice
+        self.full_xlim = None           # Store these to keep track of zooming
         self.full_ylim = None
         self.zoomed_xlim = None
         self.zoomed_ylim = None
         self.zoomed = False
-        self.updatePlot()
+        self.updatePlot()               # Create the plot
         
         # Call the method for setting up the GUI layout
         self.setupGUI()
@@ -80,7 +80,7 @@ class Eyecheck(object):
         # Define the menubar
         menubar = tk.Menu()
 
-        fileMenu = tk.Menu(menubar)
+        fileMenu = tk.Menu(menubar, tearoff = 0)
         fileMenu.add_command(label = 'Quit', command = self._exit)
 
         aboutMenu = tk.Menu(menubar, tearoff = 0)
@@ -92,37 +92,41 @@ class Eyecheck(object):
         self.root.config(menu = menubar)
         
         # Define the labels in the GUI
-        for i, name in enumerate(['Type', 'Subtype', 'Metallicity', 'Change Type', 'Change Metallicity', 'Options']):
+        for i, name in enumerate(['Spectra', 'Type', 'Subtype', 'Metallicity', 'Change Type', 'Change Metallicity', 'Options']):
             ttk.Label(self.root, text = name).grid(row = i, column = 0, stick = 'e',
-                                                   pady = ((10,0) if name == 'Change Type' else 0))
+                                                   pady = (10*(i==4),10*(i==0)))
+
+        # Define the entry box and relevant widgets for indicating the spectrum
+        ttk.Entry(self.root, textvariable = self.spectrumEntry).grid(row = 0, column = 1, columnspan = 9, pady = (0,10), sticky = 'nesw')
+        ttk.Button(self.root, text = 'Go', width = 3, command = self.jumpToSpectrum).grid(row = 0, column = 10, pady = (0,10))
 
         # Define the radio buttons
         # First the radio buttons for the spectral type
         for ind, spec in enumerate(self.specType):
             temp = ttk.Radiobutton(self.root, text = spec, variable = self.specState, value = ind,
                                    command = lambda: self.callback_specRadioChange(True))
-            temp.grid(row = 0, column = ind+1, sticky = 'nesw')
+            temp.grid(row = 1, column = ind+1, sticky = 'nesw')
         # Now the sub spectral type radio buttons
         for ind, sub in enumerate(self.subType):
             self.subButtons.append(ttk.Radiobutton(self.root, text = sub, variable = self.subState, value = ind,
                                                    command = lambda: self.callback_subRadioChange(True)))
-            self.subButtons[-1].grid(row = 1, column = ind+1, sticky = 'nesw')
+            self.subButtons[-1].grid(row = 2, column = ind+1, sticky = 'nesw')
         # Finally the radio buttons for the metallicities
         for ind, metal in enumerate(self.metalType):
             self.metalButtons.append(ttk.Radiobutton(self.root, text = metal, variable = self.metalState, value = ind,
                                                      command = lambda: self.callback_metalRadioChange(True)))
-            self.metalButtons[-1].grid(row = 2, column = ind+1, sticky = 'nesw')
+            self.metalButtons[-1].grid(row = 3, column = ind+1, sticky = 'nesw')
             
         # Define the buttons for interacting with the data (e.g., flag it, next, back):
-        ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 3, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
-        ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 3, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
-        ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 5, column = 1, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 5, column = 3, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Smooth', underline = 0, command = self.callback_smooth).grid(row = 5, column = 5, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 5, column = 7, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 5, column = 9, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
+        ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
+        ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 1, columnspan = 5, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 5, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 1, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 3, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Smooth', underline = 0, command = self.callback_smooth).grid(row = 6, column = 5, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 7, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 9, columnspan = 2, sticky = 'nesw')
 
         # Set the key bindings
         self.root.bind('o', lambda event: self.callback_odd())
@@ -381,7 +385,6 @@ class Eyecheck(object):
     #
 
     def moveToNextSpectrum(self):
-        print(self.specIndex,'Move to next')
         if self.specIndex+1 >= len(self.inData):
             modal = ModalWindow(self.root, 'PyHammer', "You've classified all the spectra. Are you finished?")
             self.root.wait_window(modal.modalWindow)
@@ -389,19 +392,40 @@ class Eyecheck(object):
                 self._exit()
         else:
             self.specIndex += 1
-            self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
-                                  self.inData[self.specIndex][1]) # Ignore returned values from readFile
-            self.updatePlot()
-            print(self.specIndex, 'test next')
+            self.getUserSpectrum()
 
     def moveToPreviousSpectrum(self):
-        print(self.specIndex,'Move to previous')
         if self.specIndex > 0:
             self.specIndex -= 1
-            self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
-                                  self.inData[self.specIndex][1]) # Ignore returned values from readFile
-            self.updatePlot()
-            print(self.specIndex, 'test back')
+            self.getUserSpectrum()
+
+    def jumpToSpectrum(self):
+        spectrumFound = False
+        for i, spectrum in enumerate(self.inData):
+            if os.path.basename(self.spectrumEntry.get()) == os.path.basename(spectrum[0]):
+                self.specIndex = i
+                spectrumFound = True
+                break
+        if not spectrumFound:
+            message = 'The spectrum you input could not be matched\n' \
+                      'to one of the spectrum in your list. Check\n' \
+                      'your input and try again.'
+            self.showInfoWindow('PyHammer Error', message)
+        else:
+            self.getUserSpectrum()
+
+    def getUserSpectrum(self):
+        # Read in the next spectrum file
+        self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
+                              self.inData[self.specIndex][1]) # Ignore returned values from readFile
+        # Set the spectrum entry field
+        self.spectrumEntry.set(os.path.basename(self.inData[self.specIndex][0]))
+        # Set the radio button selections
+        self.specState.set(self.specType.index(self.outData[self.specIndex][2][0]))
+        self.subState.set(int(self.outData[self.specIndex][2][1]))
+        self.metalState.set(self.metalType.index(self.outData[self.specIndex][3]))
+        # Update the plot
+        self.updatePlot()
 
     def getTemplateFile(self, specState = None, subState = None, metalState = None):
         # If values weren't passed in for certain states, assume we should
