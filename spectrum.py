@@ -484,9 +484,9 @@ class Spectrum(object):
 
 
 
-        shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 12, 'fine')
-        shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 12, 'fine')
-        shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 12, 'fine')
+        shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 50, 'fine')
+        shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine')
+        shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
 
         # Convert to Radial Velocities
         pixel = wave[1]-wave[0]
