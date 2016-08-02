@@ -497,9 +497,9 @@ class Spectrum(object):
         radVel3 = shift3 * pixel / wave0 * c
 
         # Let's look at the noise in the spectrum
-        snr1 = np.mean(interpFlux[noiseRegion1]) / np.std(interpFlux[noiseRegion1])
-        snr2 = np.mean(interpFlux[noiseRegion2]) / np.std(interpFlux[noiseRegion2])
-        snr3 = np.mean(interpFlux[noiseRegion3]) / np.std(interpFlux[noiseRegion3])
+        snr1 = np.mean(flux[noiseRegion1]) / np.std(flux[noiseRegion1])
+        snr2 = np.mean(flux[noiseRegion2]) / np.std(flux[noiseRegion2])
+        snr3 = np.mean(flux[noiseRegion3]) / np.std(flux[noiseRegion3])
 
         # Look for convergence of the radial velocities
         rvs = np.array([radVel1, radVel2, radVel3])
