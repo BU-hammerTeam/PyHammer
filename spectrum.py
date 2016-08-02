@@ -757,7 +757,19 @@ class Spectrum(object):
 
     @property
     def normFlux(self):
-        return self.flux / np.trapz(self.flux, x = self.wavelength)
+        # The flux is normalized by dividing all flux values by the flux
+        # at 8000 Angstroms. We should determine if there is a flux value
+        # at that wavelength and divide by it. If there isn't, interpolate.
+        ind1 = np.argmin(np.abs(self._wavelength - 8000))
+        if self._wavelength[ind1] == 8000:
+            # We found the flux is defined exactly at 8000 angstroms
+            return self._flux / self._flux[ind1]
+        else:
+            # We didn't find a wavelength exactly equal to 8000 angstroms
+            # so instead let's interpolate.
+            ind2 = ind1 + (1 if self._wavelength[ind1] < 8000 else -1)
+            fluxAt8000 = interp1d(self._wavelength[[ind1,ind2]], self._flux[[ind1,ind2]])(8000)
+            return self._flux / fluxAt8000
 
     @property
     def var(self):
