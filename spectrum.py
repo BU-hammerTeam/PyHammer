@@ -760,6 +760,8 @@ class Spectrum(object):
         # The flux is normalized by dividing all flux values by the flux
         # at 8000 Angstroms. We should determine if there is a flux value
         # at that wavelength and divide by it. If there isn't, interpolate.
+        # The variable ind1 will be the index of the wavelength closest to
+        # 8000 angstroms.
         ind1 = np.argmin(np.abs(self._wavelength - 8000))
         if self._wavelength[ind1] == 8000:
             # We found the flux is defined exactly at 8000 angstroms
@@ -770,6 +772,21 @@ class Spectrum(object):
             ind2 = ind1 + (1 if self._wavelength[ind1] < 8000 else -1)
             fluxAt8000 = interp1d(self._wavelength[[ind1,ind2]], self._flux[[ind1,ind2]])(8000)
             return self._flux / fluxAt8000
+
+    @property
+    def normSmoothFlux(self):
+        # Simply the normalized flux, convolved with a boxcar function to
+        # smooth it out. A potential failing of this method is the case where
+        # there are a small number of flux values (in the hundreds) but that
+        # seems so unlikely, it isn't going to be handled.
+        N = max(len(self._flux)/600, 100)  # Smoothing factor, Higher value = more smoothing
+        normFlux = self.normFlux
+        cumsum = np.cumsum(np.insert(normFlux,0,0))
+        normSmoothFlux = (cumsum[N:] - cumsum[:-N]) / N
+        normSmoothFlux = np.append(normFlux[:int(np.floor((N-1)/2))], normSmoothFlux)
+        normSmoothFlux = np.append(normSmoothFlux, normFlux[-int(np.floor(N/2)):])
+        return normSmoothFlux
+        
 
     @property
     def var(self):
