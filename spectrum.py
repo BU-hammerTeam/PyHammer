@@ -738,15 +738,10 @@ class Spectrum(object):
         for better comparisons to templates
         """
         
-        normIndex = bisect.bisect_right(self._wavelength, 8000)
-        normFactor = self._flux[normIndex]
+        normIndexLow = bisect.bisect_right(self._wavelength, 8000)
+        normIndexHigh = bisect.bisect_right(self._wavelength, 8010)
+        normFactor = np.mean(self._flux[normIndexLow:normIndexHigh])
         self._flux = self._flux/normFactor
-        
-        #now cut off at the same place as templates
-        #StartIndex = bisect.bisect_right(self._wavelength, 3650) 
-        #StopIndex = bisect.bisect_right(self._wavelength, 10200)
-        #self._wavelength = self._wavelength[StartIndex:StopIndex]
-        #self._flux = self._flux[StartIndex:StopIndex]
         
         return 
     # Define other methods in this class which are needed to process the spectra
