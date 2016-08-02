@@ -41,6 +41,9 @@ class Eyecheck(object):
         self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex][3]))
         self.subButtons = []            # We keep track of these radio buttons so
         self.metalButtons = []          # they can be enabled and disabled if need be
+        self.smoothButton = []
+        self.qPressNum = 0
+        self.qPressTime = 0
         # Figure Components
         plt.ion()
         plt.style.use('ggplot')         # Just makes it look nice
@@ -117,14 +120,15 @@ class Eyecheck(object):
                                                      command = lambda: self.callback_metalRadioChange(True)))
             self.metalButtons[-1].grid(row = 3, column = ind+1, sticky = 'nesw')
             
-        # Define the buttons for interacting with the data (e.g., flag it, next, back):
+        # Define the buttons for interacting with the data (e.g., flag it, next, back)
+        # Store the smooth button so we can interact with it later
         ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 1, columnspan = 5, sticky = 'nesw')
         ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 5, sticky = 'nesw')
         ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 1, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 3, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Smooth', underline = 0, command = self.callback_smooth).grid(row = 6, column = 5, columnspan = 2, sticky = 'nesw')
+        self.smoothButton = ttk.Button(self.root, text = 'Smooth', underline = 0, command = self.callback_smooth).grid(row = 6, column = 5, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 7, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 9, columnspan = 2, sticky = 'nesw')
 
@@ -138,6 +142,7 @@ class Eyecheck(object):
         self.root.bind('<Right>', lambda event: self.callback_later())
         self.root.bind('<Down>', lambda event: self.callback_lower())
         self.root.bind('<Up>', lambda event: self.callback_higher())
+        self.root.bind('p', lambda event: self.callback_easter_egg())
 
         # Set the close protocol to call this class' personal exit function
         self.root.protocol('WM_DELETE_WINDOW', self._exit)
@@ -153,7 +158,7 @@ class Eyecheck(object):
         # they moved to a new plot. If the limits are different, they've zoomed
         # in and we should store the current plot limits so we can set them
         # to these limits at the end.
-        if self.full_xlim is not None:
+        if self.zoomed_xlim is not None and self.zoomed_ylim is not None:
             if (self.full_xlim == plt.gca().get_xlim() and
                 self.full_ylim == plt.gca().get_ylim()):
                 self.zoomed = False
@@ -185,7 +190,7 @@ class Eyecheck(object):
             plt.plot([],[], '-k', label = 'Template')
             templateName = 'N/A'
         # Plot the user's data
-        plt.plot(self.specObj.loglam, self.specObj.normFlux, '-r', label = 'Your Spectrum')
+        plt.plot(self.specObj.loglam, self.specObj.normFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
         spectraName = os.path.basename(self.inData[self.specIndex][0])[:-5]
 
         # Set some axis settings
@@ -212,51 +217,142 @@ class Eyecheck(object):
     #
     
     def callback_help(self):
-        helpStr = \
+        mainStr = \
             'Welcome to the main GUI for spectral typing your spectra.\n\n' \
-            'Each spectra in your spectra list file will be loaded in\n' \
-            'sequence and shown on top of the template it was matched\n' \
-            'to. From here, fine tune the spectral type by comparing\n ' \
-            'your spectrum to the templates and choose "Done" when\n' \
-            "you've landed on the correct choice. Continue through each\n" \
+            'Each spectra in your spectra list file will be loaded in ' \
+            'sequence and shown on top of the template it was matched ' \
+            'to. From here, fine tune the spectral type by comparing ' \
+            'your spectrum to the templates and choose "Next" when ' \
+            "you've landed on the correct choice. Continue through each " \
             'spectrum until finished.'
-        self.showInfoWindow('Pyhammer Help', helpStr)
+        buttonStr = \
+            'Upon opening the Eyecheck program, the first spectrum in your ' \
+            'list will be loaded and displayed on top of the template determined ' \
+            'by the spectral type guesser.\n\n' \
+            'Use the "Earlier" and "Later" buttons to change the spectrum ' \
+            'templates. Note that not all templates exist for all spectral ' \
+            'types. This program specifically disallows choosing K8 and K9 ' \
+            'spectral types as well.\n\n' \
+            'The "Higher" and "Lower" buttons change the metallicity. Again, ' \
+            'not all metallicities exist as templates.\n\n' \
+            'The "Odd" button allows you to mark a spectrum as something other ' \
+            'than a standard classification, such as a white dwarf or galaxy.\n\n' \
+            'The "Bad" button simply marks the spectrum as BAD in the output ' \
+            'file, indicating it is not able to be classified.\n\n' \
+            'The Smooth/Unsmooth button will allow you to smooth or unsmooth ' \
+            'your spectra in the event that it is noisy.\n\n' \
+            'You can cycle between your spectra using the "Back" and "Next" buttons. ' \
+            'Note that hitting "Next" will save the currently selected state as ' \
+            'the classification for that spectra.'
+        keyStr = \
+            'The following keys are mapped to specific actions.\n\n' \
+            '<Left>\tEarlier spectral type button\n' \
+            '<Right>\tLater spectral type button\n' \
+            '<Up>\tHigher metallicity button\n' \
+            '<Down>\tLower metallicity button\n' \
+            '<Enter>\tAccept spectral classification\n' \
+            '<K>\tMove to previous spectrum\n' \
+            '<O>\tMark spectrum as odd\n' \
+            '<B>\tMark spectrum as bad\n' \
+            '<S>\tSmooth/Unsmooth the spectrum\n' \
+            '<P>'
+        tipStr = \
+            'The following are a set of tips for useful features of the ' \
+            'program.\n\n' \
+            'Any zoom applied to the plot is held constant between switching ' \
+            'templates. This makes it easy to compare templates around specific ' \
+            'features or spectral lines. Hit the home button on the plot ' \
+            'to return to the original zoom level.\n\n' \
+            'The entry field on the GUI will display the currently plotted ' \
+            'spectrum. You can choose to enter one of the spectra in your ' \
+            'and hit the "Go" button to automatically jump to that spectrum.\n\n' \
+            'Some keys may need to be hit rapidly.'
+        contactStr = \
+            'Aurora Kesseli\n' \
+            'aurorak@bu.edu'
+        self.showInfoWindow('Pyhammer Help', ('Main',    mainStr),
+                                             ('Buttons', buttonStr),
+                                             ('Keys',    keyStr),
+                                             ('Tips',    tipStr),
+                                             ('Contact', contactStr))
 
     def callback_about(self):
         aboutStr = \
-            'This project was developed by a select group of graduate students\n' \
-            'at the Department of Astronomy at Boston University. The project\n' \
-            'was lead by Aurora Kesseli with development help and advice provided\n' \
-            'by Mark Veyette, Dylan Morgan, Andrew West, Brandon Harrison, and\n' \
+            'This project was developed by a select group of graduate students ' \
+            'at the Department of Astronomy at Boston University. The project ' \
+            'was lead by Aurora Kesseli with development help and advice provided ' \
+            'by Mark Veyette, Dylan Morgan, Andrew West, Brandon Harrison, and ' \
             'Dan Feldman. Contributions were further provided by Chris Theissan.\n\n' \
             'See the acompanying paper Kesseli et al. (2016) for further details.'
         self.showInfoWindow('Pyhammer About', aboutStr)
 
-    def showInfoWindow(self, title, text):
+    def showInfoWindow(self, title, *args, height = 6, font = None):
         """
         showHelpWindow(root, helpText)
 
         Description:
             This brings up a new window derived from root
-            that displays helpText and has a button to close
-            the window when user is done.
+            that displays info ext and has a button to close
+            the window when user is done. This optionally can
+            display the multiple sets of text in multiple tabs
+            so as to not have a huge, long window and to keep
+            the information more organized.
 
         Input:
-            text: This should be a string to display
+            title: The title to display on the window
+            args: This will be a set of arguments supplying what should be
+                put into the info window. If the user wants a basic window
+                with simple text, then just supply a string with that text.
+                However, the user can also specify multiple arguments where
+                each argument will be its own tab in a notebook on the window.
+                Each argument in this case should be a tuple containing first
+                the name that will appear on the tab, and second, the text to
+                appear inside the tab.
+
+        Example:
+            # This brings up a simple GUI with basic text in it.
+            self.showInfoWindow('A GUI title', 'This is an example\ninfo window.')
+
+            # This brings up a GUI with multiple tabs and different
+            # text in each tab.
+            self.showInfowWindow('A GUI title', ('Tab 1', 'Text in tab 1'),
+                                                ('Tab 2', 'Some more text'))
+            
         """
-        
+
+        def defineFrame(parent, text, height, font):
+            # Create the Text widget which displays the text
+            content = tk.Text(parent, width = 50, height = height, background = parent.cget('background'),
+                            relief = tk.FLAT, wrap = tk.WORD, font = '-size 10')
+            if font is not None: content.configure(font = '-family ' + font)
+            content.grid(row = 0, column = 0, padx = 2, pady = 2)
+            content.insert(tk.END, text)
+            # Create the Scrollbar for the Text widget
+            scrollbar = ttk.Scrollbar(parent, command = content.yview)
+            scrollbar.grid(row = 0, column = 1, sticky = 'ns')
+            # Link the Text widget to the Scrollbar
+            content.config(state = tk.DISABLED, yscrollcommand = scrollbar)
+            # Add the OK button at the bottom for quitting out
+            but = ttk.Button(parent, text = 'OK', command = infoWindow.destroy)
+            but.grid(row = 1, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
+            parent.rowconfigure(1, minsize = 40)
+
+        # Setup the window
         infoWindow = tk.Toplevel(self.root)
         infoWindow.title(title)
         infoWindow.iconbitmap(r'resources\sun.ico')
         infoWindow.resizable(False, False)
         infoWindow.geometry('+%i+%i' % (self.root.winfo_rootx(), self.root.winfo_rooty()))
         
-        label = ttk.Label(infoWindow, text = text, font = '-size 10')
-        label.grid(row = 0, column = 0, padx = 2, pady = 2)
-        but = ttk.Button(infoWindow, text = 'OK', command = infoWindow.destroy)
-        but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
-        infoWindow.rowconfigure(1, minsize = 40)
-
+        if len(args) == 1:
+            defineFrame(infoWindow, args[0], height, font)
+        else:
+            notebook = ttk.Notebook(infoWindow)
+            for a in args:
+                tab1 = tk.Frame(notebook)
+                notebook.add(tab1, text = a[0])
+                defineFrame(tab1, a[1], height, font)
+            notebook.pack()
 
     ##
     # Button and Key Press Callbacks
@@ -353,6 +449,31 @@ class Eyecheck(object):
         # as if the user changed the button themselves.
         self.callback_metalRadioChange(True)
 
+    def callback_easter_egg(self):
+        timeCalled = time.time()
+        if self.qPressTime == 0 or timeCalled - self.qPressTime > 0.75:
+            # Reset
+            self.qPressTime = timeCalled
+            self.qPressNum = 1
+            return
+        else:
+            self.qPressNum += 1
+
+        if self.qPressNum == 5:
+            chrList = [10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 46, 39, 47, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+                       32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 10, 32, 42, 32, 32, 32, 39, 42, 32, 32, 32, 32, 32, 32,
+                       32, 32, 32, 32, 47, 32, 40, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 46, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45,
+                       46, 32, 32, 10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 42, 32, 32, 32, 32, 32, 32, 32, 91, 32, 93, 95, 95, 95, 95, 95, 95, 95,
+                       95, 95, 95, 95, 124, 47, 47, 80, 121, 72, 97, 109, 109, 101, 114, 47, 47, 124, 32, 32, 10, 32, 32, 32, 32, 32, 32, 32, 32,
+                       32, 32, 32, 32, 32, 32, 42, 32, 32, 41, 32, 40, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 39, 45, 45, 45, 45, 45, 45, 45,
+                       45, 45, 45, 45, 45, 39, 32, 32, 10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 39, 45, 39, 32, 42,
+                       32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 10, 32, 32, 32, 32, 32,
+                       32, 32, 32, 32, 32, 32, 32, 32, 42, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+                       32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+                       42, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
+            self.showInfoWindow('PyHammer Easter Egg', ''.join([chr(c) for c in chrList]), height = 9, font = 'Courier')
+        
+
     ##
     # Radiobutton Selection Change Callbacks
     #
@@ -424,6 +545,10 @@ class Eyecheck(object):
         self.specState.set(self.specType.index(self.outData[self.specIndex][2][0]))
         self.subState.set(int(self.outData[self.specIndex][2][1]))
         self.metalState.set(self.metalType.index(self.outData[self.specIndex][3]))
+        # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
+        # between loading templates, not between switching spectra.
+        self.zoomed_xlim = None
+        self.zoomed_ylim = None
         # Update the plot
         self.updatePlot()
 
