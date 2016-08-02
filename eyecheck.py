@@ -41,9 +41,9 @@ class Eyecheck(object):
         self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex][3]))
         self.subButtons = []            # We keep track of these radio buttons so
         self.metalButtons = []          # they can be enabled and disabled if need be
-        self.smoothButton = []
-        self.qPressNum = 0
-        self.qPressTime = 0
+        self.smoothButton = []          # Save the smooth button info also, so it can be updated
+        self.smoothStr = tk.StringVar(value = 'Smooth')
+        self.lockSmooth = tk.BooleanVar(value = False)
         # Figure Components
         plt.ion()
         plt.style.use('ggplot')         # Just makes it look nice
@@ -53,6 +53,9 @@ class Eyecheck(object):
         self.zoomed_ylim = None
         self.zoomed = False
         self.updatePlot()               # Create the plot
+        # Other variables
+        self.pPressNum = 0
+        self.pPressTime = 0
         
         # Call the method for setting up the GUI layout
         self.setupGUI()
@@ -83,14 +86,16 @@ class Eyecheck(object):
         # Define the menubar
         menubar = tk.Menu()
 
-        fileMenu = tk.Menu(menubar, tearoff = 0)
-        fileMenu.add_command(label = 'Quit', command = self._exit)
+        optionsMenu = tk.Menu(menubar, tearoff = 1)
+        optionsMenu.add_checkbutton(label = 'Lock Smooth State', onvalue = True, offvalue = False, variable = self.lockSmooth)
+        optionsMenu.add_separator()
+        optionsMenu.add_command(label = 'Quit', command = self._exit)
 
         aboutMenu = tk.Menu(menubar, tearoff = 0)
         aboutMenu.add_command(label = 'Help', command = self.callback_help)
         aboutMenu.add_command(label = 'About', command = self.callback_about)
 
-        menubar.add_cascade(label = 'File', menu = fileMenu)
+        menubar.add_cascade(label = 'Options', menu = optionsMenu)
         menubar.add_cascade(label = 'About', menu = aboutMenu)
         self.root.config(menu = menubar)
         
@@ -121,14 +126,15 @@ class Eyecheck(object):
             self.metalButtons[-1].grid(row = 3, column = ind+1, sticky = 'nesw')
             
         # Define the buttons for interacting with the data (e.g., flag it, next, back)
-        # Store the smooth button so we can interact with it later
+        # Handle the smooth button specially so we can interact with it later.
         ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 1, columnspan = 5, sticky = 'nesw')
         ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 5, sticky = 'nesw')
         ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 1, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 3, columnspan = 2, sticky = 'nesw')
-        self.smoothButton = ttk.Button(self.root, text = 'Smooth', underline = 0, command = self.callback_smooth).grid(row = 6, column = 5, columnspan = 2, sticky = 'nesw')
+        self.smoothButton = ttk.Button(self.root, textvariable = self.smoothStr, underline = 0, command = self.callback_smooth)
+        self.smoothButton.grid(row = 6, column = 5, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 7, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 9, columnspan = 2, sticky = 'nesw')
 
@@ -190,7 +196,10 @@ class Eyecheck(object):
             plt.plot([],[], '-k', label = 'Template')
             templateName = 'N/A'
         # Plot the user's data
-        plt.plot(self.specObj.loglam, self.specObj.normFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
+        if self.smoothStr.get() == 'Smooth':
+            plt.plot(self.specObj.loglam, self.specObj.normFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
+        else:
+            plt.plot(self.specObj.loglam, self.specObj.normSmoothFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
         spectraName = os.path.basename(self.inData[self.specIndex][0])[:-5]
 
         # Set some axis settings
@@ -240,7 +249,8 @@ class Eyecheck(object):
             'The "Bad" button simply marks the spectrum as BAD in the output ' \
             'file, indicating it is not able to be classified.\n\n' \
             'The Smooth/Unsmooth button will allow you to smooth or unsmooth ' \
-            'your spectra in the event that it is noisy.\n\n' \
+            'your spectra in the event that it is noisy. This simply applies ' \
+            'a boxcar convolution across your spectrum, leaving the edges unsmoothed.\n\n' \
             'You can cycle between your spectra using the "Back" and "Next" buttons. ' \
             'Note that hitting "Next" will save the currently selected state as ' \
             'the classification for that spectra.'
@@ -266,6 +276,10 @@ class Eyecheck(object):
             'The entry field on the GUI will display the currently plotted ' \
             'spectrum. You can choose to enter one of the spectra in your ' \
             'and hit the "Go" button to automatically jump to that spectrum.\n\n' \
+            'By default, every new, loaded spectrum will be unsmoothed and ' \
+            'the smooth button state reset. You can choose to keep the smooth '\
+            'button state between loading spectrum by selecting the menu option ' \
+            '"Lock Smooth State".\n\n' \
             'Some keys may need to be hit rapidly.'
         contactStr = \
             'Aurora Kesseli\n' \
@@ -323,7 +337,7 @@ class Eyecheck(object):
         def defineFrame(parent, text, height, font):
             # Create the Text widget which displays the text
             content = tk.Text(parent, width = 50, height = height, background = parent.cget('background'),
-                            relief = tk.FLAT, wrap = tk.WORD, font = '-size 10')
+                              relief = tk.FLAT, wrap = tk.WORD, font = '-size 10')
             if font is not None: content.configure(font = '-family ' + font)
             content.grid(row = 0, column = 0, padx = 2, pady = 2)
             content.insert(tk.END, text)
@@ -375,7 +389,10 @@ class Eyecheck(object):
         self.moveToNextSpectrum()
         
     def callback_smooth(self):
-        print('Someone pushed a smooth button.')
+        # Toggle the button text
+        self.smoothButton.config(underline = (0 if self.smoothStr.get() == 'Unsmooth' else 2))
+        self.smoothStr.set('Smooth' if self.smoothStr.get() == 'Unsmooth' else 'Unsmooth')
+        self.updatePlot()
         
     def callback_next(self):
         # Store the choice for the current spectra
@@ -451,15 +468,15 @@ class Eyecheck(object):
 
     def callback_easter_egg(self):
         timeCalled = time.time()
-        if self.qPressTime == 0 or timeCalled - self.qPressTime > 0.75:
+        if self.pPressTime == 0 or timeCalled - self.pPressTime > 0.75:
             # Reset
-            self.qPressTime = timeCalled
-            self.qPressNum = 1
+            self.pPressTime = timeCalled
+            self.pPressNum = 1
             return
         else:
-            self.qPressNum += 1
+            self.pPressNum += 1
 
-        if self.qPressNum == 5:
+        if self.pPressNum == 5:
             chrList = [10, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 46, 39, 47, 32, 32, 32, 32, 32, 32, 32, 32, 32,
                        32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 10, 32, 42, 32, 32, 32, 39, 42, 32, 32, 32, 32, 32, 32,
                        32, 32, 32, 32, 47, 32, 40, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 95, 46, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45,
@@ -549,6 +566,10 @@ class Eyecheck(object):
         # between loading templates, not between switching spectra.
         self.zoomed_xlim = None
         self.zoomed_ylim = None
+        # Reset the smooth state to be unsmoothed, unless the user chose to lock the state
+        if not self.lockSmooth.get():
+            self.smoothButton.config(underline = 0)
+            self.smoothStr.set('Smooth')
         # Update the plot
         self.updatePlot()
 
