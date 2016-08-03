@@ -5,6 +5,7 @@ from astropy.io import fits
 import bisect
 import pickle
 import os
+import warnings
 
 class Spectrum(object):
     """
@@ -89,7 +90,11 @@ class Spectrum(object):
             # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
             # Need error vs variance keyword
             try:
-                spec = fits.open(filename) 
+                with warnings.catch_warnings():
+                    # Ignore a very particular warning from some versions of astropy.io.fits
+                    # that is a known bug and causes no problems with loading fits data.
+                    warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                    spec = fits.open(filename) 
             except IOError as e:
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
@@ -103,7 +108,11 @@ class Spectrum(object):
         elif (filetype == 'DR7fits'):
             # Implement reading a sdss EDR through DR8 fits file
             try:
-                spec = fits.open(filename)
+                with warnings.catch_warnings():
+                    # Ignore a very particular warning from some versions of astropy.io.fits
+                    # that is a known bug and causes no problems with loading fits data.
+                    warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                    spec = fits.open(filename)
             except IOError as e:
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
@@ -119,7 +128,11 @@ class Spectrum(object):
         elif (filetype == 'DR12fits'): 
             # Implement reading a sdss DR9 through DR12 fits file
             try:
-                spec = fits.open(filename)
+                with warnings.catch_warnings():
+                    # Ignore a very particular warning from some versions of astropy.io.fits
+                    # that is a known bug and causes no problems with loading fits data.
+                    warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                    spec = fits.open(filename)
             except IOError as e:
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
