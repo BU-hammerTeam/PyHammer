@@ -164,7 +164,7 @@ def notifyUser(useGUI, message):
 
     if not useGUI:
         # Simple case, just print the message.
-        print(message)
+        print(message, flush = True)
     else:
         # More involved case, create a tk window to
         # display the message.
@@ -240,32 +240,80 @@ def startGui(options):
         """
         entry.configure(state = ('disabled' if var.get() == 1 else 'normal'))
 
-    def goToMain(root, infile, fullPath, spectraPath, eyecheck, sncut):
+    def goToMain():
         """
         Accepts as options all the input parameters from the
         gui so they can be used to update the options dict.
-        This will then progress to calling the main function
-        with the options being passed to it.
+        First a check is done to make sure the user's input
+        is valid. If it is, his will then progress to calling
+        the main function with the options being passed to it.
         """
-        options['infile'] = infile.get() + ('.csv' if infile.get()[-4:] != '.csv' else '')
-        options['outfile'] = outfile.get() + ('.csv' if outfile.get()[-4:] != '.csv' else '')
-        options['rejectfile'] = rejectfile.get() + ('.csv' if rejectfile.get()[-4:] != '.csv' else '')
-        if (fullPath.get() == 0):
-            options['fullPath'] = False
-            options['spectraPath'] = spectraPath.get()
+        # First make sure the user hasn't input anything bad
+        
+        message = ''    # The output message in case errors are found
+        # Validate the input filename
+        if infile.get() == '':
+            message += '- A spectra list filename was not provided.\n'
         else:
-            options['fullPath'] = True
-            options['spectraPath'] = ''
+            infileExt  = infile.get()[-4:]
+            if infileExt[0] == '.' and infileExt[1:] != 'txt':
+                message += '- The input file must be a text file.\n'
+            if not os.path.isfile(infile.get()+'.txt'*(infile.get()[-4:] != '.txt')):
+                message += '- The input file cannot be found.\n'
+        # Validate the output filename
+        if outfile.get() == '':
+            message += '- An output filename was not provided.\n'
+        else:
+            outfileExt = outfile.get()[-4:]
+            if outfileExt[0] == '.' and outfileExt[1:] != 'csv':
+                message += '- The output file must be a csv file.\n'
+        # Validate the reject filename
+        if rejectfile.get() == '':
+            message += '- A reject filename was not provided.\n'
+        else:
+            rejectExt  = rejectfile.get()[-4:]
+            if rejectExt[0] == '.' and rejectExt[1:] != 'csv':
+                message += '- The reject file must be a csv file.\n'
+        if fullPath.get() == 0:
+            if spectraPath.get() == '':
+                message += '- A path for the spectra was not provided.\n'
+            else:
+                if not os.path.isdir(spectraPath):
+                    message += '- The spectra path is not a valid directory.\n'
+        # Validate the S/N cut
+        if eyecheck.get() == 0 and sncut.get() != '':
+            try:
+                if float(sncut.get()) < 0:
+                    message += '- The entered S/N cut must be greater than zero.\n'
+            except ValueError as e:
+                message += '- The entered S/N cut is not a valid number.\n'
+        # Print out the message if there is one and return
+        if message != '':
+            message = 'The following issues were found with your input.\n' \
+                      'Please correct them and try again.\n\n' + message
+            notifyUser(True, message)
+            return
+            
+        # If we've made it to this point, the user's inputs are valid. Store them
+        # in the options dict and move to the main part of the code.
+        options['infile'] = infile.get() + '.txt'*(infile.get()[-4:] != '.txt')
+        options['outfile'] = outfile.get() + '.csv'*(outfile.get()[-4:] != '.csv')
+        options['rejectfile'] = rejectfile.get() + '.csv'*(rejectfile.get()[-4:] != '.csv')
+        options['fullPath'] = (fullPath.get() == 1)
+        options['spectraPath'] = spectraPath.get() * options['fullPath']
+        # Append a slash to the end of the spectra path if there isn't one
+        if (options['spectraPath'] != '' and options['spectraPath'][-1] not in ['\\', '/']):
+                options['spectraPath'] += '\\'
         options['eyecheck'] = (eyecheck.get() == 1)
         if (options['eyecheck'] or sncut.get() == ''):
             options['sncut'] = None
         else:
-            try:
-                options['sncut'] = float(sncut.get())
-            except ValueError as e:
-                options['sncut'] = None
+            options['sncut'] = float(sncut.get())
         
         root.destroy()
+
+        print(options)
+        return
 
         main(options)
 
@@ -451,8 +499,7 @@ def startGui(options):
     
     # --- Start Button ---
     b = ttk.Button(root, text = 'START',
-                   command = lambda: goToMain(root, infile, fullPath,
-                                              spectraPath, eyecheck, sncut))
+                   command = goToMain)
     b.grid(row = 7, column = 0, columnspan = 5, sticky = 'nswe', padx = 5, pady = 5)
     root.rowconfigure(7, minsize = 40)
 
@@ -483,24 +530,48 @@ def startCmd(options):
 
     # Get the input filename if one was not provided
     if options['infile'] is None:
-        options['infile'] = input('Please enter the filename which contains the spectra list: ')
-        options['infile'] += '.csv' if options['infile'][-4:] != '.csv' else ''
+        while True:
+            options['infile'] = input('Please enter the filename which contains the spectra list: ')
+            infileExt[0] = options['infile'][-4:]
+            if infileExt[0] == '.' and infileExt[1:] != 'txt':
+                print('The input file must be a text file.', flush = True)
+                continue
+            if not os.path.isfile(options['infile']+'.txt'*(options['infile'][-4:] != '.txt')):
+                print('The input file cannot be found.', flush = True)
+                continue
+            break
+    # Append a .txt extension to the filename if none was provided
+    options['infile'] += '.txt'*(options['infile'][-4:] != '.txt')
 
     # Ask user if they want to change the results file and what to use if they do.
     if options['outfile'] == 'PyHammerResults.csv':
         ans = input('The results file is set to PyHammerResults.csv. Do you want to change it? (y/n): ')
         if ans.lower() == 'y':
-            options['outfile'] = input('Please enter the filename for the results file: ')
-            options['outfile'] += '.csv' if options['outfile'][-4:] != '.csv' else ''
+            while True:
+                options['outfile'] = input('Please enter the filename for the results file: ')
+                outfileExt[0] = options['outfile'][-4:]
+                if outfileExt[0] == '.' and outfileExt[1:] != 'csv':
+                    print('The output file must be a csv file.', flush = True)
+                    continue
+                break
+    # Append a .csv extension to the filename if none was provided
+    options['outfile'] += '.csv'*(options['outfile'][-4:] != '.csv')
 
     # Ask user if they want to change the reject file and what to use if they do.
     if options['rejectfile'] == 'RejectSpectra.csv':
         ans = input('The reject file is set to RejectSpectra.csv. Do you want to change it? (y/n): ')
         if ans.lower() == 'y':
-            options['rejectfile'] = input('Please enter the filename for the reject file: ')
-            options['rejectfile'] += '.csv' if options['rejectfile'][-4:] != '.csv' else ''    
+            while True:
+                options['rejectfile'] = input('Please enter the filename for the reject file: ')
+                rejectExt[0] = options['rejectfile'][-4:]
+                if rejectExt[0] == '.' and rejectExt[1:] != 'csv':
+                    print('The reject file must be a csv file.', flush = True)
+                    continue
+                break
+    # Append a .csv extension to the filename if none was provided
+    options['rejectfile'] += '.csv'*(options['rejectfile'][-4:] != '.csv')
 
-    # Check whehter the input file list contains the full path if
+    # Check whether the input file list contains the full path if
     # the user didn't already specify.
     if options['fullPath'] is None:
         ans = input('Does your input list give the full path to each spectrum? (y/n): ')
@@ -509,12 +580,17 @@ def startCmd(options):
             options['spectraPath'] = ''
         else:
             options['fullPath'] = False
-            options['spectraPath'] = input('Enter the necessary path for each file: ')
-            # Append a slash to the end if there isn't one
-            if (options['spectraPath'][-1] not in ['\\', '/']):
+            while True:
+                options['spectraPath'] = input('Enter the necessary path for each file: ')
+                if not os.path.isdir(options['spectraPath']):
+                    print('The path provided is not a valid directory.', flush = True)
+                    continue
+                break
+            # Append a slash to the end of the spectra path, if there isn't one
+            if options['spectraPath'][-1] not in ['\\', '/']:
                 options['spectraPath'] += '\\'
 
-    # Asks the user if they want to skip the auto-classifying and skip straight
+    # Asks the user if they want to skip the auto-classifying and go straight
     # to checking by eye, if they have not already specified.
     if (options['eyecheck'] is None):
         ans = input('Do you want to skip straight to eye-checking? (y/n): ')
@@ -531,7 +607,7 @@ def startCmd(options):
                     options['sncut'] = float(ans)
                     break
                 except Error as e:
-                    print(e.strerror, flush = True)
+                    print(str(e), flush = True)
 
     # Now that all the options have been set, let's get started
     main(options)
@@ -678,9 +754,9 @@ if (__name__ == "__main__"):
             else:
                 options['useGUI'] = True
 
-    if options['useGUI']:
+    if options['useGUI'] == True:
         startGui(options)
-    elif not options['useGUI']:
+    elif options['useGUI'] == False:
         startCmd(options)
     else:
         # If no interface is chosen, use the GUI by default
