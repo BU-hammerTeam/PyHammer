@@ -187,7 +187,11 @@ class Eyecheck(object):
 
         # Plot the template
         if templateFile is not None:
-            hdulist = fits.open(templateFile)
+            with warnings.catch_warnings():
+                # Ignore a very particular warning from some versions of astropy.io.fits
+                # that is a known bug and causes no problems with loading fits data.
+                warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                hdulist = fits.open(templateFile)
             self.templateLoglam = hdulist[1].data['loglam']
             self.templateFlux = hdulist[1].data['flux']
             #self.templateStd = hdulist[1].data['std']
