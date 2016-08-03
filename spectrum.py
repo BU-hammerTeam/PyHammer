@@ -54,7 +54,14 @@ class Spectrum(object):
     ##
     # Utility Methods
     #
-    
+    def isNumber(self, num):
+        try:
+            float(num)
+            return True
+        except ValueError:
+            return False
+            
+            
     def readFile(self, filename, filetype = 'fits'):
         """
         readFile(filename, filetype = 'fits')
@@ -135,24 +142,58 @@ class Spectrum(object):
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
-                data = tbl.read()
+                data = f.read()
                 f.close()
                 lineList = data.splitlines()
                 
                 wave = []
                 flux = []
                 var = []
-                for line in LineList:
-                    l = line.split()
-                    wave.append(l[0])
-                    flux.append(l[1])
-                    if len(l) > 2:
-                        err = l[2]
-                        var.append(err**2)
+                for line in lineList:
+                    lTemp = line.split()
+                    if self.isNumber(lTemp[0]) and self.isNumber(lTemp[1]): 
+                        wave.append(float(lTemp[0]))
+                        flux.append(float(lTemp[1]))
+                        if len(lTemp) > 2 and self.isNumber(lTemp[2]):
+                            err = float(lTemp[2])
+                            var.append(err**2)
                         
                 self._wavelength = np.asarray(wave) 
                 self._flux = np.asarray(flux) 
-                if len(ivar) > 0: 
+                if len(var) > 0: 
+                    self._var = np.asarray(var) 
+            except Exception as e:
+                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+                return False, errorMessage
+        elif (filetype == 'csv'):
+            # Implement reading a csv file
+            # Need to add in a Keyword to have the user be able to input error but assume variance
+            # Also want a vacuum keyword! 
+            try:
+                f = open(filename)
+            except IOError as e:
+                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+                return False, errorMessage
+            try:
+                data = f.read()
+                f.close()
+                lineList = data.splitlines()
+                
+                wave = []
+                flux = []
+                var = []
+                for line in lineList:
+                    lTemp = line.split(',')
+                    if self.isNumber(lTemp[0]) and self.isNumber(lTemp[1]): 
+                        wave.append(float(lTemp[0]))
+                        flux.append(float(lTemp[1]))
+                        if len(lTemp) > 2 and self.isNumber(lTemp[2]):
+                            err = float(lTemp[2])
+                            var.append(err**2)
+                      
+                self._wavelength = np.asarray(wave) 
+                self._flux = np.asarray(flux) 
+                if len(var) > 0: 
                     self._var = np.asarray(var) 
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
