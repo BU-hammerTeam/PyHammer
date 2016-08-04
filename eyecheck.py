@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
-import matplotlib
-matplotlib.use("TkAgg") 
+#import matplotlib
+#matplotlib.use("TkAgg") 
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import time
@@ -27,6 +27,17 @@ class Eyecheck(object):
             self.outData = list(reader)[1:] # Ignore the header line
         # Define User's spectrum data
         self.specIndex = 0
+        for i in range(len(self.outData)):
+            if self.outData[self.specIndex][4] != 'nan' or self.outData[self.specIndex][5] != 'nan':
+                self.specIndex += 1
+            else:
+                break
+        # The outfile already has eyecheck results, ask if they want
+        # to start where they left off
+        if self.specIndex != 0:
+            modal = ModalWindow('The output file already has eyecheck results.\nDo you want to continue where you left off?')
+            if modal.choice == 'no':
+                self.specIndex = 0
         self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
                               self.inData[self.specIndex][1]) # Ignore returned values
         # Useful information
@@ -290,11 +301,11 @@ class Eyecheck(object):
         contactStr = \
             'Aurora Kesseli\n' \
             'aurorak@bu.edu'
-        self.showInfoWindow('Pyhammer Help', ('Main',    mainStr),
-                                             ('Buttons', buttonStr),
-                                             ('Keys',    keyStr),
-                                             ('Tips',    tipStr),
-                                             ('Contact', contactStr))
+        InfoWindow(('Main',    mainStr),
+                   ('Buttons', buttonStr),
+                   ('Keys',    keyStr),
+                   ('Tips',    tipStr),
+                   ('Contact', contactStr), parent = self.root, title = 'PyHammer Help')
 
     def callback_about(self):
         aboutStr = \
@@ -304,75 +315,7 @@ class Eyecheck(object):
             'by Mark Veyette, Dylan Morgan, Andrew West, Brandon Harrison, and ' \
             'Dan Feldman. Contributions were further provided by Chris Theissan.\n\n' \
             'See the acompanying paper Kesseli et al. (2016) for further details.'
-        self.showInfoWindow('Pyhammer About', aboutStr)
-
-    def showInfoWindow(self, title, *args, height = 6, font = None):
-        """
-        showHelpWindow(root, helpText)
-
-        Description:
-            This brings up a new window derived from root
-            that displays info ext and has a button to close
-            the window when user is done. This optionally can
-            display the multiple sets of text in multiple tabs
-            so as to not have a huge, long window and to keep
-            the information more organized.
-
-        Input:
-            title: The title to display on the window
-            args: This will be a set of arguments supplying what should be
-                put into the info window. If the user wants a basic window
-                with simple text, then just supply a string with that text.
-                However, the user can also specify multiple arguments where
-                each argument will be its own tab in a notebook on the window.
-                Each argument in this case should be a tuple containing first
-                the name that will appear on the tab, and second, the text to
-                appear inside the tab.
-
-        Example:
-            # This brings up a simple GUI with basic text in it.
-            self.showInfoWindow('A GUI title', 'This is an example\ninfo window.')
-
-            # This brings up a GUI with multiple tabs and different
-            # text in each tab.
-            self.showInfowWindow('A GUI title', ('Tab 1', 'Text in tab 1'),
-                                                ('Tab 2', 'Some more text'))
-            
-        """
-
-        def defineFrame(parent, text, height, font):
-            # Create the Text widget which displays the text
-            content = tk.Text(parent, width = 50, height = height, background = parent.cget('background'),
-                              relief = tk.FLAT, wrap = tk.WORD, font = '-size 10')
-            if font is not None: content.configure(font = '-family ' + font +' -size 10')
-            content.grid(row = 0, column = 0, padx = 2, pady = 2)
-            content.insert(tk.END, text)
-            # Create the Scrollbar for the Text widget
-            scrollbar = ttk.Scrollbar(parent, command = content.yview)
-            scrollbar.grid(row = 0, column = 1, sticky = 'ns')
-            # Link the Text widget to the Scrollbar
-            content.config(state = tk.DISABLED, yscrollcommand = scrollbar)
-            # Add the OK button at the bottom for quitting out
-            but = ttk.Button(parent, text = 'OK', command = infoWindow.destroy)
-            but.grid(row = 1, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
-            parent.rowconfigure(1, minsize = 40)
-
-        # Setup the window
-        infoWindow = tk.Toplevel(self.root)
-        infoWindow.title(title)
-        infoWindow.iconbitmap(r'resources\sun.ico')
-        infoWindow.resizable(False, False)
-        infoWindow.geometry('+%i+%i' % (self.root.winfo_rootx(), self.root.winfo_rooty()))
-        
-        if len(args) == 1:
-            defineFrame(infoWindow, args[0], height, font)
-        else:
-            notebook = ttk.Notebook(infoWindow)
-            for a in args:
-                tab1 = tk.Frame(notebook)
-                notebook.add(tab1, text = a[0])
-                defineFrame(tab1, a[1], height, font)
-            notebook.pack()
+        InfoWindow(aboutStr, parent = self.root, title = 'PyHammer About')
 
     ##
     # Button and Key Press Callbacks
@@ -487,7 +430,7 @@ class Eyecheck(object):
                        (46,1),(45,12),(46,1),(32,2),(10,1),(32,9),(42,1),(32,7),(91,1),(32,1),(93,1),(95,11),(124,1),(47,2),(80,1),(121,1),(72,1),
                        (97,1),(109,2),(101,1),(114,1),(47,2),(124,1),(32,2),(10,1),(32,14),(42,1),(32,2),(41,1),(32,1),(40,1),(32,11),(39,1),(45,12),
                        (39,1),(32,2),(10,1),(32,17),(39,1),(45,1),(39,1),(32,1),(42,1),(32,25),(10,1),(32,13),(42,1),(32,33),(10,1),(32,19),(42,1),(32,27)]
-            self.showInfoWindow('PyHammer Easter Egg', ''.join([chr(c[0])*c[1] for c in chrList]), height = 9, font = 'Courier')
+            InfoWindow(''.join([chr(c[0])*c[1] for c in chrList]), parent = self.root, title = 'PyHammer Easter Egg', height = 9, font = 'Courier')
         
 
     ##
@@ -523,9 +466,9 @@ class Eyecheck(object):
 
     def moveToNextSpectrum(self):
         if self.specIndex+1 >= len(self.inData):
-            modal = ModalWindow(self.root, 'PyHammer', "You've classified all the spectra. Are you finished?")
+            modal = ModalWindow("You've classified all the spectra. Are you finished?", parent = self.root)
             self.root.wait_window(modal.modalWindow)
-            if modal.choice == 'Yes':
+            if modal.choice == 'yes':
                 self._exit()
         else:
             self.specIndex += 1
@@ -547,7 +490,7 @@ class Eyecheck(object):
             message = 'The spectrum you input could not be matched' \
                       'to one of the spectrum in your list. Check' \
                       'your input and try again.'
-            self.showInfoWindow('PyHammer Error', message)
+            InfoWindow(message, parent = self.root, title = 'PyHammer Error')
         else:
             self.getUserSpectrum()
 
@@ -607,17 +550,127 @@ class Eyecheck(object):
         return None
 
 
-class ModalWindow(object):
+class InfoWindow(object):
+    """
+    Description:
+        This brings up a new window derived from root
+        that displays info ext and has a button to close
+        the window when user is done. This optionally can
+        display the multiple sets of text in multiple tabs
+        so as to not have a huge, long window and to keep
+        the information more organized.
+        
+    Input:
+        args: This will be a set of arguments supplying what should be
+            put into the info window. If the user wants a basic window
+            with simple text, then just supply a string with that text.
+            However, the user can also specify multiple arguments where
+            each argument will be its own tab in a notebook on the window.
+            Each argument in this case should be a tuple containing first
+            the name that will appear on the tab, and second, the text to
+            appear inside the tab.
+        parent: The root window to potentially derive this one from. If
+            nothing is provided, this will create a new window from scratch.
+        title: The title to display on the window
+        height: The height of the window, in lines. More height provides a
+            taller window.
+        font: A new font family to use, if desired.
+            
+    Example:
+        # This brings up a simple GUI with basic text in it. It derives from a
+        # top level root window named 'root'
+        InfoWindow('This is an example\ninfo window.', parent = root, title = 'A GUI title')
+        
+        # This brings up a GUI with multiple tabs and different
+        # text in each tab. This is not derived from a root.
+        InfoWindow(('Tab 1', 'Text in tab 1'), ('Tab 2', 'Some more text'), title = 'Title')
+        
+    """
 
-    def __init__(self, parent, title, text):
+    def __init__(self, *args, parent = None, title = 'PyHammer', height = 6, font = None):
+        # Setup the window
+        if parent is None:
+            # If no top level was provided, define the window as the top level
+            self.infoWindow = tk.Tk()
+        else:
+            # If a top level was provided, derive a new window from it
+            self.infoWindow = tk.Toplevel(parent)
+            self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
+        self.infoWindow.title(title)
+        self.infoWindow.iconbitmap(r'resources\sun.ico')
+        self.infoWindow.resizable(False, False)
+
+        # Define the window contents
+        if len(args) == 1:
+            self.defineFrame(self.infoWindow, args[0], height, font)
+        else:
+            notebook = ttk.Notebook(self.infoWindow)
+            for a in args:
+                tab = tk.Frame(notebook)
+                notebook.add(tab, text = a[0])
+                self.defineFrame(tab, a[1], height, font)
+            notebook.pack()
+        if parent is None: self.infoWindow.mainloop()
+
+    def defineFrame(self, parent, text, height, font):
+        # Create the Text widget which displays the text
+        content = tk.Text(parent, width = 50, height = height, background = parent.cget('background'),
+                          relief = tk.FLAT, wrap = tk.WORD, font = '-size 10')
+        if font is not None: content.configure(font = '-family ' + font +' -size 10')
+        content.grid(row = 0, column = 0, padx = 2, pady = 2)
+        content.insert(tk.END, text)
+        # Create the Scrollbar for the Text widget
+        scrollbar = ttk.Scrollbar(parent, command = content.yview)
+        scrollbar.grid(row = 0, column = 1, sticky = 'ns')
+        # Link the Text widget to the Scrollbar
+        content.config(state = tk.DISABLED, yscrollcommand = scrollbar)
+        # Add the OK button at the bottom for quitting out
+        but = ttk.Button(parent, text = 'OK', command = self.infoWindow.destroy)
+        but.grid(row = 1, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
+        parent.rowconfigure(1, minsize = 40)
+
+
+class ModalWindow(object):
+    """
+    Description:
+        This brings up a new window, potentially derived
+        from a top level root window that displays a question
+        and asks the user to choose yes or no. At the termination
+        of this window, one can look at the attribute choice
+        to determine which button was pressed by the user.
+
+    Input:
+        text: The question to display to the user.
+        parent: The root window to potentially derive this one from. If
+            nothing is provided, this will create a new window from scratch.
+        title: The title to display on the window
+
+    Example:
+        To properly use this window, you must create a new object and
+        assign it to a variable. This will bring up the window. You
+        must then wait for the window to be closed before moving on in
+        your code. This can be acheived in a manner similar to the following
+
+        modal = ModalWindow('Is the answer to this question no?', parent = self.root)
+        self.root.wait_window(modal.modalWindow)
+
+        After this, one can inspect modal.choice.
+    """
+
+    def __init__(self, text, parent = None, title = 'PyHammer'):
         self.choice = None
 
         # Setup the window
-        self.modalWindow = tk.Toplevel(parent)
+        if parent is None:
+            # If no top level was provided, define the window as the top level
+            self.modalWindow = tk.Tk()
+        else:
+            # If a top level was provided, derive a new window from it
+            self.modalWindow = tk.Toplevel(parent)
+            self.modalWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.modalWindow.title(title)
         self.modalWindow.iconbitmap(r'resources\sun.ico')
         self.modalWindow.resizable(False, False)
-        self.modalWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
 
         # Setup the widgets in the window
         label = ttk.Label(self.modalWindow, text = text, font = '-size 10')
@@ -631,12 +684,14 @@ class ModalWindow(object):
 
         self.modalWindow.rowconfigure(1, minsize = 40)
 
+        if parent is None: self.modalWindow.mainloop()
+
     def choiceYes(self):
-        self.choice = 'Yes'
+        self.choice = 'yes'
         self.modalWindow.destroy()
 
     def choiceNo(self):
-        self.choice = 'No'
+        self.choice = 'no'
         self.modalWindow.destroy()
 
 
@@ -686,4 +741,3 @@ class OddWindow(object):
             else:
                 self.name = self.customName.get()
         self.oddWindow.destroy()
-        
