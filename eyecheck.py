@@ -544,8 +544,8 @@ class Eyecheck(object):
                 spectrumFound = True
                 break
         if not spectrumFound:
-            message = 'The spectrum you input could not be matched\n' \
-                      'to one of the spectrum in your list. Check\n' \
+            message = 'The spectrum you input could not be matched' \
+                      'to one of the spectrum in your list. Check' \
                       'your input and try again.'
             self.showInfoWindow('PyHammer Error', message)
         else:
