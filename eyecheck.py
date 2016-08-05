@@ -177,7 +177,7 @@ class Eyecheck(object):
         # they moved to a new plot. If the limits are different, they've zoomed
         # in and we should store the current plot limits so we can set them
         # to these limits at the end.
-        if self.zoomed_xlim is not None and self.zoomed_ylim is not None:
+        if self.full_xlim is not None and self.full_ylim is not None:
             if (self.full_xlim == plt.gca().get_xlim() and
                 self.full_ylim == plt.gca().get_ylim()):
                 self.zoomed = False
@@ -186,55 +186,83 @@ class Eyecheck(object):
                 self.zoomed_xlim = plt.gca().get_xlim()
                 self.zoomed_ylim = plt.gca().get_ylim()
         
-        # Do some initial plotting tasks
+
+        # *** Define Initial Figure ***
+        
         fig = plt.figure('Pyhammer Spectrum Matching', figsize = (12,6))
         plt.cla()   # Clear the plot
         if plt.get_current_fig_manager().toolbar._active != 'ZOOM':
             # Make it so the zoom button is selected by default
             plt.get_current_fig_manager().toolbar.zoom()
-            
+
+        # *** Plot the template ***
+
         # Determine which, if any, template file to load
         templateFile = self.getTemplateFile()
-
-        # Plot the template
+        
         if templateFile is not None:
+            # Load in template data
             with warnings.catch_warnings():
                 # Ignore a very particular warning from some versions of astropy.io.fits
                 # that is a known bug and causes no problems with loading fits data.
                 warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
                 hdulist = fits.open(templateFile)
-            self.templateLoglam = hdulist[1].data['loglam']
-            self.templateFlux = hdulist[1].data['flux']
-            #self.templateStd = hdulist[1].data['std']
+            templateLoglam = hdulist[1].data['loglam'][::10]
+            templateFlux = hdulist[1].data['flux'][::10]
+            #templateStd = hdulist[1].data['std'][::10]
 
-            plt.plot(self.templateLoglam[::10], self.templateFlux[::10], '-k', label = 'Template')
+            # Plot template error bars and spectrum line
+            plt.fill_between(templateLoglam, templateFlux+0.2, templateFlux-0.2, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
+            plt.plot(templateLoglam, templateFlux, '-k', label = 'Template')
             templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
         else:
-            plt.plot([],[], '-k', label = 'Template')
+            # No template exists, plot nothing
             templateName = 'N/A'
-        # Plot the user's data
+            
+        # *** Plot the user's data ***
+        
         if self.smoothStr.get() == 'Smooth':
             plt.plot(self.specObj.loglam, self.specObj.normFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
         else:
             plt.plot(self.specObj.loglam, self.specObj.normSmoothFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
         spectraName = os.path.basename(self.inData[self.specIndex][0])[:-5]
 
-        # Set some axis settings
+        # *** Set Plot Labels ***
+        
         plt.xlabel(r'$\mathrm{log_{10}(wavelength / \mathring{A})}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
         plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName + '}$', fontsize = 16)
-        plt.xlim([3.5,4.05])
-        plt.legend(loc = 0).get_frame().set_alpha(0)
+
+        # *** Set Legend Settings ***
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+        labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
+        leg = plt.legend(handles, labels, loc = 0)
+        leg.get_frame().set_alpha(0)
+        # Set legend text colors to match plot line colors
+        if templateFile is not None:
+            plt.setp(leg.get_texts()[1], color = 'b', alpha = 0.5)  # alpha is higher, to make more readable
+            plt.setp(leg.get_texts()[2], color = 'r', alpha = 0.6)
+        else:
+            plt.setp(leg.get_texts()[0], color = 'r', alpha = 0.6)
+
+        # *** Set Plot Spacing ***
+        
         plt.subplots_adjust(left = 0.075, right = 0.975, top = 0.9, bottom = 0.15)
-        # Set the plot limits
-        self.full_xlim = plt.gca().get_xlim()
-        self.full_ylim = plt.gca().get_ylim()
+        
+        # *** Set Plot Limits ***
+
+        plt.xlim([3.5,4.05])                    # Set x axis limits to constant value
+        self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
+        self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
         fig.canvas.toolbar.push_current()       # Push the current full zoom level to the stack
         if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
             plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
             plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
             fig.canvas.toolbar.push_current()   # Push the current, zoomed level to the stack so it shows up first
 
+        # *** Draw the Plot ***
+    
         plt.draw()
         
 
@@ -506,8 +534,9 @@ class Eyecheck(object):
         self.metalState.set(self.metalType.index(self.outData[self.specIndex][3]))
         # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
         # between loading templates, not between switching spectra.
-        self.zoomed_xlim = None
-        self.zoomed_ylim = None
+        self.full_xlim = None
+        self.full_ylim = None
+        self.zoomed = False
         # Reset the smooth state to be unsmoothed, unless the user chose to lock the state
         if not self.lockSmooth.get():
             self.smoothButton.config(underline = 0)
