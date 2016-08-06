@@ -13,41 +13,59 @@ import pdb
 class Eyecheck(object):
 
     def __init__(self, specObj, options):
-        # Store input variables
-        self.specObj = specObj
-        self.options = options
-        # Open the infile and read it into a list
+        
+        # *** Store input variables ***
+        
+        self.specObj = specObj  # The Spectrum object created in the pyhammer script
+        self.options = options  # The list of options input by the user in the pyhammer script
+
+        # *** Define useful information ***
+        
+        self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
+        self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
+        self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
+
+        # *** Read the infile ***
+        
         self.inData = []
         with open(options['infile'], 'r') as file:
             for line in file:
                 self.inData.append(line.strip().rsplit(' ',1))
-        # Open the outfile and read it into a list
+
+        # *** Read the outfile ***
+        
         with open(options['outfile'], 'r') as file:
             reader = csv.reader(file)
             self.outData = list(reader)[1:] # Ignore the header line
-        # Define User's spectrum data
-        self.specIndex = 0
+
+        # *** Define user's spectrum ***
+        
+        self.specIndex = 0      # The index in the inData where we should start from
+        # Loop through the outData and see if some classification has occured already
         for i in range(len(self.outData)):
+            # If classification by the user has already occured for the
+            # current spectrum, then move to the next one.
             if self.outData[self.specIndex][4] != 'nan' or self.outData[self.specIndex][5] != 'nan':
                 self.specIndex += 1
             else:
+                # Break out if we can get to a spectrum that hasn't been
+                # classified by the user yet
                 break
-        # The outfile already has eyecheck results, ask if they want
+        # If the outfile already has eyecheck results, ask if they want
         # to start where they left off
         if self.specIndex != 0:
             modal = ModalWindow('The output file already has eyecheck results.\nDo you want to continue where you left off?')
-            if modal.choice == 'no':
+            if modal.choice == 'no' or modal.choice == None:
                 self.specIndex = 0
+        # Now use the Spectrum object to read in the user's appropriate starting spectrum
         self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
                               self.inData[self.specIndex][1]) # Ignore returned values
-        # Useful information
-        self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
-        self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-        self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
-        self.templates = ['O5', 'O7', 'O8', 'O9', 'B0', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B8', 'B9', 'A0', 'A1', 'A3-1.0', 'A3-0.5', 'A3+0.0', 'A3+0.5', 'A4-1.0', 'A6-2.0', 'A6-1.5', 'A6-1.0', 'A6-0.5', 'A6+0.0', 'A6+0.5', 'A7-2.0', 'A7-1.5', 'A7-1.0', 'A7-0.5', 'A7+0.0', 'A7+0.5', 'A8-1.5', 'A8-1.0', 'A8-0.5', 'A8+0.5', 'A9-2.0', 'A9-1.5', 'A9-1.0', 'A9-0.5', 'A9+0.0', 'A9+0.5', 'F0-2.0', 'F0-1.5', 'F0-1.0', 'F0+0.0', 'F0+0.5', 'F1-2.0', 'F1-1.5', 'F1-1.0', 'F1-0.5', 'F2-2.0', 'F2-1.5', 'F2-1.0', 'F2-0.5', 'F2+0.0', 'F3-2.0', 'F3-1.5', 'F3-1.0', 'F3-0.5', 'F3+0.0', 'F4-2.0', 'F4-1.5', 'F4-1.0', 'F4-0.5', 'F4+0.0', 'F5-2.0', 'F5-1.5', 'F5-1.0', 'F5-0.5', 'F6-2.0', 'F6-1.5', 'F6-1.0', 'F6-0.5', 'F6+0.0', 'F7-2.0', 'F7-1.5', 'F7-1.0', 'F7-0.5', 'F7+0.0', 'F8-2.0', 'F8-1.5', 'F8-1.0', 'F8-0.5', 'F8+0.0', 'F9-2.0', 'F9-1.5', 'F9-1.0', 'F9-0.5', 'F9+0.0', 'G0-2.0', 'G0-1.5', 'G0-1.0', 'G0-0.5', 'G0+0.0', 'G1-2.0', 'G1-1.5', 'G1-1.0', 'G1-0.5', 'G1+0.0', 'G2-2.0', 'G2-1.0', 'G2-0.5', 'G2+0.0', 'G3-2.0', 'G3-1.5', 'G3-1.0', 'G3-0.5', 'G3+0.0', 'G4-2.0', 'G4-1.5', 'G4-1.0', 'G4-0.5', 'G4+0.0', 'G5-2.0', 'G5-1.5', 'G5-1.0', 'G5-0.5', 'G5+0.0', 'G5+0.5', 'G6-2.0', 'G6-1.5', 'G6-1.0', 'G6-0.5', 'G6+0.0', 'G6+0.5', 'G7-1.0', 'G7-0.5', 'G7+0.0', 'G7+0.5', 'G8-2.0', 'G8-1.5', 'G8-1.0', 'G8-0.5', 'G8+0.0', 'G8+0.5', 'G9-2.0', 'G9-1.5', 'G9-1.0', 'G9-0.5', 'G9+0.0', 'G9+0.5', 'K0-1.0', 'K0-0.5', 'K0+0.0', 'K1-2.0', 'K1-1.0', 'K1-0.5', 'K1+0.0', 'K1+0.5', 'K2-1.5', 'K2-1.0', 'K2-0.5', 'K2+0.0', 'K2+0.5', 'K3-2.0', 'K3-1.5', 'K3-1.0', 'K3-0.5', 'K3+0.0', 'K3+0.5', 'K4-1.0', 'K4-0.5', 'K4+0.0', 'K4+0.5', 'K5-2.0', 'K5-1.0', 'K5-0.5', 'K5+0.0', 'K5+0.5', 'K7-1.0', 'K7-0.5', 'K7+0.0', 'K7+0.5', 'K7+1.0', 'M0-0.5', 'M0+0.0', 'M0+0.5', 'M0+1.0', 'M1-1.0', 'M1-0.5', 'M1+0.0', 'M1+0.5', 'M2-1.0', 'M2-0.5', 'M2+0.0', 'M2+0.5', 'M3-1.0', 'M3-0.5', 'M3+0.0', 'M3+0.5', 'M4+0.0', 'M4+0.5', 'M5-0.5', 'M5+0.0', 'M5+0.5', 'M6-0.5', 'M6+0.0', 'M6+0.5', 'M7-0.5', 'M7+0.0', 'M7+0.5', 'M8-0.5', 'M8+0.0', 'M9', 'L0', 'L1', 'L2', 'L3', 'L6']
-        self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
-        # GUI Components
-        self.root = tk.Tk()
+        
+        # *** Define GUI variables ***
+        
+        self.root = tk.Tk()             # Create the root GUI window
+        # Define String and Int variables to keep track of widget states
         self.spectrumEntry = tk.StringVar(value = os.path.basename(self.inData[self.specIndex][0]))
         self.specState  = tk.IntVar(value = self.specType.index(self.outData[self.specIndex][2][0]))
         self.subState   = tk.IntVar(value = int(self.outData[self.specIndex][2][1]))
@@ -57,26 +75,40 @@ class Eyecheck(object):
         self.smoothButton = []          # Save the smooth button info also, so it can be updated
         self.smoothStr = tk.StringVar(value = 'Smooth')
         self.lockSmooth = tk.BooleanVar(value = False)
-        # Figure Components
-        plt.ion()
-        plt.style.use('ggplot')         # Just makes it look nice
-        self.full_xlim = None           # Store these to keep track of zooming
-        self.full_ylim = None
-        self.zoomed_xlim = None
-        self.zoomed_ylim = None
-        self.zoomed = False
+
+        # *** Define figure variables ***
+        
+        plt.ion()                       # Turn on plot interactivity
+        plt.style.use('ggplot')         # Makes the plot look nice
+        self.full_xlim = None           # +--
+        self.full_ylim = None           # | Store these to keep track
+        self.zoomed_xlim = None         # | of zoom states on the plot
+        self.zoomed_ylim = None         # |
+        self.zoomed = False             # +--
         self.updatePlot()               # Create the plot
         # Other variables
         self.pPressNum = 0
         self.pPressTime = 0
-        
-        # Call the method for setting up the GUI layout
-        self.setupGUI()
 
-        # Run the GUI
-        self.root.mainloop()
+        # *** Initialize the GUI
+        
+        self.setupGUI()                 # Call the method for setting up the GUI layout        
+        self.root.mainloop()            # Run the GUI
+        
+    ###
+    # Setup/Close Methods
+    #
 
     def _exit(self):
+        """
+        Description:
+            This method is called anytime the user wants to quit the program.
+            It will be called if the "X" out of the GUI window, if they choose
+            quit from the menu, or if they finish classifying and say they're
+            done. This function will first write the self.outData variable
+            contents to their outfile, then clean up the GUI and matplotlib
+            window.
+        """
         # Write the outData to the output file
         with open(options['outfile'], 'w') as outfile:
             outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed Metallicity,User Spectral Type,User Metallicity\n')
@@ -90,56 +122,77 @@ class Eyecheck(object):
         plt.close('all')
 
     def setupGUI(self):
-        # Set the root window properties
+        """
+        Description:
+            This handles setting up all the widgets on the main GUI window and
+            defining the initial state of the GUI. 
+        """
+        
+        # *** Set root window properties ***
+        
         self.root.title('PyHammer Eyecheck')
         self.root.iconbitmap(r'resources\sun.ico')
         self.root.resizable(False, False)
         self.root.geometry('+100+100')
+        # Set the close protocol to call this class' personal exit function
+        self.root.protocol('WM_DELETE_WINDOW', self._exit)
 
-        # Define the menubar
-        menubar = tk.Menu()
+        # *** Define menubar ***
+        
+        menubar = tk.Menu() # Create the overall menubar
 
+        # Define the options menu
         optionsMenu = tk.Menu(menubar, tearoff = 1)
         optionsMenu.add_checkbutton(label = 'Lock Smooth State', onvalue = True, offvalue = False, variable = self.lockSmooth)
         optionsMenu.add_separator()
         optionsMenu.add_command(label = 'Quit', command = self._exit)
 
+        # Define the about menu
         aboutMenu = tk.Menu(menubar, tearoff = 0)
         aboutMenu.add_command(label = 'Help', command = self.callback_help)
         aboutMenu.add_command(label = 'About', command = self.callback_about)
 
+        # Put all menus together
         menubar.add_cascade(label = 'Options', menu = optionsMenu)
         menubar.add_cascade(label = 'About', menu = aboutMenu)
         self.root.config(menu = menubar)
         
-        # Define the labels in the GUI
+        # *** Define labels ***
+        
         for i, name in enumerate(['Spectra', 'Type', 'Subtype', 'Metallicity', 'Change Type', 'Change Metallicity', 'Options']):
             ttk.Label(self.root, text = name).grid(row = i, column = 0, stick = 'e',
                                                    pady = (10*(i==4),10*(i==0)))
 
-        # Define the entry box and relevant widgets for indicating the spectrum
+        # *** Define entry box ***
+
+        # This defines the entry box and relevant widgets for indicating the spectrum
         ttk.Entry(self.root, textvariable = self.spectrumEntry).grid(row = 0, column = 1, columnspan = 9, pady = (0,10), sticky = 'nesw')
         ttk.Button(self.root, text = 'Go', width = 3, command = self.jumpToSpectrum).grid(row = 0, column = 10, pady = (0,10))
 
-        # Define the radio buttons
+        # *** Define radio buttons ***
+        
         # First the radio buttons for the spectral type
         for ind, spec in enumerate(self.specType):
             temp = ttk.Radiobutton(self.root, text = spec, variable = self.specState, value = ind,
                                    command = lambda: self.callback_specRadioChange(True))
             temp.grid(row = 1, column = ind+1, sticky = 'nesw')
+            
         # Now the sub spectral type radio buttons
         for ind, sub in enumerate(self.subType):
             self.subButtons.append(ttk.Radiobutton(self.root, text = sub, variable = self.subState, value = ind,
                                                    command = lambda: self.callback_subRadioChange(True)))
             self.subButtons[-1].grid(row = 2, column = ind+1, sticky = 'nesw')
+            
         # Finally the radio buttons for the metallicities
         for ind, metal in enumerate(self.metalType):
             self.metalButtons.append(ttk.Radiobutton(self.root, text = metal, variable = self.metalState, value = ind,
                                                      command = lambda: self.callback_metalRadioChange(True)))
             self.metalButtons[-1].grid(row = 3, column = ind+1, sticky = 'nesw')
             
-        # Define the buttons for interacting with the data (e.g., flag it, next, back)
-        # Handle the smooth button specially so we can interact with it later.
+        # *** Define buttons ***
+        
+        # These will be the buttons for interacting with the data (e.g., smooth it, next, back)
+        # We must handle the smooth button specially so we can interact with it later.
         ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
         ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 1, columnspan = 5, sticky = 'nesw')
@@ -151,7 +204,8 @@ class Eyecheck(object):
         ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 7, columnspan = 2, sticky = 'nesw')
         ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 9, columnspan = 2, sticky = 'nesw')
 
-        # Set the key bindings
+        # *** Set key bindings ***
+        
         self.root.bind('o', lambda event: self.callback_odd())
         self.root.bind('b', lambda event: self.callback_bad())
         self.root.bind('s', lambda event: self.callback_smooth())
@@ -161,10 +215,7 @@ class Eyecheck(object):
         self.root.bind('<Right>', lambda event: self.callback_later())
         self.root.bind('<Down>', lambda event: self.callback_lower())
         self.root.bind('<Up>', lambda event: self.callback_higher())
-        self.root.bind('p', lambda event: self.callback_easter_egg())
-
-        # Set the close protocol to call this class' personal exit function
-        self.root.protocol('WM_DELETE_WINDOW', self._exit)
+        self.root.bind('p', lambda event: self.callback_hammer_time())
 
         # Force the GUI to appear as a top level window, on top of all other windows
         self.root.lift()
@@ -172,6 +223,13 @@ class Eyecheck(object):
         self.root.after_idle(self.root.call, 'wm', 'attributes', '.', '-topmost', False)
 
     def updatePlot(self):
+        """
+        Description:
+            This is the method which handles all the plotting on the matplotlib
+            window. It will plot the template (if it exists), the user's spectrum
+            and do things like control the zoom level on the plot.
+        """
+        
         # Before updating the plot, check the current axis limits. If they're
         # set to the full limit values, then the plot wasn't zoomed in on when
         # they moved to a new plot. If the limits are different, they've zoomed
@@ -207,13 +265,13 @@ class Eyecheck(object):
                 # that is a known bug and causes no problems with loading fits data.
                 warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
                 hdulist = fits.open(templateFile)
-            templateLoglam = hdulist[1].data['loglam'][::10]
-            templateFlux = hdulist[1].data['flux'][::10]
-            #templateStd = hdulist[1].data['std'][::10]
+            loglam = hdulist[1].data['loglam'][::10]
+            flux = hdulist[1].data['flux'][::10]
+            std = hdulist[1].data['std'][::10]
 
             # Plot template error bars and spectrum line
-            plt.fill_between(templateLoglam, templateFlux+0.2, templateFlux-0.2, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
-            plt.plot(templateLoglam, templateFlux, '-k', label = 'Template')
+            plt.fill_between(loglam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
+            plt.plot(loglam, flux, '-k', label = 'Template')
             templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
         else:
             # No template exists, plot nothing
@@ -253,13 +311,14 @@ class Eyecheck(object):
         # *** Set Plot Limits ***
 
         plt.xlim([3.5,4.05])                    # Set x axis limits to constant value
+        fig.canvas.toolbar.update()             # Clears out view stack
         self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
         self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
-        fig.canvas.toolbar.push_current()       # Push the current full zoom level to the stack
+        fig.canvas.toolbar.push_current()       # Push the current full zoom level to the view stack
         if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
             plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
             plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
-            fig.canvas.toolbar.push_current()   # Push the current, zoomed level to the stack so it shows up first
+            fig.canvas.toolbar.push_current()   # Push the current, zoomed level to the view stack so it shows up first
 
         # *** Draw the Plot ***
     
@@ -350,9 +409,10 @@ class Eyecheck(object):
     #
     
     def callback_odd(self):
-        # Store the custom name designation from the user
+        # Open an OddWindow object and wait for a user response
         choice = OddWindow(self.root, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'])
         self.root.wait_window(choice.oddWindow)
+        # Store the user's response in the outData
         self.outData[self.specIndex][4] = choice.name
         self.outData[self.specIndex][5] = 'nan'
         # Move to the next spectra
@@ -369,6 +429,7 @@ class Eyecheck(object):
         # Toggle the button text
         self.smoothButton.config(underline = (0 if self.smoothStr.get() == 'Unsmooth' else 2))
         self.smoothStr.set('Smooth' if self.smoothStr.get() == 'Unsmooth' else 'Unsmooth')
+        # Update the plot now
         self.updatePlot()
         
     def callback_next(self):
@@ -443,7 +504,7 @@ class Eyecheck(object):
         # as if the user changed the button themselves.
         self.callback_metalRadioChange(True)
 
-    def callback_easter_egg(self):
+    def callback_hammer_time(self):
         timeCalled = time.time()
         if self.pPressTime == 0 or timeCalled - self.pPressTime > 0.75:
             # Reset
@@ -458,7 +519,7 @@ class Eyecheck(object):
                        (46,1),(45,12),(46,1),(32,2),(10,1),(32,9),(42,1),(32,7),(91,1),(32,1),(93,1),(95,11),(124,1),(47,2),(80,1),(121,1),(72,1),
                        (97,1),(109,2),(101,1),(114,1),(47,2),(124,1),(32,2),(10,1),(32,14),(42,1),(32,2),(41,1),(32,1),(40,1),(32,11),(39,1),(45,12),
                        (39,1),(32,2),(10,1),(32,17),(39,1),(45,1),(39,1),(32,1),(42,1),(32,25),(10,1),(32,13),(42,1),(32,33),(10,1),(32,19),(42,1),(32,27)]
-            InfoWindow(''.join([chr(c[0])*c[1] for c in chrList]), parent = self.root, title = 'PyHammer Easter Egg', height = 9, font = 'Courier')
+            InfoWindow(''.join([chr(c[0])*c[1] for c in chrList]), parent = self.root, height = 9, font = 'Courier')
         
 
     ##
@@ -493,6 +554,14 @@ class Eyecheck(object):
     #
 
     def moveToNextSpectrum(self):
+        """
+        Description:
+            This method handles moving to the next spectrum. All it really
+            does is determines if the user is at the end of the list of
+            spectrum, and, if so, asks if they're done. If they aren't at
+            the end, it moves to the next spectrum (by incrementing self.specIndex)
+            and calling self.getUserSpectrum.
+        """
         if self.specIndex+1 >= len(self.inData):
             modal = ModalWindow("You've classified all the spectra. Are you finished?", parent = self.root)
             self.root.wait_window(modal.modalWindow)
@@ -503,11 +572,25 @@ class Eyecheck(object):
             self.getUserSpectrum()
 
     def moveToPreviousSpectrum(self):
+        """
+        Description:
+            This method handles moving to the previous spectrum. It will simply
+            decrement the self.specIndex variable if they're not already on
+            the first index and call self.getUserSpectrum.
+        """
         if self.specIndex > 0:
             self.specIndex -= 1
             self.getUserSpectrum()
 
     def jumpToSpectrum(self):
+        """
+        Description:
+            This method handles moving to a different spectrum in the list which
+            may or may not be before or after the current spectrum. This is handled
+            by looking for a spectrum in the inData list which matches the spectrum
+            in the Entry field in the GUI. If a match is found, that spectrum is
+            loaded, otherwise they're informed that spectrum could not be found.
+        """
         spectrumFound = False
         for i, spectrum in enumerate(self.inData):
             if os.path.basename(self.spectrumEntry.get()) == os.path.basename(spectrum[0]):
@@ -523,12 +606,17 @@ class Eyecheck(object):
             self.getUserSpectrum()
 
     def getUserSpectrum(self):
-        # Read in the next spectrum file
+        """
+        Description:
+            This handles loading a new spectrum based on the self.specIndex variable
+            and updates the GUI and plot window accordingly.
+        """
+        # Read in the next spectrum file indicated by self.specIndex
         self.specObj.readFile(options['spectraPath']+self.inData[self.specIndex][0],
                               self.inData[self.specIndex][1]) # Ignore returned values from readFile
-        # Set the spectrum entry field
+        # Set the spectrum entry field to the new spectrum name
         self.spectrumEntry.set(os.path.basename(self.inData[self.specIndex][0]))
-        # Set the radio button selections
+        # Set the radio button selections to the new spectrum's guessed classifcation
         self.specState.set(self.specType.index(self.outData[self.specIndex][2][0]))
         self.subState.set(int(self.outData[self.specIndex][2][1]))
         self.metalState.set(self.metalType.index(self.outData[self.specIndex][3]))
@@ -545,6 +633,16 @@ class Eyecheck(object):
         self.updatePlot()
 
     def getTemplateFile(self, specState = None, subState = None, metalState = None):
+        """
+        Description:
+            This will determine the filename for the template which matches the
+            current template selection. Either that selection will come from
+            whichever radio buttons are selected, or else from input to this
+            function. This will search for filenames matching a specific format.
+            The first attempt will be to look for a filename of the format
+            "XX.fits". The next format it will try (if the first doesn't exist)
+            is "XX_+X.X.fits". After that it will try "XX_+X.X_Dwarf.fits".
+        """
         # If values weren't passed in for certain states, assume we should
         # use what is chosen on the GUI
         if specState is None: specState = self.specState.get()
@@ -606,12 +704,14 @@ class InfoWindow(object):
         font: A new font family to use, if desired.
             
     Example:
-        # This brings up a simple GUI with basic text in it. It derives from a
-        # top level root window named 'root'
+        This brings up a simple GUI with basic text in it. It derives from a
+        top level root window named 'root'
+
         InfoWindow('This is an example\ninfo window.', parent = root, title = 'A GUI title')
         
-        # This brings up a GUI with multiple tabs and different
-        # text in each tab. This is not derived from a root.
+        This brings up a GUI with multiple tabs and different
+        text in each tab. This is not derived from a root.
+        
         InfoWindow(('Tab 1', 'Text in tab 1'), ('Tab 2', 'Some more text'), title = 'Title')
         
     """
@@ -624,6 +724,7 @@ class InfoWindow(object):
         else:
             # If a top level was provided, derive a new window from it
             self.infoWindow = tk.Toplevel(parent)
+            self.infoWindow.grab_set()  # Make the root window non-interactive
             self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.infoWindow.title(title)
         self.infoWindow.iconbitmap(r'resources\sun.ico')
@@ -666,24 +767,31 @@ class ModalWindow(object):
         from a top level root window that displays a question
         and asks the user to choose yes or no. At the termination
         of this window, one can look at the attribute choice
-        to determine which button was pressed by the user.
+        to determine which button was pressed by the user. If the
+        user X's out without choosing an option, then the choice
+        will be equal to None.
 
     Input:
         text: The question to display to the user.
         parent: The root window to potentially derive this one from. If
             nothing is provided, this will create a new window from scratch.
-        title: The title to display on the window
+        title: The title to display on the window. Default is "PyHammer".
 
     Example:
         To properly use this window, you must create a new object and
         assign it to a variable. This will bring up the window. You
         must then wait for the window to be closed before moving on in
-        your code. This can be acheived in a manner similar to the following
+        your code. This can be acheived in a manner similar to the following:
 
         modal = ModalWindow('Is the answer to this question no?', parent = self.root)
         self.root.wait_window(modal.modalWindow)
 
         After this, one can inspect modal.choice.
+
+        If you are not deriving this window from a top level window, then
+        you do not need the wait_window call and you can simply use:
+
+        modal = ModalWindow('Is the answer to this question no?')
     """
 
     def __init__(self, text, parent = None, title = 'PyHammer'):
@@ -696,6 +804,7 @@ class ModalWindow(object):
         else:
             # If a top level was provided, derive a new window from it
             self.modalWindow = tk.Toplevel(parent)
+            self.modalWindow.grab_set() # Make the root window non-interactive
             self.modalWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.modalWindow.title(title)
         self.modalWindow.iconbitmap(r'resources\sun.ico')
@@ -725,6 +834,15 @@ class ModalWindow(object):
 
 
 class OddWindow(object):
+    """
+    Description:
+        This brings up a window that allows the user to choose between
+        a list of radio button choices, or else enter their own choice
+        in an Entry field. Once their choice is made, they hit okay.
+        The specific purpose of this window is to allow the user to
+        mark their spectra as "odd" in that it doesn't fit into the
+        standard classifications and should be recorded as some other choice.
+    """
 
     def __init__(self, parent, choices):
         self.name = None
@@ -735,36 +853,56 @@ class OddWindow(object):
 
         # Setup the window
         self.oddWindow = tk.Toplevel(parent)
+        self.oddWindow.grab_set()   # Make the root window non-interactive
         self.oddWindow.title('')
         self.oddWindow.iconbitmap(r'resources\sun.ico')
         self.oddWindow.resizable(False, False)
         self.oddWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
+        self.oddWindow.protocol('WM_DELETE_WINDOW', self._exit)
 
         # Setup the widgets in the window
-        tk.Label(self.oddWindow, textvariable = self.label, justify = 'center').grid(row = 0, column = 0)
+        tk.Label(self.oddWindow, textvariable = self.label, justify = 'center').grid(row = 0, column = 0, columnspan = 2)
         
+        # Create the radio buttons for the input choices
         for i, c in enumerate(choices):
-            temp = ttk.Radiobutton(self.oddWindow, text = c, variable = self.radioChoice, value = i)
-            temp.grid(row = i+1, column = 0, padx = 10, sticky = 'nesw')
+            temp = ttk.Radiobutton(self.oddWindow, text = '', variable = self.radioChoice, value = i)
+            temp.grid(row = i+1, column = 0, padx = (10,0), sticky = 'nesw')
             
+            temp = ttk.Label(self.oddWindow, text = c)
+            temp.grid(row = i+1, column = 1, sticky = 'w')
+
+        # Create the radio button and entry field for the user's choice
         temp = ttk.Radiobutton(self.oddWindow, text = '', variable = self.radioChoice, value = i+1)
-        temp.grid(row = i+2, column = 0, padx = 10, sticky = 'nesw')
+        temp.grid(row = i+2, column = 0, padx = (10,0), sticky = 'nesw')
         
         temp = ttk.Entry(self.oddWindow, textvariable = self.customName, width = 10)
-        temp.grid(row = i+2, column = 0, padx = 30, sticky = 'w')
+        temp.grid(row = i+2, column = 1, sticky = 'w')
 
-        but = ttk.Button(self.oddWindow, text = 'OK', command = self.done)
-        but.grid(row = i+3, column = 0, sticky = 'nsew', padx = 2, pady = 5)
+        # Define the button
+        but = ttk.Button(self.oddWindow, text = 'OK', command = self._exit)
+        but.grid(row = i+3, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
+
+        # Configure grid sizes
         self.oddWindow.rowconfigure(i+3, minsize = 40)
-        self.oddWindow.columnconfigure(0, minsize = 175)
+        self.oddWindow.columnconfigure(1, minsize = 175)
 
-    def done(self):
+    def _exit(self):
+        """
+        Description:
+            This is called when the user X's out of the window or
+            clicks the OK button in the window. It will check
+            what choice they chose and set it as the name then
+            destroy the window. It will make sure though, that the
+            user has entered text into the Entry field if they
+            pick that option.
+        """
         if self.radioChoice.get() < len(self.choices):
             self.name = self.choices[self.radioChoice.get()]
         else:
             if self.customName.get() == '':
+                # Temporarily change label to inform user of the problem.
                 self.label.set('Enter Text for Custom Name')
-                self.oddWindow.bell()
+                self.oddWindow.bell()   # Chime a bell to indicate a problem
                 self.oddWindow.after(1500, lambda: self.label.set('Choose Odd Type'))
                 return
             else:
