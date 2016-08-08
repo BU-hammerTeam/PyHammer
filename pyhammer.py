@@ -278,7 +278,7 @@ def startGui(options):
             if spectraPath.get() == '':
                 message += '- A path for the spectra was not provided.\n'
             else:
-                if not os.path.isdir(spectraPath):
+                if not os.path.isdir(spectraPath.get()):
                     message += '- The spectra path is not a valid directory.\n'
         # Validate the S/N cut
         if eyecheck.get() == 0 and sncut.get() != '':
