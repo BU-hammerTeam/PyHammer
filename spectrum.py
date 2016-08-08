@@ -183,31 +183,19 @@ class Spectrum(object):
             # Need to add in a Keyword to have the user be able to input error but assume variance
             # Also want a vacuum keyword! 
             try:
-                f = open(filename)
+                with open(filename, 'r') as file:
+                    reader = csv.reader(file)
+                    f = list(reader)[1:] # Ignore the header line
             except IOError as e:
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
-                data = f.read()
-                f.close()
-                lineList = data.splitlines()
-                
-                wave = []
-                flux = []
-                var = []
-                for line in lineList:
-                    lTemp = line.split(',')
-                    if self.isNumber(lTemp[0]) and self.isNumber(lTemp[1]): 
-                        wave.append(float(lTemp[0]))
-                        flux.append(float(lTemp[1]))
-                        if len(lTemp) > 2 and self.isNumber(lTemp[2]):
-                            err = float(lTemp[2])
-                            var.append(err**2)
-                      
-                self._wavelength = np.asarray(wave) 
-                self._flux = np.asarray(flux) 
-                if len(var) > 0: 
-                    self._var = np.asarray(var) 
+                f = np.array(f)
+                self._wavelength = f[:,0].astype(np.float)
+                self._flux = f[:,1].astype(np.float)
+                if len(f[1]) > 2:
+                    err = f[:,2].astype(np.float)
+                    self._var = err**2
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
