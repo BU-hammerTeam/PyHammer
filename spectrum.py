@@ -35,14 +35,14 @@ class Spectrum(object):
         
         #Get averages and stddevs for each line for each template
         avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
-        avgs[:,:] = np.nan
         stds = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
-        stds[:,:] = np.nan
         for i, ilines in enumerate(tempLines[4]):
             weights = 1.0/np.array(ilines)[:,:,1]
-            nonzeroweights = np.sum(weights != 0, 0)
+            nonzeroweights = np.sum(weights != 0, 0, dtype='float')
+            nonzeroweights[nonzeroweights <= 1.0] = np.nan
             weightedsum = np.nansum(np.array(ilines)[:,:,0] * weights, 0)
             sumofweights = np.nansum(weights, 0)
+            sumofweights[sumofweights == 0.0] = np.nan
             avgs[i] = weightedsum / sumofweights
             stds[i] = np.sqrt( np.nansum(weights * (np.array(ilines)[:,:,0] - avgs[i])**2.0, 0)
                               / ( ((nonzeroweights-1.0)/nonzeroweights)
