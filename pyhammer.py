@@ -312,9 +312,6 @@ def startGui(options):
         
         root.destroy()
 
-        print(options)
-        return
-
         main(options)
 
     ##
