@@ -742,7 +742,7 @@ class Spectrum(object):
                     fchi[nc] = np.sum(abs(dif))
                 else:
                     dif = nst[range1:newend+1] - te[range1:newend+1]
-                    fchi[nc] = np.sum(dif*dif)
+                    fchi[nc] = np.sum(np.real(dif*dif))
             xp = np.arange( (nf-1) * 100 + 1) / 1000. + shft - fine
             function3 = interp1d(xl, fchi, kind='cubic')
             cp = function3(xp)
