@@ -426,7 +426,9 @@ class Spectrum(object):
         #print(weights)
         
         #Find best fit
-        iguess = np.nanargmin(np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / np.nansum(weights**2, 1))
+        sumOfWeights = np.nansum(weights**2, 1))
+        sumOfWeights[sumOfWeights == 0] = np.nan
+        iguess = np.nanargmin(np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights
         
         #print(iguess)
         
