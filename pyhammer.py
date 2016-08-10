@@ -130,7 +130,8 @@ def main(options):
             letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spt]
             
             #write the file
-            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) + ',' + str(spec.guess['feh']) + ',nan,nan' + '\n')
+            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) +
+                          ',' + '{:+2.1f}'.format(spec.guess['feh']) + ',nan,nan' + '\n')
             ######################
             ### END OF OUTLINE ###
             ######################
@@ -173,13 +174,16 @@ def notifyUser(useGUI, message):
         root.iconbitmap(r'resources\sun.ico')
         root.resizable(False,False)
         root.geometry('+100+100')
+
+        frame = tk.Frame(root, relief = tk.FLAT)
+        frame.grid(row = 0, column = 0)
         
-        label = ttk.Label(root, text = message, font = '-size 10')
+        label = ttk.Label(frame, text = message, font = '-size 10')
         label.grid(row = 0, column = 0, padx = 2, pady = 2)
-        but = ttk.Button(root, text = 'OK', command = root.destroy)
+        but = ttk.Button(frame, text = 'OK', command = root.destroy)
         but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
-        root.rowconfigure(1, minsize = 40)
-        root.columnconfigure(0, minsize = 200)
+        frame.rowconfigure(1, minsize = 40)
+        frame.columnconfigure(0, minsize = 200)
 
         root.mainloop()
 
@@ -197,16 +201,20 @@ def showHelpWindow(root, helpText):
     """
     
     helpWindow = tk.Toplevel(root)
+    helpWindow.grab_set()
     helpWindow.title('PyHammer Help')
     helpWindow.iconbitmap(r'resources\sun.ico')
     helpWindow.resizable(False, False)
     helpWindow.geometry('+%i+%i' % (root.winfo_rootx()+50, root.winfo_rooty()+50))
+
+    frame = tk.Frame(helpWindow, relief = tk.FLAT)
+    frame.grid(row = 0, column = 0)
     
-    label = ttk.Label(helpWindow, text = helpText, font = '-size 10')
+    label = ttk.Label(frame, text = helpText, font = '-size 10')
     label.grid(row = 0, column = 0, padx = 2, pady = 2)
-    but = ttk.Button(helpWindow, text = 'OK', command = helpWindow.destroy)
+    but = ttk.Button(frame, text = 'OK', command = helpWindow.destroy)
     but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
-    helpWindow.rowconfigure(1, minsize = 40)
+    frame.rowconfigure(1, minsize = 40)
 
 def startGui(options):
     """
@@ -326,16 +334,20 @@ def startGui(options):
     root.resizable(False,False)
     root.geometry('+100+100')
 
+    # Define a frame to put all the widgets in
+    frame = tk.Frame(root, relief = tk.FLAT)
+    frame.grid(row = 0, column = 0)
+
     # --- Input Filename ---
 
     # Define the label
-    label = ttk.Label(root, text = 'Spectra List\nFilename:')
+    label = ttk.Label(frame, text = 'Spectra List\nFilename:')
     label.grid(row = 0, column = 0, padx = (2,1), pady = 1, stick = 'w')
 
     # Define the entry box
     infile = tk.StringVar()
     infile.set('' if options['infile'] is None else options['infile'])
-    entry = ttk.Entry(root, textvariable = infile, width = 40)
+    entry = ttk.Entry(frame, textvariable = infile, width = 40)
     entry.grid(row = 0, column = 1, columnspan = 3,  padx = 1, pady = 1)
 
     # Define the help text and button for this section
@@ -344,19 +356,19 @@ def startGui(options):
         'which contains a list of spectra files to process.\n' \
         'However, if the input file is located in the pyhammer.\n' \
         'folder, then simply the filename will suffice.'
-    b = ttk.Button(root, text = '?', width = 2,
+    b = ttk.Button(frame, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, infileHelpText))
     b.grid(row = 0, column = 4, padx = (1,2), pady = 1)
 
     # --- Output Filename ---
 
     # Define the label
-    label = ttk.Label(root, text = 'Output\nFilename:')
+    label = ttk.Label(frame, text = 'Output\nFilename:')
     label.grid(row = 1, column = 0, padx = (2,1), pady = 1, stick = 'w')
 
     # Define the entry box
     outfile = tk.StringVar(value = options['outfile'])
-    entry = ttk.Entry(root, textvariable = outfile, width = 40)
+    entry = ttk.Entry(frame, textvariable = outfile, width = 40)
     entry.grid(row = 1, column = 1, columnspan = 3,  padx = 1, pady = 1)
 
     # Define the help text and button for this section
@@ -367,19 +379,19 @@ def startGui(options):
         'the pyhammer folder. The output file is, by default,\n' \
         'set to PyHammerResults.csv unless specified otherwise.\n' \
         'The output filetype should be a .csv file.'
-    b = ttk.Button(root, text = '?', width = 2,
+    b = ttk.Button(frame, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, outfileHelpText))
     b.grid(row = 1, column = 4, padx = (1,2), pady = 1)
 
     # --- Reject Filename ---
 
     # Define the label
-    label = ttk.Label(root, text = 'Reject\nFilename:')
+    label = ttk.Label(frame, text = 'Reject\nFilename:')
     label.grid(row = 2, column = 0, padx = (2,1), pady = 1, stick = 'w')
 
     # Define the entry box
     rejectfile = tk.StringVar(value = options['rejectfile'])
-    entry = ttk.Entry(root, textvariable = rejectfile, width = 40)
+    entry = ttk.Entry(frame, textvariable = rejectfile, width = 40)
     entry.grid(row = 2, column = 1, columnspan = 3,  padx = 1, pady = 1)
 
     # Define the help text and button for this section
@@ -391,20 +403,20 @@ def startGui(options):
         'reject file is, by default, set to RejectSpectra.csv\n' \
         'unless specified otherwise. The reject filetype should\n' \
         'be a .csv file.'
-    b = ttk.Button(root, text = '?', width = 2,
+    b = ttk.Button(frame, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, rejectfileHelpText))
     b.grid(row = 2, column = 4, padx = (1,2), pady = 1)
     
     # --- Spectra File Path ---
 
     # Define the label
-    label = ttk.Label(root, text = 'Spectra File\nPath:')
+    label = ttk.Label(frame, text = 'Spectra File\nPath:')
     label.grid(row = 4, column = 0, padx = (2,1), pady = 1)
 
     # Define the entry box
     spectraPath = tk.StringVar()
     spectraPath.set('' if options['spectraPath'] is None else options['spectraPath'])
-    sPathEntry = ttk.Entry(root, textvariable = spectraPath, width = 40)
+    sPathEntry = ttk.Entry(frame, textvariable = spectraPath, width = 40)
     sPathEntry.grid(row = 4, column = 1, columnspan = 3,  padx = 1, pady = 1)
     sPathEntry.configure(state = ('disabled' if options['fullPath'] else 'normal'))
 
@@ -413,7 +425,7 @@ def startGui(options):
         'If your spectra list does not contain the full path\n' \
         'to the files in the name, provide a path to prepend\n' \
         'to each spectra filename.'
-    b = ttk.Button(root, text = '?', width = 2,
+    b = ttk.Button(frame, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, spectraPathHelpText))
     b.grid(row = 4, column = 4, padx = (1,2), pady = 1)
 
@@ -421,16 +433,16 @@ def startGui(options):
     # --- Full Path ---
 
     # Define the label
-    label = ttk.Label(root, text = 'Spectra list contains the full path:')
+    label = ttk.Label(frame, text = 'Spectra list contains the full path:')
     label.grid(row = 3, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
 
     # Define the radiobuttons
     fullPath = tk.IntVar()
     fullPath.set(0 if options['fullPath'] == None else options['fullPath'])
-    rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = fullPath,
+    rbuttonYes = ttk.Radiobutton(frame, text = 'Y', value = 1, variable = fullPath,
                                  command = lambda: setState(sPathEntry, fullPath))
     rbuttonYes.grid(row = 3, column = 2, padx = 1, pady = 1)
-    rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = fullPath,
+    rbuttonNo = ttk.Radiobutton(frame, text = 'N', value = 0, variable = fullPath,
                                 command = lambda: setState(sPathEntry, fullPath))
     rbuttonNo.grid(row = 3, column = 3, padx = 1, pady = 1)
 
@@ -439,7 +451,7 @@ def startGui(options):
         'Choose whether or not the spectra listed in your input\n' \
         'file have a full path specified. If you choose no, you\n' \
         'will need to specify the full path to the spectra.'
-    b = ttk.Button(root, text = '?', width = 2,
+    b = ttk.Button(frame, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, fullPathHelpText))
     b.grid(row = 3, column = 4, padx = (1,2), pady = 1)
 
@@ -447,13 +459,13 @@ def startGui(options):
     # --- S/N Cutoff ---
 
     # Define the label
-    label = ttk.Label(root, text = 'S/N Cutoff:')
+    label = ttk.Label(frame, text = 'S/N Cutoff:')
     label.grid(row = 6, column = 0, padx = (2,1), pady = (2,1), stick = 'w')
 
     # Define the entry box
     sncut = tk.StringVar()
     sncut.set('' if options['sncut'] is None else options['sncut'])
-    sncutEntry = ttk.Entry(root, textvariable = sncut, width = 40)
+    sncutEntry = ttk.Entry(frame, textvariable = sncut, width = 40)
     sncutEntry.grid(row = 6, column = 1, columnspan = 3,  padx = 1, pady = (2,1))
     sncutEntry.configure(state = ('disabled' if options['eyecheck'] else 'normal'))
 
@@ -463,7 +475,7 @@ def startGui(options):
         'above a threshold, provide that value here. If you do not\n' \
         'want to provide a cutoff, leave this field blank. This\n' \
         'option does not apply if you choose to skip to the eyecheck.'
-    b = ttk.Button(root, text = '?', width = 2,
+    b = ttk.Button(frame, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, sncutHelpText))
     b.grid(row = 6, column = 4, padx = (1,2), pady = (2,1))
 
@@ -471,16 +483,16 @@ def startGui(options):
     # --- Skip to Eye Check ---
     
     # Define the label
-    label = ttk.Label(root, text = 'Skip to eyecheck:')
+    label = ttk.Label(frame, text = 'Skip to eyecheck:')
     label.grid(row = 5, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
 
     # Define the radiobuttons
     eyecheck = tk.IntVar()
     eyecheck.set(0 if options['eyecheck'] == None else options['eyecheck'])
-    rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = eyecheck,
+    rbuttonYes = ttk.Radiobutton(frame, text = 'Y', value = 1, variable = eyecheck,
                                  command = lambda: setState(sncutEntry, eyecheck))
     rbuttonYes.grid(row = 5, column = 2, padx = 1, pady = 1)
-    rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = eyecheck,
+    rbuttonNo = ttk.Radiobutton(frame, text = 'N', value = 0, variable = eyecheck,
                                 command = lambda: setState(sncutEntry, eyecheck))
     rbuttonNo.grid(row = 5, column = 3, padx = 1, pady = 1)
 
@@ -489,16 +501,16 @@ def startGui(options):
         'If you have already classified your spectra you can\n' \
         'choose to skip directly to checking them by eye, rather\n' \
         'than re-running the classification algorithm again.'
-    b = ttk.Button(root, text = '?', width = 2,
+    b = ttk.Button(frame, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, eyecheckHelpText))
     b.grid(row = 5, column = 4, padx = (1,2), pady = 1)
 
     
     # --- Start Button ---
-    b = ttk.Button(root, text = 'START',
+    b = ttk.Button(frame, text = 'START',
                    command = goToMain)
     b.grid(row = 7, column = 0, columnspan = 5, sticky = 'nswe', padx = 5, pady = 5)
-    root.rowconfigure(7, minsize = 40)
+    frame.rowconfigure(7, minsize = 40)
 
     root.mainloop()
 
