@@ -308,7 +308,7 @@ def startGui(options):
         options['outfile'] = outfile.get() + '.csv'*(outfile.get()[-4:] != '.csv')
         options['rejectfile'] = rejectfile.get() + '.csv'*(rejectfile.get()[-4:] != '.csv')
         options['fullPath'] = (fullPath.get() == 1)
-        options['spectraPath'] = spectraPath.get() * options['fullPath']
+        options['spectraPath'] = spectraPath.get() * (not options['fullPath'])
         # Append a slash to the end of the spectra path if there isn't one
         if (options['spectraPath'] != '' and options['spectraPath'][-1] not in ['\\', '/']):
                 options['spectraPath'] += '\\'
