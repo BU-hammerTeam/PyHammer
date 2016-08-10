@@ -388,7 +388,7 @@ class Spectrum(object):
                      num1mean = np.mean(self._flux[num1IndexLow:num1IndexHigh])
                      num2mean = np.mean(self._flux[num2IndexLow:num2IndexHigh])
                      num1_std = np.sum((self._var[num1IndexLow:num1IndexHigh]))**(0.5)/len(self._var[num1IndexLow:num1IndexHigh])
-                     num2_std = np.sum((self._var[num2IndexLow:num2IndexHigh]))**(0.5)/len(self._var[num2IndexLow:num1IndexHigh])
+                     num2_std = np.sum((self._var[num2IndexLow:num2IndexHigh]))**(0.5)/len(self._var[num2IndexLow:num2IndexHigh])
                      combonum = value[2]*num1mean + value[5]*num2mean
                      combonum_std = (value[2]**2 * num1_std**2 + value[5]**2 * num2_std**2)**(0.5)
                      denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
