@@ -5,6 +5,9 @@ import numpy as np
 import tkinter as tk
 from tkinter import ttk
 import csv
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib import pyplot as plt
 from spectrum import Spectrum
 from eyecheck import Eyecheck
 import pdb
