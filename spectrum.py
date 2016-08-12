@@ -6,6 +6,7 @@ import bisect
 import pickle
 import os
 import warnings
+import csv
 
 class Spectrum(object):
     """
