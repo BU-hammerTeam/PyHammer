@@ -1,15 +1,23 @@
+#--------------------------------------------
+# If this code does not execute, uncomment
+# the two lines below to change your backend.
+#
+#import matplotlib
+#matplotlib.use("TkAgg")
+#
+#--------------------------------------------
+
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
-#import matplotlib
-#matplotlib.use("TkAgg") 
 import matplotlib.pyplot as plt
+from matplotlib import __version__ as pltVersion
+from matplotlib.patches import Rectangle
 from astropy.io import fits
 import warnings
 import time
 import os
 import csv
-import pdb
 
 class Eyecheck(object):
 
@@ -56,9 +64,19 @@ class Eyecheck(object):
         # If the outfile already has eyecheck results, ask if they want
         # to start where they left off
         if self.specIndex != 0:
-            modal = ModalWindow('The output file already has eyecheck results.\nDo you want to continue where you left off?')
-            if modal.choice == 'no' or modal.choice == None:
-                self.specIndex = 0
+            # If every outfile spectra already has an eyecheck result
+            # they've classified everything and ask them if they want
+            # to start over instead.
+            if self.specIndex == i+1:
+                modal = ModalWindow('Every spectrum in the output file already has\nan eyecheck result. Do you want to start over?')
+                if modal.choice == 'yes':
+                    self.specIndex = 0
+                else:
+                    return
+            else:
+                modal = ModalWindow('The output file already has eyecheck results.\nDo you want to continue where you left off?')
+                if modal.choice == 'no' or modal.choice == None:
+                    self.specIndex = 0
         # Now use the Spectrum object to read in the user's appropriate starting spectrum
         self.specObj.readFile(self.options['spectraPath']+self.inData[self.specIndex][0],
                               self.inData[self.specIndex][1]) # Ignore returned values
@@ -132,18 +150,11 @@ class Eyecheck(object):
         # *** Set root window properties ***
         
         self.root.title('PyHammer Eyecheck')
-        self.root.iconbitmap(r'resources\sun.ico')
+        self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.root.resizable(False, False)
         self.root.geometry('+100+100')
         # Set the close protocol to call this class' personal exit function
         self.root.protocol('WM_DELETE_WINDOW', self._exit)
-
-        # Create a frame to put everything in. This is done because in some systems
-        # the background color for GUIs is different than widget background colors.
-        # This will fill the GUI with the frame widget so all components of the GUI
-        # have the same color.
-        frame = tk.Frame(self.root, relief = tk.FLAT)
-        frame.grid(row = 0, column = 0)
 
         # *** Define menubar ***
         
@@ -168,32 +179,32 @@ class Eyecheck(object):
         # *** Define labels ***
         
         for i, name in enumerate(['Spectra', 'Type', 'Subtype', 'Metallicity', 'Change Type', 'Change Metallicity', 'Options']):
-            ttk.Label(frame, text = name).grid(row = i, column = 0, stick = 'e',
+            ttk.Label(self.root, text = name).grid(row = i, column = 0, stick = 'e',
                                                    pady = (10*(i==4),10*(i==0)))
 
         # *** Define entry box ***
 
         # This defines the entry box and relevant widgets for indicating the spectrum
-        ttk.Entry(frame, textvariable = self.spectrumEntry).grid(row = 0, column = 1, columnspan = 9, pady = (0,10), sticky = 'nesw')
-        ttk.Button(frame, text = 'Go', width = 3, command = self.jumpToSpectrum).grid(row = 0, column = 10, pady = (0,10))
+        ttk.Entry(self.root, textvariable = self.spectrumEntry).grid(row = 0, column = 1, columnspan = 9, pady = (0,10), sticky = 'nesw')
+        ttk.Button(self.root, text = 'Go', width = 3, command = self.jumpToSpectrum).grid(row = 0, column = 10, pady = (0,10))
 
         # *** Define radio buttons ***
         
         # First the radio buttons for the spectral type
         for ind, spec in enumerate(self.specType):
-            temp = ttk.Radiobutton(frame, text = spec, variable = self.specState, value = ind,
+            temp = ttk.Radiobutton(self.root, text = spec, variable = self.specState, value = ind,
                                    command = lambda: self.callback_specRadioChange(True))
             temp.grid(row = 1, column = ind+1, sticky = 'nesw')
             
         # Now the sub spectral type radio buttons
         for ind, sub in enumerate(self.subType):
-            self.subButtons.append(ttk.Radiobutton(frame, text = sub, variable = self.subState, value = ind,
+            self.subButtons.append(ttk.Radiobutton(self.root, text = sub, variable = self.subState, value = ind,
                                                    command = lambda: self.callback_subRadioChange(True)))
             self.subButtons[-1].grid(row = 2, column = ind+1, sticky = 'nesw')
             
         # Finally the radio buttons for the metallicities
         for ind, metal in enumerate(self.metalType):
-            self.metalButtons.append(ttk.Radiobutton(frame, text = metal, variable = self.metalState, value = ind,
+            self.metalButtons.append(ttk.Radiobutton(self.root, text = metal, variable = self.metalState, value = ind,
                                                      command = lambda: self.callback_metalRadioChange(True)))
             self.metalButtons[-1].grid(row = 3, column = ind+1, sticky = 'nesw')
             
@@ -201,16 +212,16 @@ class Eyecheck(object):
         
         # These will be the buttons for interacting with the data (e.g., smooth it, next, back)
         # We must handle the smooth button specially so we can interact with it later.
-        ttk.Button(frame, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
-        ttk.Button(frame, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
-        ttk.Button(frame, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 1, columnspan = 5, sticky = 'nesw')
-        ttk.Button(frame, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 5, sticky = 'nesw')
-        ttk.Button(frame, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 1, columnspan = 2, sticky = 'nesw')
-        ttk.Button(frame, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 3, columnspan = 2, sticky = 'nesw')
-        self.smoothButton = ttk.Button(frame, textvariable = self.smoothStr, underline = 0, command = self.callback_smooth)
+        ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
+        ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
+        ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 1, columnspan = 5, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 5, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 1, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 3, columnspan = 2, sticky = 'nesw')
+        self.smoothButton = ttk.Button(self.root, textvariable = self.smoothStr, underline = 0, command = self.callback_smooth)
         self.smoothButton.grid(row = 6, column = 5, columnspan = 2, sticky = 'nesw')
-        ttk.Button(frame, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 7, columnspan = 2, sticky = 'nesw')
-        ttk.Button(frame, text = 'Next', command = self.callback_next).grid(row = 6, column = 9, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 7, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 9, columnspan = 2, sticky = 'nesw')
 
         # *** Set key bindings ***
         
@@ -302,6 +313,12 @@ class Eyecheck(object):
         # *** Set Legend Settings ***
 
         handles, labels = plt.gca().get_legend_handles_labels()
+        # In matplotlib versions befoew 1.5, the fill_between plot command above
+        # does not appear in the legend. In those cases, we will fake it out by
+        # putting in a fake legend entry to match the fill_between plot.
+        if pltVersion < '1.5':
+            labels.append('Template Error')
+            handles.append(Rectangle((0,0),0,0, color = 'b', ec = 'None', alpha = 0.1))
         labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
         leg = plt.legend(handles, labels, loc = 0)
         leg.get_frame().set_alpha(0)
@@ -420,11 +437,12 @@ class Eyecheck(object):
         # Open an OddWindow object and wait for a user response
         choice = OddWindow(self.root, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'])
         self.root.wait_window(choice.oddWindow)
-        # Store the user's response in the outData
-        self.outData[self.specIndex][4] = choice.name
-        self.outData[self.specIndex][5] = 'nan'
-        # Move to the next spectra
-        self.moveToNextSpectrum()
+        if choice.name is not None:
+            # Store the user's response in the outData
+            self.outData[self.specIndex][4] = choice.name
+            self.outData[self.specIndex][5] = 'nan'
+            # Move to the next spectra
+            self.moveToNextSpectrum()
         
     def callback_bad(self):
         # Store BAD as the user's choices
@@ -514,7 +532,7 @@ class Eyecheck(object):
 
     def callback_hammer_time(self):
         timeCalled = time.time()
-        if self.pPressTime == 0 or timeCalled - self.pPressTime > 0.75:
+        if self.pPressTime == 0 or timeCalled - self.pPressTime > 1.5:
             # Reset
             self.pPressTime = timeCalled
             self.pPressNum = 1
@@ -571,6 +589,7 @@ class Eyecheck(object):
             and calling self.getUserSpectrum.
         """
         if self.specIndex+1 >= len(self.inData):
+            self.root.bell()
             modal = ModalWindow("You've classified all the spectra. Are you finished?", parent = self.root)
             self.root.wait_window(modal.modalWindow)
             if modal.choice == 'yes':
@@ -735,21 +754,14 @@ class InfoWindow(object):
             self.infoWindow.grab_set()  # Make the root window non-interactive
             self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.infoWindow.title(title)
-        self.infoWindow.iconbitmap(r'resources\sun.ico')
+        self.infoWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.infoWindow.resizable(False, False)
-
-        # Create a frame to put everything in. This is done because in some systems
-        # the background color for GUIs is different than widget background colors.
-        # This will fill the GUI with the frame widget so all components of the GUI
-        # have the same color.
-        frame = tk.Frame(self.infoWindow, relief = tk.FLAT)
-        frame.grid(row = 0, column = 0)
 
         # Define the window contents
         if len(args) == 1:
-            self.defineTab(frame, args[0], height, font)
+            self.defineTab(self.infoWindow, args[0], height, font)
         else:
-            notebook = ttk.Notebook(frame)
+            notebook = ttk.Notebook(self.infoWindow)
             for a in args:
                 tab = tk.Frame(notebook)
                 notebook.add(tab, text = a[0])
@@ -822,27 +834,20 @@ class ModalWindow(object):
             self.modalWindow.grab_set() # Make the root window non-interactive
             self.modalWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.modalWindow.title(title)
-        self.modalWindow.iconbitmap(r'resources\sun.ico')
+        self.modalWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.modalWindow.resizable(False, False)
 
-        # Create a frame to put everything in. This is done because in some systems
-        # the background color for GUIs is different than widget background colors.
-        # This will fill the GUI with the frame widget so all components of the GUI
-        # have the same color.
-        frame = tk.Frame(self.modalWindow, relief = tk.FLAT)
-        frame.grid(row = 0, column = 0)
-
         # Setup the widgets in the window
-        label = ttk.Label(frame, text = text, font = '-size 10')
+        label = ttk.Label(self.modalWindow, text = text, font = '-size 10')
         label.grid(row = 0, column = 0, columnspan = 2, padx = 2, pady = 2)
         
-        but = ttk.Button(frame, text = 'Yes', command = self.choiceYes)
+        but = ttk.Button(self.modalWindow, text = 'Yes', command = self.choiceYes)
         but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
 
-        but = ttk.Button(frame, text = 'No', command = self.choiceNo)
+        but = ttk.Button(self.modalWindow, text = 'No', command = self.choiceNo)
         but.grid(row = 1, column = 1, sticky = 'nsew', padx = 2, pady = 5)
 
-        frame.rowconfigure(1, minsize = 40)
+        self.modalWindow.rowconfigure(1, minsize = 40)
 
         if parent is None: self.modalWindow.mainloop()
 
@@ -877,43 +882,35 @@ class OddWindow(object):
         self.oddWindow = tk.Toplevel(parent)
         self.oddWindow.grab_set()   # Make the root window non-interactive
         self.oddWindow.title('')
-        self.oddWindow.iconbitmap(r'resources\sun.ico')
+        self.oddWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.oddWindow.resizable(False, False)
         self.oddWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
-        self.oddWindow.protocol('WM_DELETE_WINDOW', self._exit)
-
-        # Create a frame to put everything in. This is done because in some systems
-        # the background color for GUIs is different than widget background colors.
-        # This will fill the GUI with the frame widget so all components of the GUI
-        # have the same color.
-        frame = tk.Frame(self.oddWindow, relief = tk.FLAT)
-        frame.grid(row = 0, column = 0)
 
         # Setup the widgets in the window
-        tk.Label(frame, textvariable = self.label, justify = 'center').grid(row = 0, column = 0, columnspan = 2)
+        tk.Label(self.oddWindow, textvariable = self.label, justify = 'center').grid(row = 0, column = 0, columnspan = 2)
         
         # Create the radio buttons for the input choices
         for i, c in enumerate(choices):
-            temp = ttk.Radiobutton(frame, text = '', variable = self.radioChoice, value = i)
+            temp = ttk.Radiobutton(self.oddWindow, text = '', variable = self.radioChoice, value = i)
             temp.grid(row = i+1, column = 0, padx = (10,0), sticky = 'nesw')
             
-            temp = ttk.Label(frame, text = c)
+            temp = ttk.Label(self.oddWindow, text = c)
             temp.grid(row = i+1, column = 1, sticky = 'w')
 
         # Create the radio button and entry field for the user's choice
-        temp = ttk.Radiobutton(frame, text = '', variable = self.radioChoice, value = i+1)
+        temp = ttk.Radiobutton(self.oddWindow, text = '', variable = self.radioChoice, value = i+1)
         temp.grid(row = i+2, column = 0, padx = (10,0), sticky = 'nesw')
         
-        temp = ttk.Entry(frame, textvariable = self.customName, width = 10)
+        temp = ttk.Entry(self.oddWindow, textvariable = self.customName, width = 10)
         temp.grid(row = i+2, column = 1, sticky = 'w')
 
         # Define the button
-        but = ttk.Button(frame, text = 'OK', command = self._exit)
+        but = ttk.Button(self.oddWindow, text = 'OK', command = self._exit)
         but.grid(row = i+3, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
 
         # Configure grid sizes
-        frame.rowconfigure(i+3, minsize = 40)
-        frame.columnconfigure(1, minsize = 175)
+        self.oddWindow.rowconfigure(i+3, minsize = 40)
+        self.oddWindow.columnconfigure(1, minsize = 175)
 
     def _exit(self):
         """
