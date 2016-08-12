@@ -540,7 +540,7 @@ def startCmd(options):
     if options['infile'] is None:
         while True:
             options['infile'] = input('Please enter the filename which contains the spectra list: ')
-            infileExt[0] = options['infile'][-4:]
+            infileExt = options['infile'][-4:]
             if infileExt[0] == '.' and infileExt[1:] != 'txt':
                 print('The input file must be a text file.', flush = True)
                 continue
