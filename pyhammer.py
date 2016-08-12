@@ -63,10 +63,9 @@ def main(options):
 
         # Define the string to contain all failure messages. These will be compiled
         # and printed once at the end
-        rejectMessage = 'The following is a list of rejected spectra\n' \
-                        'along with the reason for its rejection.\n\n'
+        rejectMessage = ''
 
-        for line in infile:
+        for i, line in enumerate(infile):
             # Remove extra whitespace and other unwanted characters and split
             fname, ftype = line.strip().rsplit(' ',1)
 
@@ -78,68 +77,78 @@ def main(options):
             # should just continue
             if not success:
                 rejectfile.write(fname + ',' + ftype + ',N/A\n')
-                rejectMessage += 'FILE: ' + fname + '  REASON: ' + message
+                rejectMessage += 'FILE: ' + fname + '  REASON: ' + message + '\n'
                 continue
 
             # Now that we have the necessary data in the spec object, let's
             # begin processing.
 
-            ##########################
-            ### OUTLINE OF PROCESS ###
-            ##########################
+            # --- 1 ---
             # Calculate the signal to noise of the spectrum to potentially reject
             if options['sncut'] is not None:
                 snVal = spec.calcSN()
                 if snVal < options['sncut']:
                     rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                    rejectMessage += 'FILE: ' + fname + '  REASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut'])
+                    rejectMessage += 'FILE: ' + fname + '  REASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut']) + '\n'
                     continue
             
+            # --- 2 ---
             # Normalize the input spectrum to the same place where the templates are normalized (8000A)
             spec.normalizeFlux()
-            
+
+            # --- 3 ---
             # Call guessSpecType function for the initial guess
             # this function measures the lines then makes a guess of all parameters
             spec.guessSpecType()
 
+            # --- 4 ---
             # Call findRadialVelocity function using the initial guess
             shift = spec.findRadialVelocity()
 
-            # Call a Spectrum.shiftToRest() that shifts the spectrum to rest
-            # wavelengths
+            # --- 5 ---
+            # Call shiftToRest that shifts the spectrum to rest wavelengths
             spec.shiftToRest(shift)
-            
+
+            # --- 6 ---
             # Repeat guessSpecType function to get a better guess of the spectral 
             # type and metallicity 
             spec.guessSpecType()
 
             # End of the automatic guessing. We should have:
-            #    1) Spectrum object with observed wavelength, flux, var
-            #    2) rest wavelength
-            #    3) Spectral type (guessed)
-            #    4) radial velocity and uncertainty,
-            #    5) metallicity estimate,
-            #    6) and line indice measurements
-            #    7) (eventually reddening?)
+            #  1. Spectrum object with observed wavelength, flux, var,
+            #  2. rest wavelength,
+            #  3. spectral type (guessed),
+            #  4. radial velocity and uncertainty,
+            #  5. metallicity estimate,
+            #  6. and line indice measurements
 
-            # Write results in autoSpTResults.tbl
-            # (includes spectral type, metallicity and RV measurements)
+            # --- 7 ---
             
-            #translate the numbered spectral types into letters
-            spt = spec.guess['spt']
-            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spt]
+            # Translate the numbered spectral types into letters
+            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spec.guess['spt']]
             
-            #write the file
+            # Write the file
             outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) +
                           ',' + '{:+2.1f}'.format(spec.guess['feh']) + ',nan,nan' + '\n')
-            ######################
-            ### END OF OUTLINE ###
-            ######################
         
-        # We're done so let's close all the files for now.
+        # We're done so let's close all the files.
         infile.close()
         outfile.close()
         rejectfile.close()
+
+        # Check that we processed every spectrum in the infile. If not, print out
+        # the reject method.
+        if rejectMessage != '':
+            # Prepend to the reject message
+            rejectMessage = 'The following is a list of rejected spectra\n' \
+                            'along with the reason for its rejection.\n\n' + rejectMessage
+            notifyUser(options['useGUI'], rejectMessage)
+            # Check if all spectra were skipped by seeing if the number of
+            # lines in the reject message is equal to the number of spectra
+            # processed (plus three lines for the prepended message). If
+            # they were all skipped, theres nothing to eyecheck so return.
+            if rejectMessage.count('\n') == i+3:
+                return
     
     # At this point, we should call up the GUI to do the eyechecking.
     Eyecheck(spec, options)
@@ -171,19 +180,16 @@ def notifyUser(useGUI, message):
         # display the message.
         root = tk.Tk()
         root.title('PyHammer Notification')
-        root.iconbitmap(r'resources\sun.ico')
+        root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         root.resizable(False,False)
         root.geometry('+100+100')
-
-        frame = tk.Frame(root, relief = tk.FLAT)
-        frame.grid(row = 0, column = 0)
         
-        label = ttk.Label(frame, text = message, font = '-size 10')
+        label = ttk.Label(root, text = message, font = '-size 10')
         label.grid(row = 0, column = 0, padx = 2, pady = 2)
-        but = ttk.Button(frame, text = 'OK', command = root.destroy)
+        but = ttk.Button(root, text = 'OK', command = root.destroy)
         but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
-        frame.rowconfigure(1, minsize = 40)
-        frame.columnconfigure(0, minsize = 200)
+        root.rowconfigure(1, minsize = 40)
+        root.columnconfigure(0, minsize = 200)
 
         root.mainloop()
 
@@ -203,18 +209,15 @@ def showHelpWindow(root, helpText):
     helpWindow = tk.Toplevel(root)
     helpWindow.grab_set()
     helpWindow.title('PyHammer Help')
-    helpWindow.iconbitmap(r'resources\sun.ico')
+    helpWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
     helpWindow.resizable(False, False)
     helpWindow.geometry('+%i+%i' % (root.winfo_rootx()+50, root.winfo_rooty()+50))
-
-    frame = tk.Frame(helpWindow, relief = tk.FLAT)
-    frame.grid(row = 0, column = 0)
     
-    label = ttk.Label(frame, text = helpText, font = '-size 10')
+    label = ttk.Label(helpWindow, text = helpText, font = '-size 10')
     label.grid(row = 0, column = 0, padx = 2, pady = 2)
-    but = ttk.Button(frame, text = 'OK', command = helpWindow.destroy)
+    but = ttk.Button(helpWindow, text = 'OK', command = helpWindow.destroy)
     but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
-    frame.rowconfigure(1, minsize = 40)
+    helpWindow.rowconfigure(1, minsize = 40)
 
 def startGui(options):
     """
@@ -330,24 +333,20 @@ def startGui(options):
     # Define the main window settings
     root = tk.Tk()
     root.title('PyHammer Settings')
-    root.iconbitmap(r'resources\sun.ico')
+    root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
     root.resizable(False,False)
     root.geometry('+100+100')
-
-    # Define a frame to put all the widgets in
-    frame = tk.Frame(root, relief = tk.FLAT)
-    frame.grid(row = 0, column = 0)
 
     # --- Input Filename ---
 
     # Define the label
-    label = ttk.Label(frame, text = 'Spectra List\nFilename:')
+    label = ttk.Label(root, text = 'Spectra List\nFilename:')
     label.grid(row = 0, column = 0, padx = (2,1), pady = 1, stick = 'w')
 
     # Define the entry box
     infile = tk.StringVar()
     infile.set('' if options['infile'] is None else options['infile'])
-    entry = ttk.Entry(frame, textvariable = infile, width = 40)
+    entry = ttk.Entry(root, textvariable = infile, width = 40)
     entry.grid(row = 0, column = 1, columnspan = 3,  padx = 1, pady = 1)
 
     # Define the help text and button for this section
@@ -356,19 +355,19 @@ def startGui(options):
         'which contains a list of spectra files to process.\n' \
         'However, if the input file is located in the pyhammer.\n' \
         'folder, then simply the filename will suffice.'
-    b = ttk.Button(frame, text = '?', width = 2,
+    b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, infileHelpText))
     b.grid(row = 0, column = 4, padx = (1,2), pady = 1)
 
     # --- Output Filename ---
 
     # Define the label
-    label = ttk.Label(frame, text = 'Output\nFilename:')
+    label = ttk.Label(root, text = 'Output\nFilename:')
     label.grid(row = 1, column = 0, padx = (2,1), pady = 1, stick = 'w')
 
     # Define the entry box
     outfile = tk.StringVar(value = options['outfile'])
-    entry = ttk.Entry(frame, textvariable = outfile, width = 40)
+    entry = ttk.Entry(root, textvariable = outfile, width = 40)
     entry.grid(row = 1, column = 1, columnspan = 3,  padx = 1, pady = 1)
 
     # Define the help text and button for this section
@@ -379,19 +378,19 @@ def startGui(options):
         'the pyhammer folder. The output file is, by default,\n' \
         'set to PyHammerResults.csv unless specified otherwise.\n' \
         'The output filetype should be a .csv file.'
-    b = ttk.Button(frame, text = '?', width = 2,
+    b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, outfileHelpText))
     b.grid(row = 1, column = 4, padx = (1,2), pady = 1)
 
     # --- Reject Filename ---
 
     # Define the label
-    label = ttk.Label(frame, text = 'Reject\nFilename:')
+    label = ttk.Label(root, text = 'Reject\nFilename:')
     label.grid(row = 2, column = 0, padx = (2,1), pady = 1, stick = 'w')
 
     # Define the entry box
     rejectfile = tk.StringVar(value = options['rejectfile'])
-    entry = ttk.Entry(frame, textvariable = rejectfile, width = 40)
+    entry = ttk.Entry(root, textvariable = rejectfile, width = 40)
     entry.grid(row = 2, column = 1, columnspan = 3,  padx = 1, pady = 1)
 
     # Define the help text and button for this section
@@ -403,20 +402,20 @@ def startGui(options):
         'reject file is, by default, set to RejectSpectra.csv\n' \
         'unless specified otherwise. The reject filetype should\n' \
         'be a .csv file.'
-    b = ttk.Button(frame, text = '?', width = 2,
+    b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, rejectfileHelpText))
     b.grid(row = 2, column = 4, padx = (1,2), pady = 1)
     
     # --- Spectra File Path ---
 
     # Define the label
-    label = ttk.Label(frame, text = 'Spectra File\nPath:')
+    label = ttk.Label(root, text = 'Spectra File\nPath:')
     label.grid(row = 4, column = 0, padx = (2,1), pady = 1)
 
     # Define the entry box
     spectraPath = tk.StringVar()
     spectraPath.set('' if options['spectraPath'] is None else options['spectraPath'])
-    sPathEntry = ttk.Entry(frame, textvariable = spectraPath, width = 40)
+    sPathEntry = ttk.Entry(root, textvariable = spectraPath, width = 40)
     sPathEntry.grid(row = 4, column = 1, columnspan = 3,  padx = 1, pady = 1)
     sPathEntry.configure(state = ('disabled' if options['fullPath'] else 'normal'))
 
@@ -425,7 +424,7 @@ def startGui(options):
         'If your spectra list does not contain the full path\n' \
         'to the files in the name, provide a path to prepend\n' \
         'to each spectra filename.'
-    b = ttk.Button(frame, text = '?', width = 2,
+    b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, spectraPathHelpText))
     b.grid(row = 4, column = 4, padx = (1,2), pady = 1)
 
@@ -433,16 +432,16 @@ def startGui(options):
     # --- Full Path ---
 
     # Define the label
-    label = ttk.Label(frame, text = 'Spectra list contains the full path:')
+    label = ttk.Label(root, text = 'Spectra list contains the full path:')
     label.grid(row = 3, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
 
     # Define the radiobuttons
     fullPath = tk.IntVar()
     fullPath.set(0 if options['fullPath'] == None else options['fullPath'])
-    rbuttonYes = ttk.Radiobutton(frame, text = 'Y', value = 1, variable = fullPath,
+    rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = fullPath,
                                  command = lambda: setState(sPathEntry, fullPath))
     rbuttonYes.grid(row = 3, column = 2, padx = 1, pady = 1)
-    rbuttonNo = ttk.Radiobutton(frame, text = 'N', value = 0, variable = fullPath,
+    rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = fullPath,
                                 command = lambda: setState(sPathEntry, fullPath))
     rbuttonNo.grid(row = 3, column = 3, padx = 1, pady = 1)
 
@@ -451,7 +450,7 @@ def startGui(options):
         'Choose whether or not the spectra listed in your input\n' \
         'file have a full path specified. If you choose no, you\n' \
         'will need to specify the full path to the spectra.'
-    b = ttk.Button(frame, text = '?', width = 2,
+    b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, fullPathHelpText))
     b.grid(row = 3, column = 4, padx = (1,2), pady = 1)
 
@@ -459,13 +458,13 @@ def startGui(options):
     # --- S/N Cutoff ---
 
     # Define the label
-    label = ttk.Label(frame, text = 'S/N Cutoff:')
+    label = ttk.Label(root, text = 'S/N Cutoff:')
     label.grid(row = 6, column = 0, padx = (2,1), pady = (2,1), stick = 'w')
 
     # Define the entry box
     sncut = tk.StringVar()
     sncut.set('' if options['sncut'] is None else options['sncut'])
-    sncutEntry = ttk.Entry(frame, textvariable = sncut, width = 40)
+    sncutEntry = ttk.Entry(root, textvariable = sncut, width = 40)
     sncutEntry.grid(row = 6, column = 1, columnspan = 3,  padx = 1, pady = (2,1))
     sncutEntry.configure(state = ('disabled' if options['eyecheck'] else 'normal'))
 
@@ -475,7 +474,7 @@ def startGui(options):
         'above a threshold, provide that value here. If you do not\n' \
         'want to provide a cutoff, leave this field blank. This\n' \
         'option does not apply if you choose to skip to the eyecheck.'
-    b = ttk.Button(frame, text = '?', width = 2,
+    b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, sncutHelpText))
     b.grid(row = 6, column = 4, padx = (1,2), pady = (2,1))
 
@@ -483,16 +482,16 @@ def startGui(options):
     # --- Skip to Eye Check ---
     
     # Define the label
-    label = ttk.Label(frame, text = 'Skip to eyecheck:')
+    label = ttk.Label(root, text = 'Skip to eyecheck:')
     label.grid(row = 5, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
 
     # Define the radiobuttons
     eyecheck = tk.IntVar()
     eyecheck.set(0 if options['eyecheck'] == None else options['eyecheck'])
-    rbuttonYes = ttk.Radiobutton(frame, text = 'Y', value = 1, variable = eyecheck,
+    rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = eyecheck,
                                  command = lambda: setState(sncutEntry, eyecheck))
     rbuttonYes.grid(row = 5, column = 2, padx = 1, pady = 1)
-    rbuttonNo = ttk.Radiobutton(frame, text = 'N', value = 0, variable = eyecheck,
+    rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = eyecheck,
                                 command = lambda: setState(sncutEntry, eyecheck))
     rbuttonNo.grid(row = 5, column = 3, padx = 1, pady = 1)
 
@@ -501,16 +500,16 @@ def startGui(options):
         'If you have already classified your spectra you can\n' \
         'choose to skip directly to checking them by eye, rather\n' \
         'than re-running the classification algorithm again.'
-    b = ttk.Button(frame, text = '?', width = 2,
+    b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, eyecheckHelpText))
     b.grid(row = 5, column = 4, padx = (1,2), pady = 1)
 
     
     # --- Start Button ---
-    b = ttk.Button(frame, text = 'START',
+    b = ttk.Button(root, text = 'START',
                    command = goToMain)
     b.grid(row = 7, column = 0, columnspan = 5, sticky = 'nswe', padx = 5, pady = 5)
-    frame.rowconfigure(7, minsize = 40)
+    root.rowconfigure(7, minsize = 40)
 
     root.mainloop()
 
@@ -623,9 +622,11 @@ def startCmd(options):
 
 if (__name__ == "__main__"):
 
+    thisDir = os.path.split(__file__)[0]
+
     # Check if this is the first time this code has been executed by looking
     # for the runbefore file in the resources folder
-    if not os.path.isfile('resources/runbefore'):
+    if not os.path.isfile(os.path.join(thisDir, 'resources', 'runbefore')):
         # The file doesn't exist. Let's create it and display the welcome message
         f = open('resources/runbefore', 'w')
         f.close()
@@ -712,7 +713,7 @@ if (__name__ == "__main__"):
 
         # User provided output file for reject spectra
         if (opt == '-r' or opt == '--rejectfile'):
-            options['rejectfile'] == arg
+            options['rejectfile'] = arg
 
         # User indicated that the full path to the spectra is in the
         # input file list
