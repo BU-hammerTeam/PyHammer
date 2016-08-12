@@ -628,7 +628,7 @@ if (__name__ == "__main__"):
     # for the runbefore file in the resources folder
     if not os.path.isfile(os.path.join(thisDir, 'resources', 'runbefore')):
         # The file doesn't exist. Let's create it and display the welcome message
-        f = open('resources/runbefore', 'w')
+        f = open(os.path.join(thisDir, 'resources', 'runbefore'), 'w')
         f.close()
         print('Welcome to PyHammer, a tool for spectral classification!\n'
               'First time users should run this program with the -h flag '
