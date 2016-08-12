@@ -55,13 +55,13 @@ class Spectrum(object):
     ##
     # Utility Methods
     #
+    
     def isNumber(self, num):
         try:
             float(num)
             return True
         except ValueError:
             return False
-            
             
     def readFile(self, filename, filetype = 'fits'):
         """
@@ -178,6 +178,7 @@ class Spectrum(object):
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
+            
         elif (filetype == 'csv'):
             # Implement reading a csv file
             # Need to add in a Keyword to have the user be able to input error but assume variance
@@ -214,11 +215,11 @@ class Spectrum(object):
         calcSN()
         
         Description:
-        calculates the median signal to noise of the spectrum 
-        uses formula SNR = mu/sigma
+            Calculates the median signal to noise of the spectrum 
+            uses formula SNR = mu/sigma
         
         Output:
-        SN for the spectrum.
+            Signal to noise for the spectrum.
         """
         
         signalToNoise = np.median(self._flux)/np.median((self._var)**0.5)
