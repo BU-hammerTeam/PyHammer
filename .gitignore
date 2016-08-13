@@ -1,2 +1,4 @@
 *.pyc
 resources/runbefore
+PyHammerResults.csv
+RejectSpectra.csv
