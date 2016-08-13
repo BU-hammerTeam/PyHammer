@@ -12,16 +12,16 @@ PyHammer is written in and should be run with **Python 3**. It *will not* work i
 
 ####Python Module Dependencies
 
-PyHammer relies on several core Python modules as well as third party modules. It is suggested that python be installed with [Anaconda][conda], which comes packaged with all required modules. The table below lists all third party modules as well as suggested versions. Modules can be upgraded through the commands `pip install --upgrade <module_name>` or else `conda update <module_name>` if Anaconda is installed.
+PyHammer relies on several core Python modules as well as third party modules. It is suggested that Python be installed with [Anaconda][conda], which comes packaged with all required modules. The table below lists all third party modules as well as suggested versions. Modules can be upgraded through the commands `pip install --upgrade <module_name>` or else `conda update <module_name>` if Anaconda is installed.
 
-| Module   | Suggested Version | Command to check version<sup>1</sup>      |
+| Module   | Suggested Version | Command to Check Version<sup>1</sup>      |
 |:--------:|:------------------|:------------------------------------------|
 |NumPy     | 1.11              |`import numpy; numpy.__version__`          |
 |SciPy     | 0.18              |`import scipy; scipy.__version__`          |
 |Matplotlib| 1.5               |`import matplotlib; matplotlib.__version__`|
 |TkInter   | 8                 |`import tkinter; tkinter.TkVersion`        |
 |AstroPy   | 1.2.1             |`import astropy; astropy.__version__`      |
-<sup>1</sup>Commands are run in python environment
+<sup>1</sup>Commands are run in Python environment
 
 ##Running the Code
 
