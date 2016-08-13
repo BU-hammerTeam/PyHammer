@@ -41,13 +41,6 @@ From the ipython environment use the following command.
 
     run pyhammer.py -i test_case/exampleInputFile.txt -p test_case/
 
-##Known Issues
-When running the Eyecheck GUI some Mac computers will crash, displaying this error (and many more):
-
-> -[NSApplication _setup:]: unrecognized selector sent to instance 0x10c138de0
-
-This error has been [traced to a problem with the maplotlib backend][backend_problem]. A universal fix has not been found at the moment and the following fix should only be implemented if the above error is encountered. Otherwise, this change may crash working code. If you are running into this error go into [eyecheck.py](eyecheck.py) and uncomment the `import matplotlib` and `matplotlib.use("TkAgg")` lines at the top of the file. This has been found to fix this problem.
-
 ##Publications
 
 This project and accompanying work is described Appendix A in Kesseli et al. (in prep.)
