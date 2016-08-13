@@ -1,12 +1,7 @@
-#--------------------------------------------
-# If this code does not execute, uncomment
-# the two lines below to change your backend.
-#
-#import matplotlib
-#matplotlib.use("TkAgg")
-#
-#--------------------------------------------
-
+import os
+if os.name == 'posix':
+    import matplotlib
+    matplotlib.use("TkAgg")
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
@@ -16,8 +11,8 @@ from matplotlib.patches import Rectangle
 from astropy.io import fits
 import warnings
 import time
-import os
 import csv
+import pdb
 
 class Eyecheck(object):
 
@@ -41,13 +36,14 @@ class Eyecheck(object):
         with open(self.options['infile'], 'r') as file:
             for line in file:
                 self.inData.append(line.strip().rsplit(' ',1))
+        self.inData = np.asarray(self.inData)
 
         # *** Read the outfile ***
-        
+
         with open(self.options['outfile'], 'r') as file:
             reader = csv.reader(file)
-            self.outData = list(reader)[1:] # Ignore the header line
-
+            self.outData = np.asarray(list(reader)[1:]) # Ignore the header line
+        
         # *** Define user's spectrum ***
         
         self.specIndex = 0      # The index in the inData where we should start from
@@ -55,7 +51,7 @@ class Eyecheck(object):
         for i in range(len(self.outData)):
             # If classification by the user has already occured for the
             # current spectrum, then move to the next one.
-            if self.outData[self.specIndex][4] != 'nan' or self.outData[self.specIndex][5] != 'nan':
+            if self.outData[self.specIndex,4] != 'nan' or self.outData[self.specIndex,5] != 'nan':
                 self.specIndex += 1
             else:
                 # Break out if we can get to a spectrum that hasn't been
@@ -78,17 +74,19 @@ class Eyecheck(object):
                 if modal.choice == 'no' or modal.choice == None:
                     self.specIndex = 0
         # Now use the Spectrum object to read in the user's appropriate starting spectrum
-        self.specObj.readFile(self.options['spectraPath']+self.inData[self.specIndex][0],
-                              self.inData[self.specIndex][1]) # Ignore returned values
+        fname = self.outData[self.specIndex,0]
+        ftype = np.extract(self.inData[:,0] == fname, self.inData[:,1])[0]
+        self.specObj.readFile(self.options['spectraPath']+fname, ftype) # Ignore returned values
+        self.specObj.normalizeFlux()
         
         # *** Define GUI variables ***
         
         self.root = tk.Tk()             # Create the root GUI window
         # Define String and Int variables to keep track of widget states
-        self.spectrumEntry = tk.StringVar(value = os.path.basename(self.inData[self.specIndex][0]))
-        self.specState  = tk.IntVar(value = self.specType.index(self.outData[self.specIndex][2][0]))
-        self.subState   = tk.IntVar(value = int(self.outData[self.specIndex][2][1]))
-        self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex][3]))
+        self.spectrumEntry = tk.StringVar(value = os.path.basename(self.outData[self.specIndex,0])[:-5])
+        self.specState  = tk.IntVar(value = self.specType.index(self.outData[self.specIndex,2][0]))
+        self.subState   = tk.IntVar(value = int(self.outData[self.specIndex,2][1]))
+        self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex,3]))
         self.subButtons = []            # We keep track of these radio buttons so
         self.metalButtons = []          # they can be enabled and disabled if need be
         self.smoothButton = []          # Save the smooth button info also, so it can be updated
@@ -299,14 +297,14 @@ class Eyecheck(object):
         # *** Plot the user's data ***
         
         if self.smoothStr.get() == 'Smooth':
-            plt.plot(self.specObj.loglam, self.specObj.normFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
+            plt.plot(self.specObj.loglam, self.specObj.flux, '-r', alpha = 0.6, label = 'Your Spectrum')
         else:
-            plt.plot(self.specObj.loglam, self.specObj.normSmoothFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
-        spectraName = os.path.basename(self.inData[self.specIndex][0])[:-5]
+            plt.plot(self.specObj.loglam, self.specObj.smoothFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
+        spectraName = os.path.basename(self.outData[self.specIndex,0])[:-5]
 
         # *** Set Plot Labels ***
         
-        plt.xlabel(r'$\mathrm{log_{10}(wavelength / \mathring{A})}$', fontsize = 16)
+        plt.xlabel(r'$\mathrm{log_{10}(wavelength / \AA)}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
         plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName + '}$', fontsize = 16)
 
@@ -424,8 +422,8 @@ class Eyecheck(object):
             'This project was developed by a select group of graduate students ' \
             'at the Department of Astronomy at Boston University. The project ' \
             'was lead by Aurora Kesseli with development help and advice provided ' \
-            'by Mark Veyette, Dylan Morgan, Andrew West, Brandon Harrison, and ' \
-            'Dan Feldman. Contributions were further provided by Chris Theissan.\n\n' \
+            'by Andrew West, Mark Veyette, Brandon Harrison, and Dan Feldman. ' \
+            'Contributions were further provided by Dylan Morgan and Chris Theissan.\n\n' \
             'See the acompanying paper Kesseli et al. (2016) for further details.'
         InfoWindow(aboutStr, parent = self.root, title = 'PyHammer About')
 
@@ -439,15 +437,15 @@ class Eyecheck(object):
         self.root.wait_window(choice.oddWindow)
         if choice.name is not None:
             # Store the user's response in the outData
-            self.outData[self.specIndex][4] = choice.name
-            self.outData[self.specIndex][5] = 'nan'
+            self.outData[self.specIndex,4] = choice.name
+            self.outData[self.specIndex,5] = 'nan'
             # Move to the next spectra
             self.moveToNextSpectrum()
         
     def callback_bad(self):
         # Store BAD as the user's choices
-        self.outData[self.specIndex][4] = 'BAD'
-        self.outData[self.specIndex][5] = 'BAD'
+        self.outData[self.specIndex,4] = 'BAD'
+        self.outData[self.specIndex,5] = 'BAD'
         # Move to the next spectra
         self.moveToNextSpectrum()
         
@@ -460,8 +458,8 @@ class Eyecheck(object):
         
     def callback_next(self):
         # Store the choice for the current spectra
-        self.outData[self.specIndex][4] = self.specType[self.specState.get()] + str(self.subState.get())
-        self.outData[self.specIndex][5] = self.metalType[self.metalState.get()]
+        self.outData[self.specIndex,4] = self.specType[self.specState.get()] + str(self.subState.get())
+        self.outData[self.specIndex,5] = self.metalType[self.metalState.get()]
         # Move to the next spectra
         self.moveToNextSpectrum()
         
@@ -588,7 +586,7 @@ class Eyecheck(object):
             the end, it moves to the next spectrum (by incrementing self.specIndex)
             and calling self.getUserSpectrum.
         """
-        if self.specIndex+1 >= len(self.inData):
+        if self.specIndex+1 >= len(self.outData):
             self.root.bell()
             modal = ModalWindow("You've classified all the spectra. Are you finished?", parent = self.root)
             self.root.wait_window(modal.modalWindow)
@@ -619,15 +617,15 @@ class Eyecheck(object):
             loaded, otherwise they're informed that spectrum could not be found.
         """
         spectrumFound = False
-        for i, spectrum in enumerate(self.inData):
+        for i, spectrum in enumerate(self.outData):
             if os.path.basename(self.spectrumEntry.get()) == os.path.basename(spectrum[0]):
                 self.specIndex = i
                 spectrumFound = True
                 break
         if not spectrumFound:
             message = 'The spectrum you input could not be matched' \
-                      'to one of the spectrum in your list. Check' \
-                      'your input and try again.'
+                      'to one of the spectrum in your output file ' \
+                      'list. Check your input and try again.'
             InfoWindow(message, parent = self.root, title = 'PyHammer Error')
         else:
             self.getUserSpectrum()
@@ -639,14 +637,16 @@ class Eyecheck(object):
             and updates the GUI and plot window accordingly.
         """
         # Read in the next spectrum file indicated by self.specIndex
-        self.specObj.readFile(self.options['spectraPath']+self.inData[self.specIndex][0],
-                              self.inData[self.specIndex][1]) # Ignore returned values from readFile
+        fname = self.outData[self.specIndex,0]
+        ftype = np.extract(self.inData[:,0] == fname, self.inData[:,1])[0]
+        self.specObj.readFile(self.options['spectraPath']+fname, ftype) # Ignore returned values
+        self.specObj.normalizeFlux()
         # Set the spectrum entry field to the new spectrum name
-        self.spectrumEntry.set(os.path.basename(self.inData[self.specIndex][0]))
+        self.spectrumEntry.set(os.path.basename(self.outData[self.specIndex,0]))
         # Set the radio button selections to the new spectrum's guessed classifcation
-        self.specState.set(self.specType.index(self.outData[self.specIndex][2][0]))
-        self.subState.set(int(self.outData[self.specIndex][2][1]))
-        self.metalState.set(self.metalType.index(self.outData[self.specIndex][3]))
+        self.specState.set(self.specType.index(self.outData[self.specIndex,2][0]))
+        self.subState.set(int(self.outData[self.specIndex,2][1]))
+        self.metalState.set(self.metalType.index(self.outData[self.specIndex,3]))
         # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
         # between loading templates, not between switching spectra.
         self.full_xlim = None
