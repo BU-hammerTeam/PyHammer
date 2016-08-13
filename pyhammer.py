@@ -7,38 +7,36 @@ from tkinter import ttk
 import csv
 from spectrum import Spectrum
 from eyecheck import Eyecheck
-import pdb
-
 
 def main(options):
     """
-    main(options)
+    The main method of PyHammer which executes the overarching procedure.
 
     Description:
-    This is the main part of the code that executes the
-    actual pyhammer algorithms. This is arrived at either
-    by startCmd or startGui, both of which get all the
-    necessary options from the user and pass them to
-    this function. The general process of this function
-    should be to:
-    
-    1) Define a Spectrum object to be used in reading files
-    2) Call the measureLines() method to find the good lines
-    3) Run guessSpecType() to get the initial guessed spectral type.
-    4) Use the best-guess from guessSpecType() and run findRadialVelocity() to find the
-       radial velocity measurements, cross correlate the lines to get the inital
-       spectral type and metallicity guess. Repeat for all spectra
-    5) Bring up eyecheck GUI.
+        This is the main part of the code that executes the
+        actual pyhammer algorithms. This is arrived at either
+        by startCmd or startGui, both of which get all the
+        necessary options from the user and pass them to
+        this function. The general process of this function
+        should be to:
+        
+        - Define a Spectrum object to be used in reading files.
+        - Load each spectrum sequentially.
+        - Guess the spectral type.
+        - Use the best guess for the spectral type and find the radial
+          velocity shift. Shift the spectrum to rest.
+        - Guess the spectral type again.
+        - Repeat for all spectra
+        - Bring up eyecheck GUI.
 
     Input:
-    options  - A dict containing the options the
-               user can specify. These may already
-               have default values if they were
-               provided on the command line.
+        options: A dict containing the options the user has specified.
 
     Output:
-    autoSpTResults.tbl - list of the spectra with the results of the auto spectral
-    typing, radial velocity and metallicity results.
+        This program outputs two files, an outfile and a rejectfile.
+        The outfile contains all results of the spectral type guess
+        as well as the user's eyecheck guess and the rejectfile contains
+        the list of spectra which could not be classified for some reason.
     """
 
     # Create a Spectrum object
@@ -62,7 +60,7 @@ def main(options):
         rejectfile.write('#Filename,File Type,Spectra S/N\n')
 
         # Define the string to contain all failure messages. These will be compiled
-        # and printed once at the end
+        # and printed once at the end, if anything is put into it.
         rejectMessage = ''
 
         for i, line in enumerate(infile):
@@ -125,11 +123,11 @@ def main(options):
             # --- 7 ---
             
             # Translate the numbered spectral types into letters
-            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spec.guess['spt']]
+            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spec.guess['specType']]
             
             # Write the file
-            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['sub']) +
-                          ',' + '{:+2.1f}'.format(spec.guess['feh']) + ',nan,nan' + '\n')
+            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['subType']) +
+                          ',' + '{:+2.1f}'.format(spec.guess['metal']) + ',nan,nan' + '\n')
         
         # We're done so let's close all the files.
         infile.close()
@@ -291,6 +289,9 @@ def startGui(options):
             else:
                 if not os.path.isdir(spectraPath.get()):
                     message += '- The spectra path is not a valid directory.\n'
+        # Validate the skip to eyecheck
+        if eyecheck.get() == 1 and not os.path.isfile(outfile.get()):
+            message += '- You cannot skip to eyecheck without an existing output file.\n'
         # Validate the S/N cut
         if eyecheck.get() == 0 and sncut.get() != '':
             try:
@@ -499,7 +500,9 @@ def startGui(options):
     eyecheckHelpText = \
         'If you have already classified your spectra you can\n' \
         'choose to skip directly to checking them by eye, rather\n' \
-        'than re-running the classification algorithm again.'
+        'than re-running the classification algorithm again. Note\n' \
+        'that you cannot skip to eye checking without first\n' \
+        'classifying your spectra and creating an output file.'
     b = ttk.Button(root, text = '?', width = 2,
                    command = lambda: showHelpWindow(root, eyecheckHelpText))
     b.grid(row = 5, column = 4, padx = (1,2), pady = 1)
@@ -699,7 +702,11 @@ if (__name__ == "__main__"):
 
                    '-s, --sncut\t\t\t'
                    'The S/N necessary before a spectra will be classified.\n'
-                   '\t\t\t\t\tA signal to noise of ~3-5 per pixel is recommended.\n').expandtabs(4),
+                   '\t\t\t\t\tA signal to noise of ~3-5 per pixel is recommended.\n'
+
+                   '\nExample:\n'
+                   'python pyhammer.py -g -f -s 3 -i C:/Path/To/File/inputFile.txt -o'
+                   'C:/Path/To/File/outputFile.csv -r C:/Path/To/File/rejectFile.csv\n').expandtabs(4),
                   flush = True)
             sys.exit(0)
 
