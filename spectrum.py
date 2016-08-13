@@ -7,6 +7,7 @@ import pickle
 import os
 import warnings
 import csv
+import pdb
 
 class Spectrum(object):
     """
@@ -20,21 +21,28 @@ class Spectrum(object):
     """
     
     def __init__(self):
+        # Define properties related to loaded spectrum
         self._wavelength = None
         self._flux = None
         self._var = None
         self._guess = None
+
+        self.defineCalcTools()
+
+        
+
+        # The directory containing this file
+        self.thisDir = os.path.split(__file__)[0]
         
         # Read in indices measured from templates
         # tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
         # lines is a list of 2D arrays with indices and variances for each line
         # index for each spectrum that goes into a template
-        self.thisDir, _ = os.path.split(__file__)
-        pklPath = os.path.join(self.thisDir, "resources", "tempLines.pickle")        
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
-        #Get averages and stddevs for each line for each template
+        # Get averages and stddevs for each line for each template
         avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
         stds = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
         for i, ilines in enumerate(tempLines[4]):
@@ -52,6 +60,63 @@ class Spectrum(object):
         self._tempLines = tempLines
         self._tempLineAvgs = avgs
         self._tempLineVars = stds**2.0
+
+    def defineCalcTools(self):
+        """
+        Description:
+            This method is called by the __init__ method above and used
+            to define various variables used in the calculational processes
+            below. These are defined here on object instantiation because
+            they only need to be defined once and can be used for all
+            spectra calculations.
+        """
+        
+        # Define the wavelngth points to interpolate the spectrum to so it
+        # can be compared to the templates. Note log10(e) = 0.43429448190325182
+        self.waveGrid = 10**(5*0.43429448190325182/299792.458 * np.arange(0,65000) + 3.55)
+
+        # Define the spectral lines to be measured in the spectrum and
+        # used to be matched to the templates.
+        self.indexDict = {}
+        # List the indices for each important absorption feature: numlo, numhi, denomlo, denomhi 
+        # or for multi region features: num1lo, num1hi, num1weight, num2lo, num2hi, num2weight, denomlo, denomhi
+        # NOTE: These are all in vacuum and Angstroms!
+        self.indexDict['CaK']      = [3924.8111, 3944.8163, 3944.8163, 3954.8189]
+        self.indexDict['Cadel']    = [4087.8536, 4117.8618, 4137.8670, 4177.1771]
+        self.indexDict['CaI4217']  = [4217.8880, 4237.8932, 4237.8932, 4257.1981]
+        self.indexDict['Gband']    = [4286.2057, 4316.2136, 4261.1992, 4286.2057]
+        self.indexDict['Hgam']     = [4333.7182, 4348.7222, 4356.2242, 4371.2281] 
+        self.indexDict['FeI4383']  = [4379.8305, 4389.8331, 4356.2242, 4371.2281]
+        self.indexDict['FeI4404']  = [4401.0358, 4411.0384, 4416.0397, 4426.0423]
+        self.indexDict['Hbeta']    = [4848.3542, 4878.3622, 4818.3463, 4848.3542]
+        self.indexDict['MgI']      = [5154.1357, 5194.1463, 5101.4214, 5151.4348]
+        self.indexDict['NaD']      = [5881.6297, 5906.6364, 5911.6378, 5936.6445]
+        self.indexDict['CaI6162']  = [6151.7021, 6176.7088, 6121.6941, 6146.7008]
+        self.indexDict['Halpha']   = [6549.8090, 6579.8171, 6584.8184, 6614.8265]
+        self.indexDict['CaH2']     = [6815.8576, 6847.8664, 7043.9419, 7047.9430]
+        self.indexDict['CaH3']     = [6961.9198, 6991.9279, 7043.9419, 7047.9430]
+        self.indexDict['TiO5']     = [7127.9646, 7136.9670, 7043.9419, 7047.9430]
+        self.indexDict['VO7434']   = [7432.0465, 7472.0573, 7552.0789, 7572.0843]
+        self.indexDict['VO7445']   = [7352.0249, 7402.0384,    0.5625, 7512.0681, 7562.0816, 0.4375, 7422.0438, 7472.0573]
+        self.indexDict['VO-B']     = [7862.1626, 7882.1680,    0.5000, 8082.2220, 8102.2274, 0.5000, 7962.1896, 8002.2004]
+        self.indexDict['VO7912']   = [7902.1734, 7982.1950, 8102.2274, 8152.2409]
+        self.indexDict['Rb-B']     = [7924.7796, 7934.7823,    0.5000, 7964.7904, 7974.7931, 0.5000, 7944.7850, 7954.7877]
+        self.indexDict['NaI']      = [8179.2482, 8203.2547, 8153.2412, 8177.2477]
+        self.indexDict['TiO8']     = [8402.3085, 8417.3125, 8457.3233, 8472.3274]
+        self.indexDict['TiO8440']  = [8442.3193, 8472.3274, 8402.3085, 8422.3139]
+        self.indexDict['Cs-A']     = [8498.4341, 8508.4368,    0.5000, 8538.4449, 8548.4476, 0.5000, 8518.4395, 8528.4422]
+        self.indexDict['CaII8498'] = [8485.3309, 8515.3390, 8515.3390, 8545.3471] 
+        self.indexDict['CrH-A']    = [8582.3571, 8602.3626, 8623.3682, 8643.3736]
+        self.indexDict['CaII8662'] = [8652.3761, 8677.3828, 8627.3693, 8652.3761]
+        self.indexDict['FeI8689']  = [8686.3853, 8696.3880, 8666.3799, 8676.3826]
+        self.indexDict['FeH']      = [9880     ,10000     , 9820,      9860]
+        # Color bands
+        self.indexDict['region1'] = [ 4160,  4210, 7480, 7580]
+        self.indexDict['region2'] = [ 4550,  4650, 7480, 7580]
+        self.indexDict['region3'] = [ 5700,  5800, 7480, 7580]
+        self.indexDict['region4'] = [ 9100,  9200, 7480, 7580]
+        self.indexDict['region5'] = [10100, 10200, 7480, 7580] 
+        
 
     ##
     # Utility Methods
@@ -118,9 +183,10 @@ class Spectrum(object):
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
+                np.seterr(divide = 'ignore')    # Ignore any potential division by zero
                 self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
                 self._flux = spec[0].data[0]
-                self._var = 1/(spec[0].data[2])
+                self._var = 1 / spec[0].data[2]
                 #self._airToVac()
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
@@ -138,9 +204,10 @@ class Spectrum(object):
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
+                np.seterr(divide = 'ignore')    # Ignore any potential division by zero
                 self._wavelength = 10**spec[1].data['loglam']
                 self._flux = spec[1].data['flux']
-                self._var = 1/(spec[1].data['ivar'])
+                self._var = 1 / spec[1].data['ivar']
                 #self._airToVac()
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
@@ -207,6 +274,7 @@ class Spectrum(object):
             # in this method. Just skip the file.
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
             return False, errorMessage
+
         
         self.interpOntoGrid()
         return True, ''
@@ -229,7 +297,7 @@ class Spectrum(object):
         
     def _airToVac(self):
         """
-        A method to convert the wavelengths from air to vacuum
+        A method to convert the wavelengths from air to vacuum.
         
         Code originally in IDL (AIRTOVAC.pro) then translated into python 
         in pyAstronomy python library. 
@@ -239,206 +307,138 @@ class Spectrum(object):
         Sloan, princeton are already in vacuum but most other spectra are not. 
         """
         
-        sigma2 = (1E4/self._wavelength)**2.                 #Convert to wavenumber squared
+        sigma2 = (1E4/self._wavelength)**2 # Convert to wavenumber squared
 
         # Compute conversion factor
-        # Wavelength values below 2000 A will not be 
-        # altered.  Uses the IAU standard for conversion given in Morton 
+        # Wavelength values below 2000 A will not be altered.
+        # Uses the IAU standard for conversion given in Morton 
         # (1991 Ap.J. Suppl. 77, 119)
 
-        fact = 1. + 6.4328E-5 + 2.94981E-2/(146.-sigma2) + 2.5540E-4/(41.-sigma2)
+        factor = 1 + 6.4328E-5 + 2.94981E-2/(146-sigma2) + 2.5540E-4/(41-sigma2)
 
-        fact = fact*(self._wavelength >= 2000.) + 1.*(self._wavelength < 2000.)
-
-        self._wavelength = self._wavelength*fact            #Convert Wavelength
-
-        return 
+        self._wavelength[self._wavelength >= 2000] *= factor # Convert Wavelength
 
     def interpOntoGrid(self): 
         """
-        A method to put the spectra onto the same grid as the templates
-        (5km/s equally space bins)
-
-        Input:
-        raw flux and wavelength
-
-        Output:
-        interpolated flux, wavelength grid
-
+        Description:
+            A method to put the spectrum flux and variance onto the same
+            wavelength grid as the templates (5 km/s equally spaced bins)
         """
-        # Make the wavelength grid (resolution of template grids)
-        # Note log10(e) = 0.43429448190325182
-        waveGrid = 10**(5*0.43429448190325182/(299792.458) * np.arange(0,65000) + 3.55)
-
-        #interpolate flux and variance onto the wavelength grid
-        interpFlux = np.interp(waveGrid, self._wavelength, self._flux)
-        interpVar = np.interp(waveGrid, self._wavelength, self._var) 
+        # Interpolate flux and variance onto the wavelength grid
+        interpFlux = np.interp(self.waveGrid, self._wavelength, self._flux)
+        interpVar = np.interp(self.waveGrid, self._wavelength, self._var) 
 
         #cut the grids off at 3650 and 10200 like the templates
-        startIndex = bisect.bisect_right(waveGrid, 3650)
-        stopIndex = bisect.bisect_right(waveGrid,10200)
+        startIndex = bisect.bisect_right(self.waveGrid, 3650)
+        stopIndex = bisect.bisect_right(self.waveGrid, 10200)
 
-        self._wavelength = waveGrid[startIndex:stopIndex]
+        self._wavelength = self.waveGrid[startIndex:stopIndex]
         self._flux = interpFlux[startIndex:stopIndex]
         self._var = interpVar[startIndex:stopIndex]
-
-        return
         
     def measureLines(self):
-         """
-         A method to reproduce the functionality of the measureGoodLines
-         function in the IDL version. With some careful planning, this
-         should be much better written and more compact. It might require
-         writing ancilliary methods to be used by this one as the hammer
-         function does.
-         """
-         #create a dictionary for all the corresponding wavelengths of the absorption features
-         indexDict = {}
-         #list the indices for each important absorption feature: numlo, numhi, denomlo, denomhi 
-         # or for multi region features: num1lo, num1hi, num1weight, num2lo, num2hi, num2weight, denomlo, denomhi
-         # THESE ARE ALL IN VACUUM and angstroms!!
-         indexDict['CaK']  = [3924.8111, 3944.8163, 3944.8163, 3954.8189]
-         indexDict['Cadel'] = [4087.8536, 4117.8618, 4137.8670, 4177.1771]
-         indexDict['CaI4217'] = [4217.8880, 4237.8932, 4237.8932, 4257.1981]
-         indexDict['Gband'] = [4286.2057, 4316.2136, 4261.1992, 4286.2057]
-         indexDict['Hgam'] = [4333.7182, 4348.7222, 4356.2242, 4371.2281] 
-         indexDict['FeI4383'] = [4379.8305, 4389.8331, 4356.2242, 4371.2281]
-         indexDict['FeI4404'] = [4401.0358, 4411.0384, 4416.0397, 4426.0423]
-         indexDict['Hbeta'] = [4848.3542, 4878.3622, 4818.3463, 4848.3542]
-         indexDict['MgI'] = [5154.1357, 5194.1463, 5101.4214, 5151.4348]
-         indexDict['NaD'] = [5881.6297, 5906.6364, 5911.6378, 5936.6445]
-         indexDict['CaI6162'] = [6151.7021, 6176.7088, 6121.6941, 6146.7008]
-         indexDict['Halpha'] = [6549.8090, 6579.8171, 6584.8184, 6614.8265]
-         indexDict['CaH2'] = [6815.8576, 6847.8664, 7043.9419, 7047.9430]
-         indexDict['CaH3'] = [6961.9198, 6991.9279, 7043.9419, 7047.9430]
-         indexDict['TiO5'] = [7127.9646, 7136.9670, 7043.9419, 7047.9430]
-         indexDict['VO7434'] = [7432.0465, 7472.0573, 7552.0789, 7572.0843]
-         indexDict['VO7445'] = [7352.0249, 7402.0384, 0.56250000, 7512.0681, 7562.0816, 0.43750000, 7422.0438, 7472.0573]
-         indexDict['VO-B'] = [7862.1626, 7882.1680, 0.50000000, 8082.2220, 8102.2274, 0.50000000, 7962.1896, 8002.2004]
-         indexDict['VO7912'] = [7902.1734, 7982.1950, 8102.2274, 8152.2409]
-         indexDict['Rb-B'] = [7924.7796, 7934.7823, 0.50000000, 7964.7904, 7974.7931, 0.50000000, 7944.7850, 7954.7877]
-         indexDict['NaI'] = [8179.2482, 8203.2547, 8153.2412, 8177.2477]
-         indexDict['TiO8'] = [8402.3085, 8417.3125, 8457.3233, 8472.3274]
-         indexDict['TiO8440'] = [8442.3193, 8472.3274, 8402.3085, 8422.3139]
-         indexDict['Cs-A'] = [8498.4341, 8508.4368, 0.50000000, 8538.4449, 8548.4476, 0.50000000, 8518.4395, 8528.4422]
-         indexDict['CaII8498'] = [8485.3309, 8515.3390, 8515.3390, 8545.3471] 
-         indexDict['CrH-A'] = [8582.3571, 8602.3626, 8623.3682, 8643.3736]
-         indexDict['CaII8662'] = [8652.3761, 8677.3828, 8627.3693, 8652.3761]
-         indexDict['FeI8689'] = [8686.3853, 8696.3880, 8666.3799, 8676.3826]
-         indexDict['FeH'] = [9880, 10000, 9820,9860]
-         #color bands
-         indexDict['region1'] = [4160,4210,7480,7580]
-         indexDict['region2'] = [4550,4650,7480,7580]
-         indexDict['region3'] = [5700,5800,7480,7580]
-         indexDict['region4'] = [9100,9200,7480,7580]
-         indexDict['region5'] = [10100,10200,7480,7580]
-         
-         
-         #make a dictionary for the measured indices
-         measuredLinesDict = {}
-         
-         #Loop through the indexDict and measure the lines
-         for key, value in indexDict.items():
-             #check if we should use the single or mutliple region version
-             if len(value) == 4: 
-                 #find the indices where the numerator and denominator start and end for each absorption feature
-                 numeratorIndexLow = bisect.bisect_right(self._wavelength, value[0])
-                 numeratorIndexHigh = bisect.bisect_right(self._wavelength, value[1])
-                 
-                 denominatorIndexLow = bisect.bisect_right( self._wavelength, value[2])
-                 denominatorIndexHigh = bisect.bisect_right(self._wavelength, value[3])
-                 
-                 #check to make sure the absorption features are within the wavelength regime of the spectrum
-                 if len(self._wavelength) > numeratorIndexHigh and len(self._wavelength) > denominatorIndexHigh:
-                     #calculate the mean fluxes of the numerator and denominator regimes
-                     nummean = np.mean(self._flux[numeratorIndexLow:numeratorIndexHigh])
-                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
-                     #calculate the uncertainty in the region 
-                     num_std = np.sum((self._var[numeratorIndexLow:numeratorIndexHigh]))**(0.5)/len(self._var[numeratorIndexLow:numeratorIndexHigh])
-                     den_std = np.sum((self._var[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self._var[denominatorIndexLow:denominatorIndexHigh])
+        """
+        A method to reproduce the functionality of the measureGoodLines
+        function in the IDL version. With some careful planning, this
+        should be much better written and more compact. It might require
+        writing ancilliary methods to be used by this one as the hammer
+        function does.
+        """
+        
+        # Make a dictionary for the measured indices
+        measuredLinesDict = {}
+        
+        # Loop through the self.indexDict and measure the lines of the spectra
+        for key, value in self.indexDict.items():
+            #check if we should use the single or mutliple region version
+            if len(value) == 4: 
+                # Find the indices where the numerator and denominator
+                # start and end for each absorption feature.
+                numerIndexLow = bisect.bisect_right(self._wavelength, value[0])
+                numerIndexHigh = bisect.bisect_right(self._wavelength, value[1])
+                
+                denomIndexLow = bisect.bisect_right(self._wavelength, value[2])
+                denomIndexHigh = bisect.bisect_right(self._wavelength, value[3])
+                
+                # Check to make sure the absorption features are within the wavelength regime of the spectrum
+                if len(self._wavelength) > numerIndexHigh and len(self._wavelength) > denomIndexHigh:
+                    # Calculate the mean fluxes of the numerator and denominator regimes
+                    numerMean = np.mean(self._flux[numerIndexLow:numerIndexHigh])
+                    denomMean = np.mean(self._flux[denomIndexLow:denomIndexHigh])
+                    #calculate the uncertainty in the region 
+                    numerStd = np.sum((self._var[numerIndexLow:numerIndexHigh]))**(0.5)/len(self._var[numerIndexLow:numerIndexHigh])
+                    denomStd = np.sum((self._var[denomIndexLow:denomIndexHigh]))**(0.5)/len(self._var[denomIndexLow:denomIndexHigh])
   
-                     #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
-                     #This uses the same keys as the indexDict dictionary
-                     if denmean > 0:
-                         index=nummean/denmean
-                         var = index**2 * ((num_std/nummean)**2 + (den_std/denmean)**2)
-                         indexList = [index, var]
-                         measuredLinesDict[key] = indexList
-                     else:
-                         indexList = [0,np.inf]
-                         measuredLinesDict[key] = indexList
-                 else:
-                     indexList = [0,np.inf]
-                     measuredLinesDict[key] = indexList
-                         
-                 
-             elif len(value) == 8: 
-                       
-                 #find the indices for the two numerators and denominators
-                 num1IndexLow = bisect.bisect_right( self._wavelength, value[0])
-                 num1IndexHigh = bisect.bisect_right(self._wavelength, value[1])
-                 
-                 num2IndexLow = bisect.bisect_right( self._wavelength, value[3])
-                 num2IndexHigh = bisect.bisect_right(self._wavelength, value[4])
-                 
-                 denominatorIndexLow = bisect.bisect_right( self._wavelength, value[6])
-                 denominatorIndexHigh = bisect.bisect_right(self._wavelength, value[7])
-                 
-                 #check to make sure the absorption features are within the wavelength regime of the spectrum
-                 if len(self._wavelength) > num1IndexHigh and len(self._wavelength) > num2IndexHigh and len(self._wavelength) > denominatorIndexHigh:
-                     #calculate the mean fluxes of the numerator and denominator regimes
-                     num1mean = np.mean(self._flux[num1IndexLow:num1IndexHigh])
-                     num2mean = np.mean(self._flux[num2IndexLow:num2IndexHigh])
-                     num1_std = np.sum((self._var[num1IndexLow:num1IndexHigh]))**(0.5)/len(self._var[num1IndexLow:num1IndexHigh])
-                     num2_std = np.sum((self._var[num2IndexLow:num2IndexHigh]))**(0.5)/len(self._var[num2IndexLow:num2IndexHigh])
-                     combonum = value[2]*num1mean + value[5]*num2mean
-                     combonum_std = (value[2]**2 * num1_std**2 + value[5]**2 * num2_std**2)**(0.5)
-                     denmean = np.mean(self._flux[denominatorIndexLow:denominatorIndexHigh])
-                     den_std = np.sum((self._var[denominatorIndexLow:denominatorIndexHigh]))**(0.5)/len(self._var[denominatorIndexLow:denominatorIndexHigh])
-                     
-                     #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
-                     #This uses the same keys as the indexDict dictionary
-                     if denmean > 0:
-                         index=combonum/denmean
-                         var = index**2 * ((combonum_std/combonum)**2 + (den_std/denmean)**2)
-                         indexList = [index, var]
-                         measuredLinesDict[key] = indexList
-                     else:
-                         indexList = [0,np.inf]
-                         measuredLinesDict[key] = indexList
-                 else:
-                     indexList = [0,np.inf]
-                     measuredLinesDict[key] = indexList
+                    #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
+                    #This uses the same keys as the self.indexDict dictionary
+                    if denomMean > 0:
+                        index = numerMean/denomMean
+                        var = index**2 * ((numerStd/numerMean)**2 + (denomStd/denomMean)**2)
+                        measuredLinesDict[key] = [index, var]
+                    else:
+                        measuredLinesDict[key] = [0,np.inf]
+                else:
+                    measuredLinesDict[key] = [0,np.inf]
+                        
+                
+            elif len(value) == 8: 
+                      
+                #find the indices for the two numerators and denominators
+                numer1IndexLow = bisect.bisect_right( self._wavelength, value[0])
+                numer1IndexHigh = bisect.bisect_right(self._wavelength, value[1])
+                
+                numer2IndexLow = bisect.bisect_right( self._wavelength, value[3])
+                numer2IndexHigh = bisect.bisect_right(self._wavelength, value[4])
+                
+                denomIndexLow = bisect.bisect_right( self._wavelength, value[6])
+                denomIndexHigh = bisect.bisect_right(self._wavelength, value[7])
+                
+                #check to make sure the absorption features are within the wavelength regime of the spectrum
+                if len(self._wavelength) > numer1IndexHigh and len(self._wavelength) > numer2IndexHigh and len(self._wavelength) > denomIndexHigh:
+                    #calculate the mean fluxes of the numerator and denominator regimes
+                    numer1Mean = np.mean(self._flux[numer1IndexLow:numer1IndexHigh])
+                    numer2Mean = np.mean(self._flux[numer2IndexLow:numer2IndexHigh])
+                    numer1Std = np.sum((self._var[numer1IndexLow:numer1IndexHigh]))**(0.5)/len(self._var[numer1IndexLow:numer1IndexHigh])
+                    numer2Std = np.sum((self._var[numer2IndexLow:numer2IndexHigh]))**(0.5)/len(self._var[numer2IndexLow:numer2IndexHigh])
+                    comboNumer = value[2]*numer1Mean + value[5]*numer2Mean
+                    comboNumerStd = (value[2]**2 * numer1Std**2 + value[5]**2 * numer2Std**2)**(0.5)
+                    denomMean = np.mean(self._flux[denomIndexLow:denomIndexHigh])
+                    denomStd = np.sum((self._var[denomIndexLow:denomIndexHigh]))**(0.5)/len(self._var[denomIndexLow:denomIndexHigh])
+                    
+                    #if the mean is greater than zero find the index and add it to the measuredLinesDict dictionary 
+                    #This uses the same keys as the self.indexDict dictionary
+                    if denomMean > 0:
+                        index = comboNumer/denomMean
+                        var = index**2 * (comboNumerStd/comboNumer)**2 + (denomStd/denomMean)**2
+                        measuredLinesDict[key] = [index, var]
+                    else:
+                        measuredLinesDict[key] = [0,np.inf]
+                else:
+                    measuredLinesDict[key] = [0,np.inf]
  
-         return measuredLinesDict
+        return measuredLinesDict
         
     def guessSpecType(self):
     
-        #Measure lines
+        # Measure lines
         linesDict = self.measureLines()
         
-        #Recast values to simple 2D array
-        #lines = np.array(list(linesDict.values()))
+        # Recast values to simple 2D array
         lines = np.array(list(linesDict.values()))[np.argsort(list(linesDict.keys()))]
         
-        #Weight by uncertainty in object lines and template lines
-        weights = 1.0 / (np.sqrt(self._tempLineVars) + np.sqrt(lines[:,1]))
+        # Weight by uncertainty in object lines and template lines
+        weights = 1 / (np.sqrt(self._tempLineVars) + np.sqrt(lines[:,1]))
         
-        #print(lines)
-        #print(weights)
-        
-        #Find best fit
+        # Find best fit
         sumOfWeights = np.nansum(weights**2, 1)
         sumOfWeights[sumOfWeights == 0] = np.nan
         iguess = np.nanargmin(np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights)
         
-        #print(iguess)
-        
         #Save guess as dict       
-        self._guess = {'spt':self._tempLines[0][iguess], # Spectral type - 0 for O to 6 for M
-                       'sub':self._tempLines[1][iguess], # Spectral subtype
-                       'feh':self._tempLines[2][iguess], # Metallicity
-                       'lum':self._tempLines[3][iguess]} # Luminosity class - 3 for giant, 5 for MS        
+        self._guess = {'specType':   self._tempLines[0][iguess], # Spectral type, 0 for O to 7 for L
+                       'subType':    self._tempLines[1][iguess], # Spectral subtype
+                       'metal':      self._tempLines[2][iguess], # Metallicity
+                       'luminosity': self._tempLines[3][iguess]} # Luminosity class, 3 for giant, 5 for MS        
     
     def findRadialVelocity(self):
         """
@@ -485,37 +485,43 @@ class Spectrum(object):
         # so I just cross correlate to the most common metallicity template for each spectral class
         path = 'resources/templates/'
         #Spectral type O 
-        if bestGuess['spt'] == 0:
-            tempName = 'O' + str(bestGuess['sub']) + '.fits'
+        if bestGuess['specType'] == 0:
+            tempName = 'O' + str(bestGuess['subType']) + '.fits'
         #Spectral type B
-        elif bestGuess['spt'] == 1: 
-            tempName = 'B' + str(bestGuess['sub']) + '.fits'
-        #Spectral types A0, A1, A2 (where there is no metallicity changes)
-        elif bestGuess['spt'] == 2 and float(bestGuess['sub']) < 3:
-            tempName = 'A' + str(bestGuess['sub']) + '.fits'
+        elif bestGuess['specType'] == 1: 
+            tempName = 'B' + str(bestGuess['subType']) + '.fits'
+        #Spectral types A0, A1, A2 (where there are no metallicity changes)
+        elif bestGuess['specType'] == 2 and float(bestGuess['subType']) < 3:
+            tempName = 'A' + str(bestGuess['subType']) + '.fits'
         #Spectral type A3 through A9
-        elif bestGuess['spt'] == 2 and float(bestGuess['sub']) > 2: 
-            tempName = 'A' + str(bestGuess['sub']) + '_-1.0_Dwarf.fits'
+        elif bestGuess['specType'] == 2 and float(bestGuess['subType']) > 2: 
+            tempName = 'A' + str(bestGuess['subType']) + '_-1.0_Dwarf.fits'
         #Spectral type F
-        elif bestGuess['spt'] == 3: 
-            tempName = 'F' + str(bestGuess['sub']) + '_-1.0_Dwarf.fits'
+        elif bestGuess['specType'] == 3: 
+            tempName = 'F' + str(bestGuess['subType']) + '_-1.0_Dwarf.fits'
         #Spectral type G
-        elif bestGuess['spt'] == 4: 
-            tempName = 'G' + str(bestGuess['sub']) + '_+0.0_Dwarf.fits'
+        elif bestGuess['specType'] == 4: 
+            tempName = 'G' + str(bestGuess['subType']) + '_+0.0_Dwarf.fits'
         #Spectral type K 
-        elif bestGuess['spt'] == 5: 
-            tempName = 'K' + str(bestGuess['sub']) + '_+0.0_Dwarf.fits'
+        elif bestGuess['specType'] == 5: 
+            tempName = 'K' + str(bestGuess['subType']) + '_+0.0_Dwarf.fits'
         #Spectral type M (0 through 8) 
-        elif bestGuess['spt'] == 6 and float(bestGuess['sub']) < 9: 
-            tempName = 'M' + str(bestGuess['sub']) + '_+0.0_Dwarf.fits'
+        elif bestGuess['specType'] == 6 and float(bestGuess['subType']) < 9: 
+            tempName = 'M' + str(bestGuess['subType']) + '_+0.0_Dwarf.fits'
         #Spectral type M9 (no metallicity)
-        elif bestGuess['spt'] == 6 and bestGuess['sub'] == 9: 
-            tempName = 'M' + str(bestGuess['sub']) + '.fits'
+        elif bestGuess['specType'] == 6 and bestGuess['subType'] == 9: 
+            tempName = 'M' + str(bestGuess['subType']) + '.fits'
         #Spectral type L
-        elif bestGuess['spt'] == 7: 
-            tempName = 'L' + str(bestGuess['sub']) + '.fits'
+        elif bestGuess['specType'] == 7: 
+            tempName = 'L' + str(bestGuess['subType']) + '.fits'
 
-        temp = fits.open(path+tempName)
+        # Open the template
+        with warnings.catch_warnings():
+            # Ignore a very particular warning from some versions of astropy.io.fits
+            # that is a known bug and causes no problems with loading fits data.
+            warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+            temp = fits.open(path+tempName)
+                                    
         tempFlux = temp[1].data['flux']
         tempWave = 10**temp[1].data['loglam']
 
@@ -537,7 +543,7 @@ class Spectrum(object):
         # Convert to Radial Velocities
         pixel = wave[1]-wave[0]
         wave0 = (wave[1]+wave[0]) / 2
-        c = 2.998 * 10**5
+        c = 299792.458 # km/s
         radVel1 = shift1 * pixel / wave0 * c
         radVel2 = shift2 * pixel / wave0 * c
         radVel3 = shift3 * pixel / wave0 * c
@@ -788,9 +794,6 @@ class Spectrum(object):
         normIndexHigh = bisect.bisect_right(self._wavelength, 8010)
         normFactor = np.mean(self._flux[normIndexLow:normIndexHigh])
         self._flux = self._flux/normFactor
-        
-        return 
-    # Define other methods in this class which are needed to process the spectra
 
 
     ##
@@ -801,38 +804,19 @@ class Spectrum(object):
     def flux(self):
         return self._flux
 
-    @property
-    def normFlux(self):
-        # The flux is normalized by dividing all flux values by the flux
-        # at 8000 Angstroms. We should determine if there is a flux value
-        # at that wavelength and divide by it. If there isn't, interpolate.
-        # The variable ind1 will be the index of the wavelength closest to
-        # 8000 angstroms.
-        ind1 = np.argmin(np.abs(self._wavelength - 8000))
-        if self._wavelength[ind1] == 8000:
-            # We found the flux is defined exactly at 8000 angstroms
-            return self._flux / self._flux[ind1]
-        else:
-            # We didn't find a wavelength exactly equal to 8000 angstroms
-            # so instead let's interpolate.
-            ind2 = ind1 + (1 if self._wavelength[ind1] < 8000 else -1)
-            fluxAt8000 = interp1d(self._wavelength[[ind1,ind2]], self._flux[[ind1,ind2]])(8000)
-            return self._flux / fluxAt8000
 
     @property
-    def normSmoothFlux(self):
-        # Simply the normalized flux, convolved with a boxcar function to
-        # smooth it out. A potential failing of this method is the case where
-        # there are a small number of flux values (in the hundreds) but that
-        # seems so unlikely, it isn't going to be handled.
+    def smoothFlux(self):
+        # Simply the flux, convolved with a boxcar function to smooth it out.
+        # A potential failing of this method is the case where there are a
+        # small number of flux values (in the hundreds) but that seems so
+        # unlikely, it isn't going to be handled.
         N = max(len(self._flux)/600, 100)  # Smoothing factor, Higher value = more smoothing
-        normFlux = self.normFlux
-        cumsum = np.cumsum(np.insert(normFlux,0,0))
-        normSmoothFlux = (cumsum[N:] - cumsum[:-N]) / N
-        normSmoothFlux = np.append(normFlux[:int(np.floor((N-1)/2))], normSmoothFlux)
-        normSmoothFlux = np.append(normSmoothFlux, normFlux[-int(np.floor(N/2)):])
-        return normSmoothFlux
-        
+        cumsum = np.cumsum(np.insert(self._flux,0,0))
+        smoothFlux = (cumsum[N:] - cumsum[:-N]) / N
+        smoothFlux = np.append(self._flux[:int(np.floor((N-1)/2))], smoothFlux)
+        smoothFlux = np.append(smoothFlux, self._flux[-int(np.floor(N/2)):])
+        return smoothFlux
 
     @property
     def var(self):
