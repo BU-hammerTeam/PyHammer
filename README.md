@@ -1,15 +1,64 @@
-# New_Hammer
-BU_pycon's new hammer code: A Python Spectral Typing Suite (modeled after Covey+07: The Hammer)
+# PyHammer
 
-CURRENTLY UNDER DEVELOPMENT, USE AT OWN RISK!
+###A Python Spectral Typing Suite 
 
-RUNNING THE CODE: In the New\_Hammer folder, run pyHammer by typing python pyHammer.py. The first time you run the code type python pyHammer.py -h to see all the options available to run. For each run, you will need an input file that contains a list of all the spectra you would like to classify, along with what filetype each one is. An example of this file is available (test_case/exampleInputFile.txt). The filetypes accepted are .txt, .csv, SDSS EDR - DR8 (DR7fits), SDSS DR9 - DR12 (DR12fits), fits. 
+Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in [Covey et al. 2007][covey+07]
 
+**_CURRENTLY UNDER DEVELOPMENT, USE AT OWN RISK!_**
 
-KNOWN ISSUES: 
-1.) When running the GUI, some computers crash, display this (and many more) error becuase of a problem with the maplotlib backend: 
--[NSApplication _setup:]: unrecognized selector sent to instance 0x10c138de0
+##Requirements
 
-We have not found a universal fix at the moment since implementing the following fix on some computers crashes the code. If you are running into this error go into eyecheck.py and uncomment the import matplotlib, matplotlib.use("TkAgg") lines. This should fix the problem
+PyHammer is written in and should be run with **Python 3**. It *will not* work in Python 2.
 
+####Python Module Dependencies
 
+PyHammer relies on several core Python modules as well as third party modules. It is suggested that python be installed with [Anaconda][conda], which comes packaged with all required modules. The table below lists all third party modules as well as suggested versions. Modules can be upgraded through the commands `pip install --upgrade <module_name>` or else `conda update <module_name>` if Anaconda is installed.
+
+| Module   | Suggested Version | Command to check version<sup>1</sup>      |
+|:--------:|:------------------|:------------------------------------------|
+|NumPy     | 1.11              |`import numpy; numpy.__version__`          |
+|SciPy     | 0.18              |`import scipy; scipy.__version__`          |
+|Matplotlib| 1.5               |`import matplotlib; matplotlib.__version__`|
+|TkInter   | 8                 |`import tkinter; tkinter.TkVersion`        |
+|AstroPy   | 1.2.1             |`import astropy; astropy.__version__`      |
+<sup>1</sup>Commands are run in python environment
+
+##Running the Code
+
+On the command line, navigate to the PyHammer folder and run with the command `python pyhammer.py`. In the ipython environment, the command `run pyhammer.py` can be used. This code should not be imported!
+
+The first time you run the code, you can supply the flag `-h` to see all options available for the run command. By default, PyHammer will run in GUI mode, but command line mode can be used with the `-c` flag.
+
+For each run, you will need an input file that contains a list of all the spectra fits files you would like to classify, along with which fits data type each file is. The fits data types accepted are `txt`, `csv`, `DR7fits` (SDSS EDR - DR8), `DR12fits` (SDSS DR9 - DR12), and `fits`. 
+
+####Test Case
+
+An example input file along with corresponding spectra are located in the [test_case](/test_case) directory. This includes an [example input file](/test_case/exampleInputFile.txt) and ten spectra. Run this test case from the command line with the following command.
+
+    python pyhammer.py -i test_case/exampleInputFile.txt -p test_case/
+
+From the ipython environment use the following command.
+
+    run pyhammer.py -i test_case/exampleInputFile.txt -p test_case/
+
+##Known Issues
+When running the Eyecheck GUI some Mac computers will crash, displaying this error (and many more):
+
+> -[NSApplication _setup:]: unrecognized selector sent to instance 0x10c138de0
+
+This error has been [traced to a problem with the maplotlib backend][backend_problem]. A universal fix has not been found at the moment and the following fix should only be implemented if the above error is encountered. Otherwise, this change may crash working code. If you are running into this error go into [eyecheck.py](eyecheck.py) and uncomment the `import matplotlib` and `matplotlib.use("TkAgg")` lines at the top of the file. This has been found to fix this problem.
+
+##Publications
+
+This project and accompanying work is described Appendix A in Kesseli et al. (in prep.)
+
+##Acknowledgements
+
+This project was developed by a select group of graduate students at the Department of Astronomy at Boston University. The project was lead by Aurora Kesseli with development help and advice provided by Andrew West, Mark Veyette, Brandon Harrison, and Dan Feldman. Contributions were further provided by Dylan Morgan and Chris Theissan.
+
+![Boston University Logo](https://www.bu.edu/brand/files/2012/10/BU-Master-Logo.gif "Boston University")
+
+[thehammer]: http://myweb.facstaff.wwu.edu/~coveyk/thehammer.html
+[covey+07]: http://adsabs.harvard.edu/abs/2007AJ....134.2398C
+[conda]: https://www.continuum.io/downloads
+[backend_problem]: https://github.com/mperrin/webbpsf/issues/103
