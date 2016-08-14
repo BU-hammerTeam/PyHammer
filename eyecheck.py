@@ -70,8 +70,10 @@ class Eyecheck(object):
                 else:
                     return
             else:
-                modal = ModalWindow('The output file already has eyecheck results.\nDo you want to continue where you left off?')
-                if modal.choice == 'no' or modal.choice == None:
+                modal = ModalWindow('The output file already has eyecheck results. The\n'
+                                    'eyecheck will start with the next unclassified\n'
+                                    'spectrum. Do you want to start over instead?')
+                if modal.choice == 'yes':
                     self.specIndex = 0
         # Now use the Spectrum object to read in the user's appropriate starting spectrum
         fname = self.outData[self.specIndex,0]
@@ -89,9 +91,9 @@ class Eyecheck(object):
         self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex,3]))
         self.subButtons = []            # We keep track of these radio buttons so
         self.metalButtons = []          # they can be enabled and disabled if need be
-        self.smoothButton = []          # Save the smooth button info also, so it can be updated
-        self.smoothStr = tk.StringVar(value = 'Smooth')
+        self.smoothState = tk.BooleanVar(value = False)
         self.lockSmooth = tk.BooleanVar(value = False)
+        self.showTemplateError = tk.BooleanVar(value = True)
 
         # *** Define figure variables ***
         
@@ -116,6 +118,17 @@ class Eyecheck(object):
     # Setup/Close Methods
     #
 
+    def areYouSure(self):
+        """
+        Description:
+            In some cases, if the user wants to quit, we should ask if they're
+            sure they want to quit before moving on to the _exit function.
+        """
+        modal = ModalWindow('Are you sure you want to quit?', parent = self.root, title = 'Quit')
+        self.root.wait_window(modal.modalWindow)
+        if modal.choice == 'yes':
+            self._exit()
+    
     def _exit(self):
         """
         Description:
@@ -152,7 +165,7 @@ class Eyecheck(object):
         self.root.resizable(False, False)
         self.root.geometry('+100+100')
         # Set the close protocol to call this class' personal exit function
-        self.root.protocol('WM_DELETE_WINDOW', self._exit)
+        self.root.protocol('WM_DELETE_WINDOW', self.areYouSure)
 
         # *** Define menubar ***
         
@@ -160,25 +173,27 @@ class Eyecheck(object):
 
         # Define the options menu
         optionsMenu = tk.Menu(menubar, tearoff = 1)
-        optionsMenu.add_checkbutton(label = 'Lock Smooth State', onvalue = True, offvalue = False, variable = self.lockSmooth)
+        optionsMenu.add_checkbutton(label = 'Show Template Error', variable = self.showTemplateError, command = self.updatePlot)
+        optionsMenu.add_checkbutton(label = 'Smooth Spectrum', variable = self.smoothState, command = self.callback_smooth)
+        optionsMenu.add_checkbutton(label = 'Lock Smooth State', variable = self.lockSmooth)
         optionsMenu.add_separator()
-        optionsMenu.add_command(label = 'Quit', command = self._exit)
+        optionsMenu.add_command(label = 'Quit', command = self.areYouSure)
 
         # Define the about menu
-        aboutMenu = tk.Menu(menubar, tearoff = 0)
-        aboutMenu.add_command(label = 'Help', command = self.callback_help)
-        aboutMenu.add_command(label = 'About', command = self.callback_about)
+        helpMenu = tk.Menu(menubar, tearoff = 0)
+        helpMenu.add_command(label = 'Help', command = self.callback_help)
+        helpMenu.add_command(label = 'About', command = self.callback_about)
 
         # Put all menus together
         menubar.add_cascade(label = 'Options', menu = optionsMenu)
-        menubar.add_cascade(label = 'About', menu = aboutMenu)
+        menubar.add_cascade(label = 'Help', menu = helpMenu)
         self.root.config(menu = menubar)
         
         # *** Define labels ***
         
-        for i, name in enumerate(['Spectra', 'Type', 'Subtype', 'Metallicity', 'Change Type', 'Change Metallicity', 'Options']):
-            ttk.Label(self.root, text = name).grid(row = i, column = 0, stick = 'e',
-                                                   pady = (10*(i==4),10*(i==0)))
+        for i, name in enumerate(['Spectra', 'Type', 'Subtype', 'Metallicity', 'Switch Type', 'Switch Metallicity', 'Spectrum Choices']):
+            ttk.Label(self.root, text = name).grid(row = i, column = 0, columnspan = 1+(i>3),
+                                                   stick = 'e', pady = (10*(i==4),10*(i==0)))
 
         # *** Define entry box ***
 
@@ -209,23 +224,23 @@ class Eyecheck(object):
         # *** Define buttons ***
         
         # These will be the buttons for interacting with the data (e.g., smooth it, next, back)
-        # We must handle the smooth button specially so we can interact with it later.
-        ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 1, columnspan = 5, sticky = 'nesw', pady = (10,0))
-        ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 5, sticky = 'nesw', pady = (10,0))
-        ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 1, columnspan = 5, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 5, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 1, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 3, columnspan = 2, sticky = 'nesw')
-        self.smoothButton = ttk.Button(self.root, textvariable = self.smoothStr, underline = 0, command = self.callback_smooth)
-        self.smoothButton.grid(row = 6, column = 5, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 7, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 9, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 2, columnspan = 4, sticky = 'nesw', pady = (10,0))
+        ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 4, sticky = 'nesw', pady = (10,0))
+        ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 2, columnspan = 4, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 4, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 2, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 4, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 6, columnspan = 2, sticky = 'nesw')
+        ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 8, columnspan = 2, sticky = 'nesw')
 
         # *** Set key bindings ***
         
         self.root.bind('o', lambda event: self.callback_odd())
         self.root.bind('b', lambda event: self.callback_bad())
-        self.root.bind('s', lambda event: self.callback_smooth())
+        self.root.bind('s', lambda event: self.callback_smooth(toggle = True))
+        self.root.bind('e', lambda event: self.showTemplateError.set(not self.showTemplateError.get()))
+        self.root.bind('e', lambda event: self.updatePlot(), add = '+')
+        self.root.bind('l', lambda event: self.lockSmooth.set(not self.lockSmooth.get()))
         self.root.bind('<Return>', lambda event: self.callback_next())
         self.root.bind('k', lambda event: self.callback_back())
         self.root.bind('<Left>', lambda event: self.callback_earlier())
@@ -287,16 +302,17 @@ class Eyecheck(object):
             std = hdulist[1].data['std'][::10]
 
             # Plot template error bars and spectrum line
-            plt.fill_between(loglam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
             plt.plot(loglam, flux, '-k', label = 'Template')
+            if self.showTemplateError.get():    # Only plot template error if option is selected to do so
+                plt.fill_between(loglam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
             templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
         else:
             # No template exists, plot nothing
-            templateName = 'N/A'
+            templateName = 'Not\;Available'
             
         # *** Plot the user's data ***
         
-        if self.smoothStr.get() == 'Smooth':
+        if self.smoothState.get() == False:
             plt.plot(self.specObj.loglam, self.specObj.flux, '-r', alpha = 0.6, label = 'Your Spectrum')
         else:
             plt.plot(self.specObj.loglam, self.specObj.smoothFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
@@ -311,10 +327,10 @@ class Eyecheck(object):
         # *** Set Legend Settings ***
 
         handles, labels = plt.gca().get_legend_handles_labels()
-        # In matplotlib versions befoew 1.5, the fill_between plot command above
+        # In matplotlib versions before 1.5, the fill_between plot command above
         # does not appear in the legend. In those cases, we will fake it out by
         # putting in a fake legend entry to match the fill_between plot.
-        if pltVersion < '1.5':
+        if pltVersion < '1.5' and self.showTemplateError.get():
             labels.append('Template Error')
             handles.append(Rectangle((0,0),0,0, color = 'b', ec = 'None', alpha = 0.1))
         labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
@@ -322,8 +338,12 @@ class Eyecheck(object):
         leg.get_frame().set_alpha(0)
         # Set legend text colors to match plot line colors
         if templateFile is not None:
-            plt.setp(leg.get_texts()[1], color = 'b', alpha = 0.5)  # alpha is higher, to make more readable
-            plt.setp(leg.get_texts()[2], color = 'r', alpha = 0.6)
+            # Don't adjust the template error if it wasn't plotted
+            if self.showTemplateError.get():
+                plt.setp(leg.get_texts()[1], color = 'b', alpha = 0.5)  # Adjust template error, alpha is higher to make more readable
+                plt.setp(leg.get_texts()[2], color = 'r', alpha = 0.6)  # Adjust spectrum label
+            else:
+                plt.setp(leg.get_texts()[1], color = 'r', alpha = 0.6)  # Adjust spectrum table
         else:
             plt.setp(leg.get_texts()[0], color = 'r', alpha = 0.6)
 
@@ -353,78 +373,80 @@ class Eyecheck(object):
     #
     
     def callback_help(self):
-        mainStr = \
-            'Welcome to the main GUI for spectral typing your spectra.\n\n' \
-            'Each spectra in your spectra list file will be loaded in ' \
-            'sequence and shown on top of the template it was matched ' \
-            'to. From here, fine tune the spectral type by comparing ' \
-            'your spectrum to the templates and choose "Next" when ' \
-            "you've landed on the correct choice. Continue through each " \
-            'spectrum until finished.'
-        buttonStr = \
-            'Upon opening the Eyecheck program, the first spectrum in your ' \
-            'list will be loaded and displayed on top of the template determined ' \
-            'by the spectral type guesser.\n\n' \
-            'Use the "Earlier" and "Later" buttons to change the spectrum ' \
-            'templates. Note that not all templates exist for all spectral ' \
-            'types. This program specifically disallows choosing K8 and K9 ' \
-            'spectral types as well.\n\n' \
-            'The "Higher" and "Lower" buttons change the metallicity. Again, ' \
-            'not all metallicities exist as templates.\n\n' \
-            'The "Odd" button allows you to mark a spectrum as something other ' \
-            'than a standard classification, such as a white dwarf or galaxy.\n\n' \
-            'The "Bad" button simply marks the spectrum as BAD in the output ' \
-            'file, indicating it is not able to be classified.\n\n' \
-            'The Smooth/Unsmooth button will allow you to smooth or unsmooth ' \
-            'your spectra in the event that it is noisy. This simply applies ' \
-            'a boxcar convolution across your spectrum, leaving the edges unsmoothed.\n\n' \
-            'You can cycle between your spectra using the "Back" and "Next" buttons. ' \
-            'Note that hitting "Next" will save the currently selected state as ' \
-            'the classification for that spectra.'
-        keyStr = \
-            'The following keys are mapped to specific actions.\n\n' \
-            '<Left>\tEarlier spectral type button\n' \
-            '<Right>\tLater spectral type button\n' \
-            '<Up>\tHigher metallicity button\n' \
-            '<Down>\tLower metallicity button\n' \
-            '<Enter>\tAccept spectral classification\n' \
-            '<K>\tMove to previous spectrum\n' \
-            '<O>\tMark spectrum as odd\n' \
-            '<B>\tMark spectrum as bad\n' \
-            '<S>\tSmooth/Unsmooth the spectrum\n' \
-            '<P>'
-        tipStr = \
-            'The following are a set of tips for useful features of the ' \
-            'program.\n\n' \
-            'Any zoom applied to the plot is held constant between switching ' \
-            'templates. This makes it easy to compare templates around specific ' \
-            'features or spectral lines. Hit the home button on the plot ' \
-            'to return to the original zoom level.\n\n' \
-            'The entry field on the GUI will display the currently plotted ' \
-            'spectrum. You can choose to enter one of the spectra in your ' \
-            'and hit the "Go" button to automatically jump to that spectrum.\n\n' \
-            'By default, every new, loaded spectrum will be unsmoothed and ' \
-            'the smooth button state reset. You can choose to keep the smooth '\
-            'button state between loading spectrum by selecting the menu option ' \
-            '"Lock Smooth State".\n\n' \
-            'Some keys may need to be hit rapidly.'
-        contactStr = \
-            'Aurora Kesseli\n' \
-            'aurorak@bu.edu'
+        mainStr = (
+            'Welcome to the main GUI for spectral typing your spectra.\n\n'
+            'Each spectra in your spectra list file will be loaded in '
+            'sequence and shown on top of the template it was matched '
+            'to. From here, fine tune the spectral type by comparing '
+            'your spectrum to the templates and choose "Next" when '
+            "you've landed on the correct choice. Continue through each "
+            'spectrum until finished.')
+        buttonStr = (
+            'Upon opening the Eyecheck program, the first spectrum in your '
+            'list will be loaded and displayed on top of the template determined '
+            'by the spectral type guesser.\n\n'
+            'Use the "Earlier" and "Later" buttons to change the spectrum '
+            'templates. Note that not all templates exist for all spectral '
+            'types. This program specifically disallows choosing K8 and K9 '
+            'spectral types as well.\n\n'
+            'The "Higher" and "Lower" buttons change the metallicity. Again, '
+            'not all metallicities exist as templates.\n\n'
+            'The "Odd" button allows you to mark a spectrum as something other '
+            'than a standard classification, such as a white dwarf or galaxy.\n\n'
+            'The "Bad" button simply marks the spectrum as BAD in the output '
+            'file, indicating it is not able to be classified.\n\n'
+            'You can cycle between your spectra using the "Back" and "Next" buttons. '
+            'Note that hitting "Next" will save the currently selected state as '
+            'the classification for that spectra.')
+        keyStr = (
+            'The following keys are mapped to specific actions.\n\n'
+            '<Left>\tEarlier spectral type button\n'
+            '<Right>\tLater spectral type button\n'
+            '<Up>\tHigher metallicity button\n'
+            '<Down>\tLower metallicity button\n'
+            '<Enter>\tAccept spectral classification\n'
+            '<K>\tMove to previous spectrum\n'
+            '<O>\tClassify spectrum as odd\n'
+            '<B>\tClassify spectrum as bad\n'
+            '<E>\tToggle the template error\n'
+            '<S>\tSmooth/Unsmooth the spectrum\n'
+            '<L>\tLock the smooth state between spectra\n'
+            '<P>')
+        tipStr = (
+            'The following are a set of tips for useful features of the '
+            'program.\n\n'
+            'Any zoom applied to the plot is held constant between switching '
+            'templates. This makes it easy to compare templates around specific '
+            'features or spectral lines. Hit the home button on the plot '
+            'to return to the original zoom level.\n\n'
+            'The entry field on the GUI will display the currently plotted '
+            'spectrum. You can choose to enter one of the spectra in your list'
+            'and hit the "Go" button to automatically jump to that spectrum.\n\n'
+            'The smooth menu option will allow you to smooth or unsmooth '
+            'your spectra in the event that it is noisy. This simply applies '
+            'a boxcar convolution across your spectrum, leaving the edges unsmoothed.\n\n'
+            'By default, every new, loaded spectrum will be unsmoothed and '
+            'the smooth button state reset. You can choose to keep the smooth '
+            'button state between loading spectrum by selecting the menu option '
+            '"Lock Smooth State".\n\n'
+            'Some keys may need to be hit rapidly.')
+        contactStr = (
+            'Aurora Kesseli\n'
+            'aurorak@bu.edu')
         InfoWindow(('Main',    mainStr),
                    ('Buttons', buttonStr),
                    ('Keys',    keyStr),
                    ('Tips',    tipStr),
-                   ('Contact', contactStr), parent = self.root, title = 'PyHammer Help')
+                   ('Contact', contactStr), parent = self.root, title = 'PyHammer Help', height = 8)
 
     def callback_about(self):
-        aboutStr = \
-            'This project was developed by a select group of graduate students ' \
-            'at the Department of Astronomy at Boston University. The project ' \
-            'was lead by Aurora Kesseli with development help and advice provided ' \
-            'by Andrew West, Mark Veyette, Brandon Harrison, and Dan Feldman. ' \
-            'Contributions were further provided by Dylan Morgan and Chris Theissan.\n\n' \
-            'See the acompanying paper Kesseli et al. (2016) for further details.'
+        aboutStr = (
+            'This project was developed by a select group of graduate students '
+            'at the Department of Astronomy at Boston University. The project '
+            'was lead by Aurora Kesseli with development help and advice provided '
+            'by Andrew West, Mark Veyette, Brandon Harrison, and Dan Feldman. '
+            'Contributions were further provided by Dylan Morgan and Chris Theissan.\n\n'
+            'See the acompanying paper Kesseli et al. (2016) for further details.')
         InfoWindow(aboutStr, parent = self.root, title = 'PyHammer About')
 
     ##
@@ -449,10 +471,9 @@ class Eyecheck(object):
         # Move to the next spectra
         self.moveToNextSpectrum()
         
-    def callback_smooth(self):
-        # Toggle the button text
-        self.smoothButton.config(underline = (0 if self.smoothStr.get() == 'Unsmooth' else 2))
-        self.smoothStr.set('Smooth' if self.smoothStr.get() == 'Unsmooth' else 'Unsmooth')
+    def callback_smooth(self, toggle = False):
+        if toggle:
+            self.smoothState.set(not self.smoothState.get())
         # Update the plot now
         self.updatePlot()
         
@@ -623,9 +644,9 @@ class Eyecheck(object):
                 spectrumFound = True
                 break
         if not spectrumFound:
-            message = 'The spectrum you input could not be matched' \
-                      'to one of the spectrum in your output file ' \
-                      'list. Check your input and try again.'
+            message = ('The spectrum you input could not be matched '
+                       'to any of the spectrum in your output file '
+                       'list. Check your input and try again.')
             InfoWindow(message, parent = self.root, title = 'PyHammer Error')
         else:
             self.getUserSpectrum()
@@ -654,8 +675,7 @@ class Eyecheck(object):
         self.zoomed = False
         # Reset the smooth state to be unsmoothed, unless the user chose to lock the state
         if not self.lockSmooth.get():
-            self.smoothButton.config(underline = 0)
-            self.smoothStr.set('Smooth')
+            self.smoothState.set(False)
         # Update the plot
         self.updatePlot()
 
@@ -675,28 +695,28 @@ class Eyecheck(object):
         if specState is None: specState = self.specState.get()
         if subState is None: subState = self.subState.get()
         if metalState is None: metalState = self.metalState.get()
-        
-        # Try to use just the spectral type and subtype for the name first
-        filename = self.specType[specState] + str(subState)
 
-        fullPath = os.path.join(self.templateDir, filename + '.fits')
-        
-        if os.path.isfile(fullPath):
-            return fullPath
-
-        # Try adding the current metallicity choice
-        filename += '_' + self.metalType[metalState]
+        # Try using the full name
+        filename = self.specType[specState] + str(subState) + '_' + self.metalType[metalState] + '_Dwarf'
 
         fullPath = os.path.join(self.templateDir, filename + '.fits')
 
         if os.path.isfile(fullPath):
             return fullPath
 
-        # Try adding the word Dwarf to the name
-        filename += '_Dwarf'
+        # Try using only the spectra and metallicity in the name
+        filename = filename[:7]
 
         fullPath = os.path.join(self.templateDir, filename + '.fits')
 
+        if os.path.isfile(fullPath):
+            return fullPath
+        
+        # Try to use just the spectral type
+        filename = filename[:2]
+
+        fullPath = os.path.join(self.templateDir, filename + '.fits')
+        
         if os.path.isfile(fullPath):
             return fullPath
 
