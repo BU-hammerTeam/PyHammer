@@ -800,7 +800,7 @@ class InfoWindow(object):
         scrollbar = ttk.Scrollbar(parent, command = content.yview)
         scrollbar.grid(row = 0, column = 1, sticky = 'ns')
         # Link the Text widget to the Scrollbar
-        content.config(state = tk.DISABLED, yscrollcommand = scrollbar)
+        content.config(state = tk.DISABLED, yscrollcommand = scrollbar.set)
         # Add the OK button at the bottom for quitting out
         but = ttk.Button(parent, text = 'OK', command = self.infoWindow.destroy)
         but.grid(row = 1, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
