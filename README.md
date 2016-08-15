@@ -1,10 +1,12 @@
+###_CURRENTLY UNDER DEVELOPMENT, USE AT OWN RISK!_
+
 # PyHammer
 
 ###A Python Spectral Typing Suite 
 
-Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in [Covey et al. 2007][covey+07]
+PyHammer is a tool developed to allow rapid and automatic spectral classification of stars according to the Morgan-Keenan classification system. Working in the range of 3,650 - 10,200 Angstroms, the automatic spectral typing algorithm compares important spectral lines to template spectra and determines the best matching spectral type, ranging from O to L type stars. This tool has the additional features that it can determine a star's metallicity and radial velocity shifts. Once the automatic classification algorithm has run, PyHammer provides the user an interface for determine spectral types for themselves by comparing their spectra to provided templates.
 
-**_CURRENTLY UNDER DEVELOPMENT, USE AT OWN RISK!_**
+Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in [Covey et al. 2007][covey+07]
 
 ##Requirements
 
@@ -23,17 +25,17 @@ PyHammer relies on several core Python modules as well as third party modules. I
 |AstroPy   | 1.2.1             |`import astropy; astropy.__version__`      |
 <sup>1</sup>Commands are run in Python environment
 
-##Running the Code
+##Running PyHammer
 
 On the command line, navigate to the PyHammer folder and run with the command `python pyhammer.py`. In the ipython environment, the command `run pyhammer.py` can be used. This code should not be imported!
 
-The first time you run the code, you can supply the flag `-h` to see all options available for the run command. By default, PyHammer will run in GUI mode, but command line mode can be used with the `-c` flag.
+The first time you run the code, you can supply the flag `-h` to see all options and flags available to the run command. By default, PyHammer will run in GUI mode, but command line mode can be used with the `-c` flag.
 
-For each run, you will need an input file that contains a list of all the spectra fits files you would like to classify, along with which fits data type each file is. The fits data types accepted are `txt`, `csv`, `DR7fits` (SDSS EDR - DR8), `DR12fits` (SDSS DR9 - DR12), and `fits`. 
+For each run, you will need an input file that contains a list of all the spectra fits files you would like to classify, along with which fits data type each file is. The fits data types accepted are  `DR7fits` (SDSS EDR - DR8), `DR12fits` (SDSS DR9 - DR12), `fits`, `txt`, and `csv`.
 
 ####Test Case
 
-An example input file along with corresponding spectra are located in the [test_case](/test_case) directory. This includes an [example input file](/test_case/exampleInputFile.txt) and ten spectra. Run this test case from the command line with the following command.
+An [example input file](/test_case/exampleInputFile.txt) along with a set of ten corresponding spectra are located in the [test_case](/test_case) directory. Run this test case from the command line with the following command.
 
     python pyhammer.py -i test_case/exampleInputFile.txt -p test_case/
 
