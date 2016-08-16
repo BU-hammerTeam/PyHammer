@@ -12,7 +12,6 @@ from astropy.io import fits
 import warnings
 import time
 import csv
-import pdb
 
 class Eyecheck(object):
 
@@ -35,7 +34,9 @@ class Eyecheck(object):
         self.inData = []
         with open(self.options['infile'], 'r') as file:
             for line in file:
-                self.inData.append(line.strip().rsplit(' ',1))
+                line = line.strip()
+                if line.find(',') > 0: line = line.replace(',',' ')
+                self.inData.append(' '.join(line.split()).rsplit(' ',1))
         self.inData = np.asarray(self.inData)
 
         # *** Read the outfile ***
