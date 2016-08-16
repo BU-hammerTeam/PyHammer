@@ -4,7 +4,8 @@ import getopt
 import numpy as np
 import tkinter as tk
 from tkinter import ttk
-import csv
+from tkinter import filedialog
+from time import time
 from spectrum import Spectrum
 from eyecheck import Eyecheck
 
@@ -15,7 +16,7 @@ def main(options):
     Description:
         This is the main part of the code that executes the
         actual pyhammer algorithms. This is arrived at either
-        by startCmd or startGui, both of which get all the
+        by startCmd or StartGUI, both of which get all the
         necessary options from the user and pass them to
         this function. The general process of this function
         should be to:
@@ -65,7 +66,12 @@ def main(options):
 
         for i, line in enumerate(infile):
             # Remove extra whitespace and other unwanted characters and split
-            fname, ftype = line.strip().rsplit(' ',1)
+            line = line.strip()
+            if line.find(',') > 0: line = line.replace(',',' ')
+            fname, ftype = ' '.join(line.split()).rsplit(' ',1)
+
+            # Print statement of progress for user
+            print(i+1, ') Processing ', os.path.basename(fname), sep = '')
 
             # Now read in the current file (this process reads in the file, converts air to 
             # vac when necessary and interpolates onto the template grid)
@@ -75,7 +81,7 @@ def main(options):
             # should just continue
             if not success:
                 rejectfile.write(fname + ',' + ftype + ',N/A\n')
-                rejectMessage += 'FILE: ' + fname + '  REASON: ' + message + '\n'
+                rejectMessage += 'FILE: ' + fname + '  REASON: ' + message.replace('\n','') + '\n'
                 continue
 
             # Now that we have the necessary data in the spec object, let's
@@ -145,11 +151,19 @@ def main(options):
             # lines in the reject message is equal to the number of spectra
             # processed (plus three lines for the prepended message). If
             # they were all skipped, theres nothing to eyecheck so return.
-            if rejectMessage.count('\n') == i+3:
+            if rejectMessage.count('\n') == i+4:
+                notifyUser(options['useGUI'], 'All spectra were bad. Exiting PyHammer.')
+                # Clean up any temporary input files created
+                if os.path.basename(options['infile'])[:11] == 'temp_input_':
+                    os.remove(options['infile'])
                 return
     
     # At this point, we should call up the GUI to do the eyechecking.
     Eyecheck(spec, options)
+
+    # Clean up any temporary input files created
+    if os.path.basename(options['infile'])[:11] == 'temp_input_':
+        os.remove(options['infile'])
 
 def notifyUser(useGUI, message):
     """
@@ -217,39 +231,317 @@ def showHelpWindow(root, helpText):
     but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
     helpWindow.rowconfigure(1, minsize = 40)
 
-def startGui(options):
-    """
-    startGUI(options)
+class StartGUI(object):
 
-    Description:
-    This brings up the beginning GUI the user can
-    use to input initial options necessary for
-    pyhammer to run. When the user hits the START
-    button, these options update and are sent to the
-    main function. Any options the user specified
-    on the command line will be automatically set
-    in the GUI.
+    def __init__(self, options):
 
-    Inputs:
-    options  - A dict containing the options the
-               user can specify. These may already
-               have default values if they were
-               provided on the command line.
-    """
+        self.options = options
+
+        # --- Main GUI Settings ---
     
-    ##
-    # Define some nested functions which will be
-    # used by widgets in the GUI
-    #
+        self.root = tk.Tk()
+        self.root.title('PyHammer Settings')
+        self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
+        self.root.resizable(False,False)
+        self.root.geometry('+100+100')
+        self.style = ttk.Style()
+        self.defaultColor = self.style.lookup('TButton', 'foreground')
+        self.style.configure('create.TButton', foreground = self.defaultColor)
+        self.root.configure(background = self.style.lookup('TButton', 'background'))
 
-    def setState(entry, var):
-        """
-        Changes the state of the entry widget based on
-        the value of the tk object var
-        """
-        entry.configure(state = ('disabled' if var.get() == 1 else 'normal'))
+        # --- Main GUI Widgets ---
+        
+        self.label = ttk.Label(self.root, text = 'Provide an input file')
+        self.label.grid(row = 0, column = 0, columnspan = 2, padx = 2, pady = (2,1))
+        self.frame = ttk.Frame(self.root, relief = tk.FLAT)
+        self.frame.grid(row = 1, column = 0, columnspan = 2, padx = 2, pady = (1,3), sticky = 'nsew')
+        self.prevButton = ttk.Button(self.root, text = 'Previous', command = self.prevOption)
+        self.prevButton.grid(row = 2, column = 0, padx = (2,1), pady = 1, sticky = 'nsew')
+        self.nextButton = ttk.Button(self.root, text = 'Next', command = self.nextOption)
+        self.nextButton.grid(row = 2, column = 1, padx = (1,2), pady = 1, sticky = 'nsew')
+        self.startButton = ttk.Button(self.root, text = 'Start  PyHammer', command = self.goToMain)
+        self.startButton.grid(row = 3, column = 0, columnspan = 2, padx = 2, pady = (1,2), sticky = 'nsew')
 
-    def goToMain():
+        self.root.columnconfigure(0, minsize = 10, weight = 1)
+        self.root.columnconfigure(1, minsize = 10, weight = 1)
+
+        # --- Frame Widgets ---
+
+        # Help Button
+        self.helpButton = ttk.Button(self.frame, text = '?', width = 2)
+        # Browse Button
+        self.browseButton = ttk.Button(self.frame, text = 'Browse')
+        # Create Button
+        self.createPressed = False
+        self.createButton = ttk.Button(self.frame, text = 'Create', command = self.createInputFile, style = 'create.TButton')
+        # Create Frame
+        self.createFrame = ttk.Frame(self.frame, relief = tk.FLAT)
+        # Input Filename
+        self.infile = tk.StringVar(value = ('' if options['infile'] is None else options['infile']))
+        self.infileEntry = ttk.Entry(self.frame, textvariable = self.infile)
+        # Output Filename
+        self.outfile = tk.StringVar(value = options['outfile'])
+        self.outfileEntry = ttk.Entry(self.frame, textvariable = self.outfile)
+        # Reject Filename
+        self.rejectfile = tk.StringVar(value = options['rejectfile'])
+        self.rejectfileEntry = ttk.Entry(self.frame, textvariable = self.rejectfile)
+        # Spectra Full Path Buttons
+        self.fullPath = tk.IntVar(value = (0 if options['fullPath'] is None else options['fullPath']))
+        self.fullPathYes = ttk.Radiobutton(self.frame, text = 'Yes', value = 1, variable = self.fullPath)
+        self.fullPathNo = ttk.Radiobutton(self.frame, text = 'No', value = 0, variable = self.fullPath)
+        # Spectra File Path
+        self.spectraPath = tk.StringVar(value = ('' if options['spectraPath'] is None else options['spectraPath']))
+        self.spectraPathEntry = ttk.Entry(self.frame, textvariable = self.spectraPath)
+        # Skip to Eyecheck
+        self.eyecheck = tk.IntVar(value = (0 if options['eyecheck'] is None else options['eyecheck']))
+        self.eyecheckYes = ttk.Radiobutton(self.frame, text = 'Yes', value = 1, variable = self.eyecheck, command = lambda: self.nextButton.configure(state = 'disabled'))
+        self.eyecheckNo = ttk.Radiobutton(self.frame, text = 'No', value = 0, variable = self.eyecheck, command = lambda: self.nextButton.configure(state = 'normal'))
+        # S/N Cutoff
+        self.sncut = tk.StringVar(value = ('' if options['sncut'] is None else options['sncut']))
+        self.sncutEntry = ttk.Entry(self.frame, textvariable = self.sncut)
+
+        # --- Create Frame Widgets ---
+
+        # Define widgets
+        self.createWindow = tk.Text(self.createFrame, relief = tk.FLAT, wrap = tk.NONE, font = '-family courier -size 10')
+        scrollV = ttk.Scrollbar(self.createFrame, command = self.createWindow.yview)
+        scrollH = ttk.Scrollbar(self.createFrame, orient = tk.HORIZONTAL, command = self.createWindow.xview)
+        genFromDirectory = ttk.Button(self.createFrame, text = 'Generate From Directory', command = self.createInputFromDirectory)
+        ttk.Separator(self.createFrame, orient = tk.VERTICAL).grid(row = 2, column = 1, padx = 4, stick = 'wns')
+        applyType = ttk.Button(self.createFrame, text = 'Apply Data Type', command = self.applyType)
+        self.dataType = tk.StringVar()
+        dataTypeEntry = ttk.Entry(self.createFrame, textvariable = self.dataType, width = 10)
+
+        # Layout Widgets
+        self.createWindow.grid(row = 0, column = 0, columnspan = 4)
+        scrollV.grid(row = 0, column = 4, sticky = 'ns')
+        scrollH.grid(row = 1, column = 0, columnspan = 4, sticky = 'ew')
+        genFromDirectory.grid(row = 2, column = 0, sticky = 'w')
+        applyType.grid(row = 2, column = 2, padx = (0,4), sticky = 'w')
+        dataTypeEntry.grid(row = 2, column = 3, sticky = 'w')
+        self.createFrame.columnconfigure(3, weight = 1)
+        self.createWindow.configure(yscrollcommand = scrollV.set, xscrollcommand = scrollH.set)
+
+        # --- Help Text ---
+
+        self.infileHelpText = (
+            'You should include the full path to the input file\n'
+            'which contains a list of spectra files to process.\n'
+            'However, if the input file is located in the pyhammer.\n'
+            'folder, then simply the filename will suffice.')
+        self.outfileHelpText = (
+            'You should include the full path to the output file\n'
+            'which will contain the results of PyHammer. However,\n'
+            'if no path is supplied, the file will be saved to the\n'
+            'the pyhammer folder. The output file is, by default,\n'
+            'set to PyHammerResults.csv unless specified otherwise.\n'
+            'The output filetype should be a .csv file.')
+        self.rejectfileHelpText = (
+            'You should include the full path to the reject file\n'
+            'which will contain the list of any spectra unable to\n'
+            'be classified. However, if no path is supplied, the\n'
+            'file will be saved to the the pyhammer folder. The\n'
+            'reject file is, by default, set to RejectSpectra.csv\n'
+            'unless specified otherwise. The reject filetype should\n'
+            'be a .csv file.')
+        self.fullPathHelpText = (
+            'Choose whether or not the spectra listed in your input\n'
+            'file have a full path specified. If you choose no, you\n'
+            'will need to specify the full path to the spectra.')
+        self.spectraPathHelpText = (
+            'If your spectra list does not contain the full path\n'
+            'to the files in the name, provide a path to prepend\n'
+            'to each spectra filename.')
+        self.eyecheckHelpText = (
+            'If you have already classified your spectra you can\n'
+            'choose to skip directly to checking them by eye, rather\n'
+            'than re-running the classification algorithm again. Note\n'
+            'that you cannot skip to eye checking without first\n'
+            'classifying your spectra and creating an output file.')
+        self.sncutHelpText = (
+            'If you would like to only classify spectra with a S/N\n'
+            'above a threshold, provide that value here. If you do not\n'
+            'want to provide a cutoff, leave this field blank. This\n'
+            'option does not apply if you choose to skip to the eyecheck.')
+
+        # --- Setup and Start ---
+
+        self.root.bind('<Tab>', lambda event: self.nextOption())
+        self.root.bind('<Shift-Tab>', lambda event: self.prevOption())
+
+        self.firstSetting = 0 # The index number of the first setting the user can input
+        self.curSetting = 0   # Keep track of which input option the user is on
+        self.lastSetting = 6  # The index number of the last setting the user can input
+        self.updateGUI()
+        
+        self.root.mainloop()
+
+    def prevOption(self):
+        self.curSetting -= 1
+        if self.curSetting == 4 and self.fullPath.get() == 1:
+            self.curSetting -= 1
+        self.updateGUI()
+
+    def nextOption(self):
+        self.curSetting += 1
+        if self.curSetting == 4 and self.fullPath.get() == 1:
+            self.curSetting += 1
+        if self.curSetting >= 5 and self.eyecheck.get() == 1:
+            self.lastSetting = 5
+        else:
+            self.lastSetting = 6
+        self.updateGUI()
+
+    def updateGUI(self):
+        
+        # Keep curSetting between between first and last setting
+        self.curSetting = min(self.lastSetting, max(self.firstSetting, self.curSetting))
+        
+        # Change state of buttons as necessary
+        self.prevButton.configure(state = ('disabled' if self.curSetting == self.firstSetting else 'normal'))
+        self.nextButton.configure(state = ('disabled' if self.curSetting == self.lastSetting else 'normal'))
+
+        # Remove all current widgets in frame
+        for widget in self.frame.winfo_children():
+            widget.grid_forget()
+
+        # Define frame for current option input
+
+        # --- Input File ---
+        if self.curSetting == 0:
+            self.label.configure(text = 'Provide an input file')
+            self.infileEntry.grid(row = 0, column = 0, padx = 1, pady = 1, sticky = 'ew')
+            self.browseButton.grid(row = 0, column = 1, padx = 1, pady = 1)
+            self.browseButton.configure(command = lambda: self.browse(self.infileEntry, 'file'),
+                                        state = ('disabled' if self.createPressed else 'normal'))
+            self.createButton.grid(row = 0, column = 2, padx = 1, pady = 1)
+            self.helpButton.grid(row = 0, column = 3, padx = 1, pady = 1, sticky = 'e')
+            self.helpButton.configure(command = lambda: showHelpWindow(self.root, self.infileHelpText))
+
+            self.frame.columnconfigure(0, minsize = 250, weight = 1)
+            self.frame.columnconfigure(1, weight = 0)
+            self.frame.columnconfigure(2, weight = 0)
+            self.frame.columnconfigure(3, weight = 0)
+
+            # Update create input file components if necessary
+            if self.createPressed:
+                self.createFrame.grid(row = 1, column = 0, columnspan = 4, padx = 2, pady = (2,5), sticky = 'nsew')
+
+        # --- Output File ---
+        elif self.curSetting == 1:
+            self.label.configure(text = 'Provide an output file')
+            self.outfileEntry.grid(row = 0, column = 0, padx = 1, pady = 1, sticky = 'ew')
+            self.browseButton.grid(row = 0, column = 1, padx = 1, pady = 1)
+            self.browseButton.configure(command = lambda: self.browse(self.outfileEntry, 'file'), state = 'normal')
+            self.helpButton.grid(row = 0, column = 2, padx = 1, pady = 1, sticky = 'e')
+            self.helpButton.configure(command = lambda: showHelpWindow(self.root, self.outfileHelpText))
+            
+            self.frame.columnconfigure(0, minsize = 250)
+
+        # --- Reject File ---
+        elif self.curSetting == 2:
+            self.label.configure(text = 'Provide a reject file')
+            self.rejectfileEntry.grid(row = 0, column = 0, padx = 1, pady = 1, sticky = 'ew')
+            self.browseButton.grid(row = 0, column = 1, padx = 1, pady = 1)
+            self.browseButton.configure(command = lambda: self.browse(self.rejectfileEntry, 'file'), state = 'normal')
+            self.helpButton.grid(row = 0, column = 2, padx = 1, pady = 1, sticky = 'e')
+            self.helpButton.configure(command = lambda: showHelpWindow(self.root, self.rejectfileHelpText))
+
+            self.frame.columnconfigure(0, minsize = 250)
+
+        # --- Full Path? ---
+        elif self.curSetting == 3:
+            self.label.configure(text = 'Do the spectra in the input file contain full paths?')
+            self.fullPathYes.grid(row = 0, column = 0, padx = 5)
+            self.fullPathNo.grid(row = 0, column = 1, padx = 5)
+            self.helpButton.grid(row = 0, column = 2, padx = 1, pady = 1, sticky = 'e')
+            self.helpButton.configure(command = lambda: showHelpWindow(self.root, self.fullPathHelpText))
+            
+            self.frame.columnconfigure(0, minsize = 0, weight = 1)
+            self.frame.columnconfigure(1, weight = 1)
+            self.frame.columnconfigure(2, weight = 0)
+
+        # --- Spectra Path ---
+        elif self.curSetting == 4:
+            self.label.configure(text = 'Provide the path to the spectra files')
+            self.spectraPathEntry.grid(row = 0, column = 0, padx = 1, pady = 1, sticky = 'ew')
+            self.browseButton.grid(row = 0, column = 1, padx = 1, pady = 1)
+            self.browseButton.configure(command = lambda: self.browse(self.spectraPathEntry, 'directory'), state = 'normal')
+            self.helpButton.grid(row = 0, column = 2, padx = 1, pady = 1, sticky = 'e')
+            self.helpButton.configure(command = lambda: showHelpWindow(self.root, self.spectraPathHelpText))
+
+            self.frame.columnconfigure(0, minsize = 250)
+
+        # --- Eyecheck? ---
+        elif self.curSetting == 5:
+            self.label.configure(text = 'Do you want to skip to classifying by eye?')
+            self.eyecheckYes.grid(row = 0, column = 0, padx = 5)
+            self.eyecheckNo.grid(row = 0, column = 1, padx = 5)
+            self.helpButton.grid(row = 0, column = 2, padx = 1, pady = 1, sticky = 'e')
+            self.helpButton.configure(command = lambda: showHelpWindow(self.root, self.eyecheckHelpText))
+            
+            self.frame.columnconfigure(0, minsize = 0, weight = 1)
+            self.frame.columnconfigure(1, weight = 1)
+            self.frame.columnconfigure(2, weight = 0)
+
+        # --- S/N Cutoff ---
+        elif self.curSetting == 6:
+            self.label.configure(text = 'Enter a signal to noise cutoff')
+            self.sncutEntry.grid(row = 0, column = 0, padx = 1, pady = 1, sticky = 'ew')
+            self.helpButton.grid(row = 0, column = 1, padx = 1, pady = 1, sticky = 'e')
+            self.helpButton.configure(command = lambda: showHelpWindow(self.root, self.sncutHelpText))
+            
+            self.frame.columnconfigure(0, minsize = 100, weight = 1)
+            self.frame.columnconfigure(1, weight = 0)
+            self.frame.columnconfigure(2, weight = 0)
+            
+
+    def createInputFile(self):
+        self.createPressed = not self.createPressed # Invert boolean
+
+        self.infileEntry.configure(state = ('disabled' if self.createPressed else 'normal'))
+        self.style.configure('create.TButton', foreground = ('blue' if self.createPressed else self.defaultColor))
+        
+        self.updateGUI()
+
+    def createInputFromDirectory(self):
+        files = filedialog.askopenfilename(title = 'Select a directory', multiple = True, parent = self.root)
+        for i, f in enumerate(files):
+            self.createWindow.insert(tk.END, f+'\n'*(i+1 < len(files)))
+
+    def applyType(self):
+        datatype = self.dataType.get()
+        if datatype == '':
+            return
+        lineCount = int(self.createWindow.index('end-1c').split('.')[0])
+        for line in range(1, lineCount+1):
+            curLine = self.createWindow.get('{}.0'.format(line), '{}.end'.format(line))
+            comma = curLine.find(',')
+            if comma >= 0:
+                self.createWindow.delete('{}.{}'.format(line,comma),'{}.end'.format(line))
+            self.createWindow.insert('{}.end'.format(line), ', '+datatype)
+
+    def browse(self, entry, target = 'file'):
+        if target == 'file':
+            if entry is self.infileEntry:
+                file = filedialog.askopenfilename(title = 'Select an input file', parent = self.root)
+                if file != '':
+                    self.infile.set(file)
+            elif entry is self.outfileEntry:
+                file = filedialog.asksaveasfilename(title = 'Select or create an output file', parent = self.root)
+                if file != '':
+                    self.outfile.set(file)
+            elif entry is self.rejectfileEntry:
+                file = filedialog.asksaveasfilename(title = 'Select a reject file', parent = self.root)
+                if file != '':
+                    self.rejectfile.set(file)
+        if target == 'directory':
+            if entry is self.spectraPathEntry:
+                directory = filedialog.askdirectory(title = 'Select a directory', mustexist = True, parent = self.root)
+                if directory != '':
+                    self.spectraPath.set(directory)
+    
+    def goToMain(self):
         """
         Accepts as options all the input parameters from the
         gui so they can be used to update the options dict.
@@ -261,41 +553,42 @@ def startGui(options):
         
         message = ''    # The output message in case errors are found
         # Validate the input filename
-        if infile.get() == '':
-            message += '- A spectra list filename was not provided.\n'
+        if not self.createPressed:
+            if self.infile.get() == '':
+                message += '- A spectra list filename was not provided.\n'
+            else:
+                if not os.path.isfile(self.infile.get()):
+                    message += '- The input file cannot be found.\n'
         else:
-            infileExt  = infile.get()[-4:]
-            if infileExt[0] == '.' and infileExt[1:] != 'txt':
-                message += '- The input file must be a text file.\n'
-            if not os.path.isfile(infile.get()+'.txt'*(infile.get()[-4:] != '.txt')):
-                message += '- The input file cannot be found.\n'
+            if self.createWindow.get('0.0',tk.END) == '\n':
+                message += '- The text field for creating an input file is empty\n'
         # Validate the output filename
-        if outfile.get() == '':
+        if self.outfile.get() == '':
             message += '- An output filename was not provided.\n'
         else:
-            outfileExt = outfile.get()[-4:]
+            outfileExt = self.outfile.get()[-4:]
             if outfileExt[0] == '.' and outfileExt[1:] != 'csv':
                 message += '- The output file must be a csv file.\n'
         # Validate the reject filename
-        if rejectfile.get() == '':
+        if self.rejectfile.get() == '':
             message += '- A reject filename was not provided.\n'
         else:
-            rejectExt  = rejectfile.get()[-4:]
+            rejectExt  = self.rejectfile.get()[-4:]
             if rejectExt[0] == '.' and rejectExt[1:] != 'csv':
                 message += '- The reject file must be a csv file.\n'
-        if fullPath.get() == 0:
-            if spectraPath.get() == '':
+        if self.fullPath.get() == 0:
+            if self.spectraPath.get() == '':
                 message += '- A path for the spectra was not provided.\n'
             else:
-                if not os.path.isdir(spectraPath.get()):
+                if not os.path.isdir(self.spectraPath.get()):
                     message += '- The spectra path is not a valid directory.\n'
         # Validate the skip to eyecheck
-        if eyecheck.get() == 1 and not os.path.isfile(outfile.get()):
+        if self.eyecheck.get() == 1 and not os.path.isfile(self.outfile.get()):
             message += '- You cannot skip to eyecheck without an existing output file.\n'
         # Validate the S/N cut
-        if eyecheck.get() == 0 and sncut.get() != '':
+        if self.eyecheck.get() == 0 and self.sncut.get() != '':
             try:
-                if float(sncut.get()) < 0:
+                if float(self.sncut.get()) < 0:
                     message += '- The entered S/N cut must be greater than zero.\n'
             except ValueError as e:
                 message += '- The entered S/N cut is not a valid number.\n'
@@ -308,213 +601,30 @@ def startGui(options):
             
         # If we've made it to this point, the user's inputs are valid. Store them
         # in the options dict and move to the main part of the code.
-        options['infile'] = infile.get() + '.txt'*(infile.get()[-4:] != '.txt')
-        options['outfile'] = outfile.get() + '.csv'*(outfile.get()[-4:] != '.csv')
-        options['rejectfile'] = rejectfile.get() + '.csv'*(rejectfile.get()[-4:] != '.csv')
-        options['fullPath'] = (fullPath.get() == 1)
-        options['spectraPath'] = spectraPath.get() * (not options['fullPath'])
-        # Append a slash to the end of the spectra path if there isn't one
-        if (options['spectraPath'] != '' and options['spectraPath'][-1] not in ['\\', '/']):
-                options['spectraPath'] += '\\'
-        options['eyecheck'] = (eyecheck.get() == 1)
-        if (options['eyecheck'] or sncut.get() == ''):
-            options['sncut'] = None
+        if not self.createPressed:
+            self.options['infile'] = self.infile.get()
         else:
-            options['sncut'] = float(sncut.get())
+            # Create a temporary input file based on what's in the createWindow text field
+            fname = 'temp_input_'+str(int(time()))+'.txt'
+            with open(fname, 'w') as f:
+                f.write(self.createWindow.get('0.0', tk.END))
+            self.options['infile'] = fname
+        self.options['outfile'] = self.outfile.get() + '.csv'*(self.outfile.get()[-4:] != '.csv')
+        self.options['rejectfile'] = self.rejectfile.get() + '.csv'*(self.rejectfile.get()[-4:] != '.csv')
+        self.options['fullPath'] = (self.fullPath.get() == 1)
+        self.options['spectraPath'] = self.spectraPath.get() * (not self.options['fullPath'])
+        # Append a slash to the end of the spectra path if there isn't one
+        if (self.options['spectraPath'] != '' and self.options['spectraPath'][-1] not in ['\\', '/']):
+                self.options['spectraPath'] += '\\'
+        self.options['eyecheck'] = (self.eyecheck.get() == 1)
+        if (self.options['eyecheck'] or self.sncut.get() == ''):
+            self.options['sncut'] = None
+        else:
+            self.options['sncut'] = float(self.sncut.get())
         
-        root.destroy()
+        self.root.destroy()
 
-        main(options)
-
-    ##
-    # Start off by making the GUI and pass in whatever input options were
-    # provided as the defaults, then let the user fill in the rest.
-    #
-
-    # Define the main window settings
-    root = tk.Tk()
-    root.title('PyHammer Settings')
-    root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
-    root.resizable(False,False)
-    root.geometry('+100+100')
-
-    # --- Input Filename ---
-
-    # Define the label
-    label = ttk.Label(root, text = 'Spectra List\nFilename:')
-    label.grid(row = 0, column = 0, padx = (2,1), pady = 1, stick = 'w')
-
-    # Define the entry box
-    infile = tk.StringVar()
-    infile.set('' if options['infile'] is None else options['infile'])
-    entry = ttk.Entry(root, textvariable = infile, width = 40)
-    entry.grid(row = 0, column = 1, columnspan = 3,  padx = 1, pady = 1)
-
-    # Define the help text and button for this section
-    infileHelpText = \
-        'You should include the full path to the input file\n' \
-        'which contains a list of spectra files to process.\n' \
-        'However, if the input file is located in the pyhammer.\n' \
-        'folder, then simply the filename will suffice.'
-    b = ttk.Button(root, text = '?', width = 2,
-                   command = lambda: showHelpWindow(root, infileHelpText))
-    b.grid(row = 0, column = 4, padx = (1,2), pady = 1)
-
-    # --- Output Filename ---
-
-    # Define the label
-    label = ttk.Label(root, text = 'Output\nFilename:')
-    label.grid(row = 1, column = 0, padx = (2,1), pady = 1, stick = 'w')
-
-    # Define the entry box
-    outfile = tk.StringVar(value = options['outfile'])
-    entry = ttk.Entry(root, textvariable = outfile, width = 40)
-    entry.grid(row = 1, column = 1, columnspan = 3,  padx = 1, pady = 1)
-
-    # Define the help text and button for this section
-    outfileHelpText = \
-        'You should include the full path to the output file\n' \
-        'which will contain the results of PyHammer. However,\n' \
-        'if no path is supplied, the file will be saved to the\n' \
-        'the pyhammer folder. The output file is, by default,\n' \
-        'set to PyHammerResults.csv unless specified otherwise.\n' \
-        'The output filetype should be a .csv file.'
-    b = ttk.Button(root, text = '?', width = 2,
-                   command = lambda: showHelpWindow(root, outfileHelpText))
-    b.grid(row = 1, column = 4, padx = (1,2), pady = 1)
-
-    # --- Reject Filename ---
-
-    # Define the label
-    label = ttk.Label(root, text = 'Reject\nFilename:')
-    label.grid(row = 2, column = 0, padx = (2,1), pady = 1, stick = 'w')
-
-    # Define the entry box
-    rejectfile = tk.StringVar(value = options['rejectfile'])
-    entry = ttk.Entry(root, textvariable = rejectfile, width = 40)
-    entry.grid(row = 2, column = 1, columnspan = 3,  padx = 1, pady = 1)
-
-    # Define the help text and button for this section
-    rejectfileHelpText = \
-        'You should include the full path to the reject file\n' \
-        'which will contain the list of any spectra unable to\n' \
-        'be classified. However, if no path is supplied, the\n' \
-        'file will be saved to the the pyhammer folder. The\n' \
-        'reject file is, by default, set to RejectSpectra.csv\n' \
-        'unless specified otherwise. The reject filetype should\n' \
-        'be a .csv file.'
-    b = ttk.Button(root, text = '?', width = 2,
-                   command = lambda: showHelpWindow(root, rejectfileHelpText))
-    b.grid(row = 2, column = 4, padx = (1,2), pady = 1)
-    
-    # --- Spectra File Path ---
-
-    # Define the label
-    label = ttk.Label(root, text = 'Spectra File\nPath:')
-    label.grid(row = 4, column = 0, padx = (2,1), pady = 1)
-
-    # Define the entry box
-    spectraPath = tk.StringVar()
-    spectraPath.set('' if options['spectraPath'] is None else options['spectraPath'])
-    sPathEntry = ttk.Entry(root, textvariable = spectraPath, width = 40)
-    sPathEntry.grid(row = 4, column = 1, columnspan = 3,  padx = 1, pady = 1)
-    sPathEntry.configure(state = ('disabled' if options['fullPath'] else 'normal'))
-
-    # Define the help text and button for this section
-    spectraPathHelpText = \
-        'If your spectra list does not contain the full path\n' \
-        'to the files in the name, provide a path to prepend\n' \
-        'to each spectra filename.'
-    b = ttk.Button(root, text = '?', width = 2,
-                   command = lambda: showHelpWindow(root, spectraPathHelpText))
-    b.grid(row = 4, column = 4, padx = (1,2), pady = 1)
-
-
-    # --- Full Path ---
-
-    # Define the label
-    label = ttk.Label(root, text = 'Spectra list contains the full path:')
-    label.grid(row = 3, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
-
-    # Define the radiobuttons
-    fullPath = tk.IntVar()
-    fullPath.set(0 if options['fullPath'] == None else options['fullPath'])
-    rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = fullPath,
-                                 command = lambda: setState(sPathEntry, fullPath))
-    rbuttonYes.grid(row = 3, column = 2, padx = 1, pady = 1)
-    rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = fullPath,
-                                command = lambda: setState(sPathEntry, fullPath))
-    rbuttonNo.grid(row = 3, column = 3, padx = 1, pady = 1)
-
-    # Define the help text and button for this section
-    fullPathHelpText = \
-        'Choose whether or not the spectra listed in your input\n' \
-        'file have a full path specified. If you choose no, you\n' \
-        'will need to specify the full path to the spectra.'
-    b = ttk.Button(root, text = '?', width = 2,
-                   command = lambda: showHelpWindow(root, fullPathHelpText))
-    b.grid(row = 3, column = 4, padx = (1,2), pady = 1)
-
-
-    # --- S/N Cutoff ---
-
-    # Define the label
-    label = ttk.Label(root, text = 'S/N Cutoff:')
-    label.grid(row = 6, column = 0, padx = (2,1), pady = (2,1), stick = 'w')
-
-    # Define the entry box
-    sncut = tk.StringVar()
-    sncut.set('' if options['sncut'] is None else options['sncut'])
-    sncutEntry = ttk.Entry(root, textvariable = sncut, width = 40)
-    sncutEntry.grid(row = 6, column = 1, columnspan = 3,  padx = 1, pady = (2,1))
-    sncutEntry.configure(state = ('disabled' if options['eyecheck'] else 'normal'))
-
-    # Define the help text and button for this section
-    sncutHelpText = \
-        'If you would like to only classify spectra with a S/N\n' \
-        'above a threshold, provide that value here. If you do not\n' \
-        'want to provide a cutoff, leave this field blank. This\n' \
-        'option does not apply if you choose to skip to the eyecheck.'
-    b = ttk.Button(root, text = '?', width = 2,
-                   command = lambda: showHelpWindow(root, sncutHelpText))
-    b.grid(row = 6, column = 4, padx = (1,2), pady = (2,1))
-
-    
-    # --- Skip to Eye Check ---
-    
-    # Define the label
-    label = ttk.Label(root, text = 'Skip to eyecheck:')
-    label.grid(row = 5, column = 0, columnspan = 2, padx = 2, pady = 1, stick = 'w')
-
-    # Define the radiobuttons
-    eyecheck = tk.IntVar()
-    eyecheck.set(0 if options['eyecheck'] == None else options['eyecheck'])
-    rbuttonYes = ttk.Radiobutton(root, text = 'Y', value = 1, variable = eyecheck,
-                                 command = lambda: setState(sncutEntry, eyecheck))
-    rbuttonYes.grid(row = 5, column = 2, padx = 1, pady = 1)
-    rbuttonNo = ttk.Radiobutton(root, text = 'N', value = 0, variable = eyecheck,
-                                command = lambda: setState(sncutEntry, eyecheck))
-    rbuttonNo.grid(row = 5, column = 3, padx = 1, pady = 1)
-
-    # Define the help text and button for this section
-    eyecheckHelpText = \
-        'If you have already classified your spectra you can\n' \
-        'choose to skip directly to checking them by eye, rather\n' \
-        'than re-running the classification algorithm again. Note\n' \
-        'that you cannot skip to eye checking without first\n' \
-        'classifying your spectra and creating an output file.'
-    b = ttk.Button(root, text = '?', width = 2,
-                   command = lambda: showHelpWindow(root, eyecheckHelpText))
-    b.grid(row = 5, column = 4, padx = (1,2), pady = 1)
-
-    
-    # --- Start Button ---
-    b = ttk.Button(root, text = 'START',
-                   command = goToMain)
-    b.grid(row = 7, column = 0, columnspan = 5, sticky = 'nswe', padx = 5, pady = 5)
-    root.rowconfigure(7, minsize = 40)
-
-    root.mainloop()
+        main(self.options)
 
 def startCmd(options):
     """
@@ -772,13 +882,13 @@ if (__name__ == "__main__"):
                 options['useGUI'] = True
 
     if options['useGUI'] == True:
-        startGui(options)
+        StartGUI(options)
     elif options['useGUI'] == False:
         startCmd(options)
     else:
         # If no interface is chosen, use the GUI by default
         options['useGUI'] = True
-        startGui(options)
+        StartGUI(options)
 
 else:
     
