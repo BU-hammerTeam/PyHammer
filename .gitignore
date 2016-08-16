@@ -2,3 +2,4 @@
 resources/runbefore
 PyHammerResults*
 RejectSpectra*
+temp_input_*
