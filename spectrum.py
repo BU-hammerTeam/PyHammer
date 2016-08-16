@@ -325,8 +325,8 @@ class Spectrum(object):
             wavelength grid as the templates (5 km/s equally spaced bins)
         """
         # Interpolate flux and variance onto the wavelength grid
-        interpFlux = np.interp(self.waveGrid, self._wavelength, self._flux)
-        interpVar = np.interp(self.waveGrid, self._wavelength, self._var) 
+        interpFlux = np.interp(self.waveGrid, self._wavelength, self._flux, right=np.nan, left=np.nan)
+        interpVar = np.interp(self.waveGrid, self._wavelength, self._var, right=np.nan, left=np.nan) 
 
         #cut the grids off at 3650 and 10200 like the templates
         startIndex = bisect.bisect_right(self.waveGrid, 3650)
