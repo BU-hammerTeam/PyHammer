@@ -305,11 +305,11 @@ class ToolTip(object):
         ToolTip(button, 'Press this!')
     """
 
-    def __init__(self, widget, text):
+    def __init__(self, widget, text, active = True):
         # Bind the widget mouse enter and leave callbacks
         # to the show and hide functions
         widget.bind('<Enter>', lambda event: self.showtip())
-        widget.bind('<Leave>', lambda event: self.tipWindow.withdraw())
+        widget.bind('<Leave>', lambda event: self.hidetip())
 
         # Create the derived Toplevel window and remove any
         # decorations or framing of that window
@@ -330,8 +330,11 @@ class ToolTip(object):
         self.tipWindow.withdraw()   # Hide the tooltip window initially
 
         self.widget = widget
+        self.active = active
 
     def showtip(self):
+        # Conditions to not show the tooltip
+        if not self.active: return
         if str(self.widget.cget('state')) == 'disabled': return
             
         # Get widget position
@@ -345,4 +348,7 @@ class ToolTip(object):
              y <= self.widget.winfo_pointery() <= y + h):
 
             self.tipWindow.wm_geometry('+{}+{}'.format(x+min(10,w/2),y+h))
-            self.tipWindow.deiconify() 
+            self.tipWindow.deiconify()
+
+    def hidetip(self):
+        self.tipWindow.withdraw()
