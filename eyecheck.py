@@ -12,6 +12,8 @@ from astropy.io import fits
 import warnings
 import time
 import csv
+import pdb
+from gui_utils import *
 
 class Eyecheck(object):
 
@@ -37,6 +39,7 @@ class Eyecheck(object):
                 line = line.strip()
                 if line.find(',') > 0: line = line.replace(',',' ')
                 self.inData.append(' '.join(line.split()).rsplit(' ',1))
+                self.inData[-1][0] = os.path.basename(self.inData[-1][0])
         self.inData = np.asarray(self.inData)
 
         # *** Read the outfile ***
@@ -78,7 +81,7 @@ class Eyecheck(object):
                     self.specIndex = 0
         # Now use the Spectrum object to read in the user's appropriate starting spectrum
         fname = self.outData[self.specIndex,0]
-        ftype = np.extract(self.inData[:,0] == fname, self.inData[:,1])[0]
+        ftype = np.extract(self.inData[:,0] == os.path.basename(fname), self.inData[:,1])[0]
         self.specObj.readFile(self.options['spectraPath']+fname, ftype) # Ignore returned values
         self.specObj.normalizeFlux()
         
@@ -86,7 +89,7 @@ class Eyecheck(object):
         
         self.root = tk.Tk()             # Create the root GUI window
         # Define String and Int variables to keep track of widget states
-        self.spectrumEntry = tk.StringVar(value = os.path.basename(self.outData[self.specIndex,0])[:-5])
+        self.spectrumEntry = tk.StringVar(value = os.path.basename(self.outData[self.specIndex,0]))
         self.specState  = tk.IntVar(value = self.specType.index(self.outData[self.specIndex,2][0]))
         self.subState   = tk.IntVar(value = int(self.outData[self.specIndex,2][1]))
         self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex,3]))
@@ -192,7 +195,7 @@ class Eyecheck(object):
         
         # *** Define labels ***
         
-        for i, name in enumerate(['Spectra', 'Type', 'Subtype', 'Metallicity', 'Switch Type', 'Switch Metallicity', 'Spectrum Choices']):
+        for i, name in enumerate(['Spectrum', 'Type', 'Subtype', 'Metallicity', 'Switch Type', 'Switch Metallicity', 'Spectrum Choices']):
             ttk.Label(self.root, text = name).grid(row = i, column = 0, columnspan = 1+(i>3),
                                                    stick = 'e', pady = (10*(i==4),10*(i==0)))
 
@@ -200,7 +203,9 @@ class Eyecheck(object):
 
         # This defines the entry box and relevant widgets for indicating the spectrum
         ttk.Entry(self.root, textvariable = self.spectrumEntry).grid(row = 0, column = 1, columnspan = 9, pady = (0,10), sticky = 'nesw')
-        ttk.Button(self.root, text = 'Go', width = 3, command = self.jumpToSpectrum).grid(row = 0, column = 10, pady = (0,10))
+        but = ttk.Button(self.root, text = 'Go', width = 3, command = self.jumpToSpectrum)
+        but.grid(row = 0, column = 10, pady = (0,10))
+        ToolTip(but, 'Enter a new spectrum file name in the entry box\nand hit Go to skip directly to that spectrum.')
 
         # *** Define radio buttons ***
         
@@ -331,7 +336,7 @@ class Eyecheck(object):
         # In matplotlib versions before 1.5, the fill_between plot command above
         # does not appear in the legend. In those cases, we will fake it out by
         # putting in a fake legend entry to match the fill_between plot.
-        if pltVersion < '1.5' and self.showTemplateError.get():
+        if pltVersion < '1.5' and self.showTemplateError.get() and templateFile is not None:
             labels.append('Template Error')
             handles.append(Rectangle((0,0),0,0, color = 'b', ec = 'None', alpha = 0.1))
         labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
@@ -455,9 +460,9 @@ class Eyecheck(object):
     #
     
     def callback_odd(self):
-        # Open an OddWindow object and wait for a user response
-        choice = OddWindow(self.root, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'])
-        self.root.wait_window(choice.oddWindow)
+        # Open an OptionWindow object and wait for a user response
+        choice = OptionWindow(['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'], parent = self.root, title = 'PyHammer', instruction = 'Pick an odd type')
+        self.root.wait_window(choice.optionWindow)
         if choice.name is not None:
             # Store the user's response in the outData
             self.outData[self.specIndex,4] = choice.name
@@ -639,17 +644,26 @@ class Eyecheck(object):
             loaded, otherwise they're informed that spectrum could not be found.
         """
         spectrumFound = False
+        # Get the user's input spectrum name and make sure it has an extension
+        userInput = os.path.basename(self.spectrumEntry.get())
+        if userInput.find('.') == -1:
+            message = 'Make sure to provide a file extension in your name.'
+            InfoWindow(message, parent = self.root, title = 'PyHammer Error')
+            return
+        # Scan through the outData file and try to find a matching spectrum
         for i, spectrum in enumerate(self.outData):
-            if os.path.basename(self.spectrumEntry.get()) == os.path.basename(spectrum[0]):
+            if userInput == os.path.basename(spectrum[0]):
                 self.specIndex = i
                 spectrumFound = True
                 break
+        # If one wasn't found, inform the user of a problem
         if not spectrumFound:
             message = ('The spectrum you input could not be matched '
                        'to any of the spectrum in your output file '
                        'list. Check your input and try again.')
             InfoWindow(message, parent = self.root, title = 'PyHammer Error')
         else:
+            # If a match was found, load that spectrum
             self.getUserSpectrum()
 
     def getUserSpectrum(self):
@@ -660,7 +674,7 @@ class Eyecheck(object):
         """
         # Read in the next spectrum file indicated by self.specIndex
         fname = self.outData[self.specIndex,0]
-        ftype = np.extract(self.inData[:,0] == fname, self.inData[:,1])[0]
+        ftype = np.extract(self.inData[:,0] == os.path.basename(fname), self.inData[:,1])[0]
         self.specObj.readFile(self.options['spectraPath']+fname, ftype) # Ignore returned values
         self.specObj.normalizeFlux()
         # Set the spectrum entry field to the new spectrum name
@@ -723,235 +737,3 @@ class Eyecheck(object):
 
         # Return None if file could not be found
         return None
-
-
-class InfoWindow(object):
-    """
-    Description:
-        This brings up a new window derived from root
-        that displays info ext and has a button to close
-        the window when user is done. This optionally can
-        display the multiple sets of text in multiple tabs
-        so as to not have a huge, long window and to keep
-        the information more organized.
-        
-    Input:
-        args: This will be a set of arguments supplying what should be
-            put into the info window. If the user wants a basic window
-            with simple text, then just supply a string with that text.
-            However, the user can also specify multiple arguments where
-            each argument will be its own tab in a notebook on the window.
-            Each argument in this case should be a tuple containing first
-            the name that will appear on the tab, and second, the text to
-            appear inside the tab.
-        parent: The root window to potentially derive this one from. If
-            nothing is provided, this will create a new window from scratch.
-        title: The title to display on the window
-        height: The height of the window, in lines. More height provides a
-            taller window.
-        font: A new font family to use, if desired.
-            
-    Example:
-        This brings up a simple GUI with basic text in it. It derives from a
-        top level root window named 'root'
-
-        InfoWindow('This is an example\ninfo window.', parent = root, title = 'A GUI title')
-        
-        This brings up a GUI with multiple tabs and different
-        text in each tab. This is not derived from a root.
-        
-        InfoWindow(('Tab 1', 'Text in tab 1'), ('Tab 2', 'Some more text'), title = 'Title')
-        
-    """
-
-    def __init__(self, *args, parent = None, title = 'PyHammer', height = 6, font = None):
-        # Setup the window
-        if parent is None:
-            # If no top level was provided, define the window as the top level
-            self.infoWindow = tk.Tk()
-        else:
-            # If a top level was provided, derive a new window from it
-            self.infoWindow = tk.Toplevel(parent)
-            self.infoWindow.grab_set()  # Make the root window non-interactive
-            self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
-        self.infoWindow.title(title)
-        self.infoWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
-        self.infoWindow.resizable(False, False)
-
-        # Define the window contents
-        if len(args) == 1:
-            self.defineTab(self.infoWindow, args[0], height, font)
-        else:
-            notebook = ttk.Notebook(self.infoWindow)
-            for a in args:
-                tab = tk.Frame(notebook)
-                notebook.add(tab, text = a[0])
-                self.defineTab(tab, a[1], height, font)
-            notebook.pack()
-        if parent is None: self.infoWindow.mainloop()
-
-    def defineTab(self, parent, text, height, font):
-        # Create the Text widget which displays the text
-        content = tk.Text(parent, width = 50, height = height, background = parent.cget('background'),
-                          relief = tk.FLAT, wrap = tk.WORD, font = '-size 10')
-        if font is not None: content.configure(font = '-family ' + font +' -size 10')
-        content.grid(row = 0, column = 0, padx = 2, pady = 2)
-        content.insert(tk.END, text)
-        # Create the Scrollbar for the Text widget
-        scrollbar = ttk.Scrollbar(parent, command = content.yview)
-        scrollbar.grid(row = 0, column = 1, sticky = 'ns')
-        # Link the Text widget to the Scrollbar
-        content.config(state = tk.DISABLED, yscrollcommand = scrollbar.set)
-        # Add the OK button at the bottom for quitting out
-        but = ttk.Button(parent, text = 'OK', command = self.infoWindow.destroy)
-        but.grid(row = 1, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
-        parent.rowconfigure(1, minsize = 40)
-
-
-class ModalWindow(object):
-    """
-    Description:
-        This brings up a new window, potentially derived
-        from a top level root window that displays a question
-        and asks the user to choose yes or no. At the termination
-        of this window, one can look at the attribute choice
-        to determine which button was pressed by the user. If the
-        user X's out without choosing an option, then the choice
-        will be equal to None.
-
-    Input:
-        text: The question to display to the user.
-        parent: The root window to potentially derive this one from. If
-            nothing is provided, this will create a new window from scratch.
-        title: The title to display on the window. Default is "PyHammer".
-
-    Example:
-        To properly use this window, you must create a new object and
-        assign it to a variable. This will bring up the window. You
-        must then wait for the window to be closed before moving on in
-        your code. This can be acheived in a manner similar to the following:
-
-        modal = ModalWindow('Is the answer to this question no?', parent = self.root)
-        self.root.wait_window(modal.modalWindow)
-
-        After this, one can inspect modal.choice.
-
-        If you are not deriving this window from a top level window, then
-        you do not need the wait_window call and you can simply use:
-
-        modal = ModalWindow('Is the answer to this question no?')
-    """
-
-    def __init__(self, text, parent = None, title = 'PyHammer'):
-        self.choice = None
-
-        # Setup the window
-        if parent is None:
-            # If no top level was provided, define the window as the top level
-            self.modalWindow = tk.Tk()
-        else:
-            # If a top level was provided, derive a new window from it
-            self.modalWindow = tk.Toplevel(parent)
-            self.modalWindow.grab_set() # Make the root window non-interactive
-            self.modalWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
-        self.modalWindow.title(title)
-        self.modalWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
-        self.modalWindow.resizable(False, False)
-
-        # Setup the widgets in the window
-        label = ttk.Label(self.modalWindow, text = text, font = '-size 10')
-        label.grid(row = 0, column = 0, columnspan = 2, padx = 2, pady = 2)
-        
-        but = ttk.Button(self.modalWindow, text = 'Yes', command = self.choiceYes)
-        but.grid(row = 1, column = 0, sticky = 'nsew', padx = 2, pady = 5)
-
-        but = ttk.Button(self.modalWindow, text = 'No', command = self.choiceNo)
-        but.grid(row = 1, column = 1, sticky = 'nsew', padx = 2, pady = 5)
-
-        self.modalWindow.rowconfigure(1, minsize = 40)
-
-        if parent is None: self.modalWindow.mainloop()
-
-    def choiceYes(self):
-        self.choice = 'yes'
-        self.modalWindow.destroy()
-
-    def choiceNo(self):
-        self.choice = 'no'
-        self.modalWindow.destroy()
-
-
-class OddWindow(object):
-    """
-    Description:
-        This brings up a window that allows the user to choose between
-        a list of radio button choices, or else enter their own choice
-        in an Entry field. Once their choice is made, they hit okay.
-        The specific purpose of this window is to allow the user to
-        mark their spectra as "odd" in that it doesn't fit into the
-        standard classifications and should be recorded as some other choice.
-    """
-
-    def __init__(self, parent, choices):
-        self.name = None
-        self.choices = choices
-        self.radioChoice = tk.IntVar(value = 0)
-        self.customName = tk.StringVar()
-        self.label = tk.StringVar(value = 'Choose Odd Type')
-
-        # Setup the window
-        self.oddWindow = tk.Toplevel(parent)
-        self.oddWindow.grab_set()   # Make the root window non-interactive
-        self.oddWindow.title('')
-        self.oddWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
-        self.oddWindow.resizable(False, False)
-        self.oddWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
-
-        # Setup the widgets in the window
-        tk.Label(self.oddWindow, textvariable = self.label, justify = 'center').grid(row = 0, column = 0, columnspan = 2)
-        
-        # Create the radio buttons for the input choices
-        for i, c in enumerate(choices):
-            temp = ttk.Radiobutton(self.oddWindow, text = '', variable = self.radioChoice, value = i)
-            temp.grid(row = i+1, column = 0, padx = (10,0), sticky = 'nesw')
-            
-            temp = ttk.Label(self.oddWindow, text = c)
-            temp.grid(row = i+1, column = 1, sticky = 'w')
-
-        # Create the radio button and entry field for the user's choice
-        temp = ttk.Radiobutton(self.oddWindow, text = '', variable = self.radioChoice, value = i+1)
-        temp.grid(row = i+2, column = 0, padx = (10,0), sticky = 'nesw')
-        
-        temp = ttk.Entry(self.oddWindow, textvariable = self.customName, width = 10)
-        temp.grid(row = i+2, column = 1, sticky = 'w')
-
-        # Define the button
-        but = ttk.Button(self.oddWindow, text = 'OK', command = self._exit)
-        but.grid(row = i+3, column = 0, columnspan = 2, sticky = 'nsew', padx = 2, pady = 5)
-
-        # Configure grid sizes
-        self.oddWindow.rowconfigure(i+3, minsize = 40)
-        self.oddWindow.columnconfigure(1, minsize = 175)
-
-    def _exit(self):
-        """
-        Description:
-            This is called when the user X's out of the window or
-            clicks the OK button in the window. It will check
-            what choice they chose and set it as the name then
-            destroy the window. It will make sure though, that the
-            user has entered text into the Entry field if they
-            pick that option.
-        """
-        if self.radioChoice.get() < len(self.choices):
-            self.name = self.choices[self.radioChoice.get()]
-        else:
-            if self.customName.get() == '':
-                # Temporarily change label to inform user of the problem.
-                self.label.set('Enter Text for Custom Name')
-                self.oddWindow.bell()   # Chime a bell to indicate a problem
-                self.oddWindow.after(1500, lambda: self.label.set('Choose Odd Type'))
-                return
-            else:
-                self.name = self.customName.get()
-        self.oddWindow.destroy()
