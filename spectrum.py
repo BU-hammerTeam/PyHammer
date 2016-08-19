@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import interpolate
+from numpy import ma
 from scipy.interpolate import interp1d
 from astropy.io import fits
 import bisect
@@ -27,9 +27,8 @@ class Spectrum(object):
         self._var = None
         self._guess = None
 
+        # Define class instance variables used 
         self.defineCalcTools()
-
-        
 
         # The directory containing this file
         self.thisDir = os.path.split(__file__)[0]
@@ -151,7 +150,7 @@ class Spectrum(object):
         A boolean indicating the success of reading the file.
         """
         
-        if (filetype == 'fits'):
+        if (filetype.lower() == 'fits'):
             # Implement reading a regular fits file
             # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
             # Need error vs variance keyword
@@ -171,7 +170,7 @@ class Spectrum(object):
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
-        elif (filetype == 'DR7fits'):
+        elif (filetype.lower() == 'dr7fits'):
             # Implement reading a sdss EDR through DR8 fits file
             try:
                 with warnings.catch_warnings():
@@ -192,7 +191,7 @@ class Spectrum(object):
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
-        elif (filetype == 'DR12fits'): 
+        elif (filetype.lower() == 'dr12fits'): 
             # Implement reading a sdss DR9 through DR12 fits file
             try:
                 with warnings.catch_warnings():
@@ -213,7 +212,7 @@ class Spectrum(object):
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
-        elif (filetype == 'txt'):
+        elif (filetype.lower() == 'txt'):
             # Implement reading a txt file
             # Need to add in a Keyword to have the user be able to input error but assume variance
             # Also want a vacuum keyword! 
@@ -247,7 +246,7 @@ class Spectrum(object):
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
-        elif (filetype == 'csv'):
+        elif (filetype.lower == 'csv'):
             # Implement reading a csv file
             # Need to add in a Keyword to have the user be able to input error but assume variance
             # Also want a vacuum keyword! 
@@ -807,15 +806,24 @@ class Spectrum(object):
 
     @property
     def smoothFlux(self):
+        # Define our own nancumsum method since numpy's nancumsum was only
+        # added recently and not everyone will have the latest numpy version
+        def nancumsum(x):
+            return ma.masked_array(x, mask = (np.isnan(x)|np.isinf(x))).cumsum().filled(np.nan)
+        
         # Simply the flux, convolved with a boxcar function to smooth it out.
         # A potential failing of this method is the case where there are a
         # small number of flux values (in the hundreds) but that seems so
         # unlikely, it isn't going to be handled.
+        #flux = self._flux.copy()
+        #mask = np.isnan(flux)
+        #flux[mask] = 0
         N = max(len(self._flux)/600, 100)  # Smoothing factor, Higher value = more smoothing
-        cumsum = np.cumsum(np.insert(self._flux,0,0))
+        cumsum = nancumsum(np.insert(self._flux,0,0))
         smoothFlux = (cumsum[N:] - cumsum[:-N]) / N
         smoothFlux = np.append(self._flux[:int(np.floor((N-1)/2))], smoothFlux)
         smoothFlux = np.append(smoothFlux, self._flux[-int(np.floor(N/2)):])
+        #smoothFlux[mask] = np.nan
         return smoothFlux
 
     @property
