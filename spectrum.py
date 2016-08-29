@@ -26,6 +26,7 @@ class Spectrum(object):
         self._flux = None
         self._var = None
         self._guess = None
+        self._normWavelength = 8000
 
         # Define class instance variables used 
         self.defineCalcTools()
@@ -791,16 +792,15 @@ class Spectrum(object):
         for better comparisons to templates
         """
         
-        normIndexLow = bisect.bisect_right(self._wavelength, 8000)
-        normIndexHigh = bisect.bisect_right(self._wavelength, 8010)
-        if np.isnan(self._flux[normIndexLow]): 
+        normIndex = bisect.bisect_right(self._wavelength, self._normWavelength)
+        if np.isnan(self._flux[normIndex]): 
             nonNanWave =  self._wavelength[np.where( np.isfinite(self._flux) )]
-            normWavelength = (nonNanWave[-1] + nonNanWave[0])/2
-            normIndex = bisect.bisect_right(self._wavelength, normWavelength)
-            normFactor = np.mean(self._flux[normIndex-10:normIndex+10])
+            self._normWavelength = (nonNanWave[-1] + nonNanWave[0])/2
+            normIndexNew = bisect.bisect_right(self._wavelength, self._normWavelength)
+            normFactor = np.mean(self._flux[normIndexNew-10:normIndexNew+10])
             self._flux = self._flux/normFactor
         else:
-            normFactor = np.mean(self._flux[normIndexLow:normIndexHigh])
+            normFactor = np.mean(self._flux[normIndex-10:normIndex+10])
             self._flux = self._flux/normFactor
 
 
@@ -839,6 +839,9 @@ class Spectrum(object):
     @property
     def var(self):
         return self._var
+    
+    @property normWavelength(self): 
+        return self._normWavelength
 
     @property
     def wavelength(self):
