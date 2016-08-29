@@ -526,6 +526,8 @@ class Spectrum(object):
                                     
         tempFlux = temp[1].data['flux']
         tempWave = 10**temp[1].data['loglam']
+        tempNormIndex = bisect.bisect_right(tempWave, self._normWavelength) 
+        tempFlux = tempFlux/tempFlux[tempNormIndex]
 
         # Get the regions for correlation
         specRegion1 = np.where( (wave > 5000) & (wave < 6000) )
@@ -535,12 +537,43 @@ class Spectrum(object):
         noiseRegion1 = np.where( (wave > 5000) & (wave < 5100) )
         noiseRegion2 = np.where( (wave > 6800) & (wave < 6900) )
         noiseRegion3 = np.where( (wave > 7400) & (wave < 7500) )
+        
+        #make sure the regions we are cross correlating have data
+        nonNanWave =  self._wavelength[np.where( np.isfinite(self._flux) )]
 
+        if nonNanWave[0] < 5000 and nonNanWave[-1] > 6000:
+            shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 50, 'fine')
+            if nonNanWave[-1] > 7000:
+                shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine')
+                if nonNanWave[-1] > 8000:
+                    shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
+                else:
+                    print('CAUTION: radial velocity may not be accurate, smaller wavelength region than tested on')
+                    shift3 = np.nan
+            else:
+                print('CAUTION: radial velocity may not be accurate, smaller wavelength region than tested on')
+                shift2 = np.nan
+                shift3 = np.nan
+                
+        elif nonNanWave[0] > 5000 and nonNanWave[0] < 6000 and nonNanWave[-1] > 7000:
+            print('CAUTION: radial velocity may not be accurate, smaller wavelength region than tested on')
+            shift1 = np.nan
+            shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine')
+            if nonNanWave[-1] > 8000:
+                shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
+            else:
+                shift3 = np.nan
 
+        elif nonNanWave[0] > 6000 and nonNanWave[0] < 7000 and nonNanWave[-1] > 8000:
+            print('CAUTION: radial velocity may not be accurate, smaller wavelength region than tested on')
+            shift1 = np.nan
+            shift2 = np.nan
+            shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
 
-        shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 50, 'fine')
-        shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine')
-        shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
+        else:
+            print('Spectrum too short to compute accurate radial velocity')
+            rvFinal = np.nan
+            return rvFinal
 
         # Convert to Radial Velocities
         pixel = wave[1]-wave[0]
@@ -780,6 +813,9 @@ class Spectrum(object):
         Input: 
         Calculated radial velocity float [km/s]
         """
+        #check to see if a RV was found, if not do not shift the spectrum
+        if np.isnan(shift):
+            shift = 0.0
         
         self._wavelength = self._wavelength / (shift / (299792.458) + 1)
         
