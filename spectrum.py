@@ -789,10 +789,16 @@ class Spectrum(object):
         for better comparisons to templates
         """
         
-        normIndexLow = bisect.bisect_right(self._wavelength, 8000)
-        normIndexHigh = bisect.bisect_right(self._wavelength, 8010)
-        normFactor = np.mean(self._flux[normIndexLow:normIndexHigh])
-        self._flux = self._flux/normFactor
+        if self._wavelength[-1] > 8010: 
+            normIndexLow = bisect.bisect_right(self._wavelength, 8000)
+            normIndexHigh = bisect.bisect_right(self._wavelength, 8010)
+            normFactor = np.mean(self._flux[normIndexLow:normIndexHigh])
+            self._flux = self._flux/normFactor
+        else:
+            normIndex = len(self._wavelength)/2
+            normWavelength = self._wavelength[normIndex]
+            normFactor = np.mean(self._flux[normIndex-5:normIndex+5])
+            self._flux = self._flux/normFactor
 
 
     ##
