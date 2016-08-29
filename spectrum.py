@@ -237,11 +237,13 @@ class Spectrum(object):
                         if len(lTemp) > 2 and self.isNumber(lTemp[2]):
                             err = float(lTemp[2])
                             var.append(err**2)
+                        else: 
+                            err = float(lTemp[1])**0.05 + 1*10**-16
+                            var.append(err**2)
                         
                 self._wavelength = np.asarray(wave) 
                 self._flux = np.asarray(flux) 
-                if len(var) > 0: 
-                    self._var = np.asarray(var) 
+                self._var = np.asarray(var) 
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
