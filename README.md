@@ -37,11 +37,11 @@ For each run, you will need an input file that contains a list of all the spectr
 
 An [example input file](/test_case/exampleInputFile.txt) along with a set of ten corresponding spectra are located in the [test_case](/test_case) directory. Run this test case from the command line with the following command.
 
-    python pyhammer.py -i test_case/exampleInputFile.txt -p test_case/
+    python pyhammer.py -f -i test_case/exampleInputFile.txt
 
 From the ipython environment use the following command.
 
-    run pyhammer.py -i test_case/exampleInputFile.txt -p test_case/
+    run pyhammer.py -f -i test_case/exampleInputFile.txt
 
 ##Publications
 
