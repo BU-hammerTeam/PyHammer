@@ -303,14 +303,14 @@ class Eyecheck(object):
                 # that is a known bug and causes no problems with loading fits data.
                 warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
                 hdulist = fits.open(templateFile)
-            loglam = hdulist[1].data['loglam'][::10]
+            lam = np.power(10,hdulist[1].data['loglam'][::10])
             flux = hdulist[1].data['flux'][::10]
             std = hdulist[1].data['std'][::10]
 
             # Plot template error bars and spectrum line
-            plt.plot(loglam, flux, '-k', label = 'Template')
+            plt.plot(lam, flux, '-k', label = 'Template')
             if self.showTemplateError.get():    # Only plot template error if option is selected to do so
-                plt.fill_between(loglam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
+                plt.fill_between(lam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
             templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
         else:
             # No template exists, plot nothing
@@ -319,14 +319,14 @@ class Eyecheck(object):
         # *** Plot the user's data ***
         
         if self.smoothState.get() == False:
-            plt.plot(self.specObj.loglam, self.specObj.flux, '-r', alpha = 0.6, label = 'Your Spectrum')
+            plt.plot(np.power(10,self.specObj.loglam), self.specObj.flux, '-r', alpha = 0.75, label = 'Your Spectrum')
         else:
-            plt.plot(self.specObj.loglam, self.specObj.smoothFlux, '-r', alpha = 0.6, label = 'Your Spectrum')
+            plt.plot(np.power(10,self.specObj.loglam), self.specObj.smoothFlux, '-r', alpha = 0.75, label = 'Your Spectrum')
         spectraName = os.path.basename(self.outData[self.specIndex,0])[:-5]
 
         # *** Set Plot Labels ***
         
-        plt.xlabel(r'$\mathrm{log_{10}(wavelength / \AA)}$', fontsize = 16)
+        plt.xlabel(r'$\mathrm{wavelength\;[\AA]}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
         plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName + '}$', fontsize = 16)
 
@@ -347,9 +347,9 @@ class Eyecheck(object):
             # Don't adjust the template error if it wasn't plotted
             if self.showTemplateError.get():
                 plt.setp(leg.get_texts()[1], color = 'b', alpha = 0.5)  # Adjust template error, alpha is higher to make more readable
-                plt.setp(leg.get_texts()[2], color = 'r', alpha = 0.6)  # Adjust spectrum label
+                plt.setp(leg.get_texts()[2], color = 'r', alpha = 0.75) # Adjust spectrum label
             else:
-                plt.setp(leg.get_texts()[1], color = 'r', alpha = 0.6)  # Adjust spectrum table
+                plt.setp(leg.get_texts()[1], color = 'r', alpha = 0.75) # Adjust spectrum table
         else:
             plt.setp(leg.get_texts()[0], color = 'r', alpha = 0.6)
 
@@ -359,7 +359,7 @@ class Eyecheck(object):
         
         # *** Set Plot Limits ***
 
-        plt.xlim([3.5,4.05])                    # Set x axis limits to constant value
+        plt.xlim([3000,11000])                  # Set x axis limits to constant value
         fig.canvas.toolbar.update()             # Clears out view stack
         self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
         self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
