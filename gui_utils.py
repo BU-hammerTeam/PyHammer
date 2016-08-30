@@ -36,6 +36,12 @@ class InfoWindow(object):
         height: The height of the window, in lines. More height provides a
             taller window.
         width: The width of the window, in characters.
+        pos: The physical position of this window with respect to the parent
+            window, if one exists. Provide input as a tuple of pixels to shift
+            the info window frame by, relative to the parent window's upper
+            left corner. Default is tuple input of (0,0). Also accepts the
+            command 'right' or 'below' to put new window to the right or below
+            the parent window. Any other input defaults to tuple input of (0,0).
         fontFamily: A valid, specific font family to use, if desired.
             
     Example:
@@ -51,7 +57,7 @@ class InfoWindow(object):
         
     """
 
-    def __init__(self, *args, parent = None, title = 'PyHammer', height = 6, width = 50, fontFamily = None):
+    def __init__(self, *args, parent = None, title = 'PyHammer', height = 6, width = 50, pos = (0,0), fontFamily = None):
         # Setup the window
         if parent is None:
             # If no top level was provided, define the window as the top level
@@ -60,7 +66,14 @@ class InfoWindow(object):
             # If a top level was provided, derive a new window from it
             self.infoWindow = tk.Toplevel(parent)
             self.infoWindow.grab_set()  # Make the root window non-interactive
-            self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
+            if pos == 'right':
+                self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx()+parent.winfo_width(), parent.winfo_rooty()))
+            elif pos == 'below':
+                self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()+parent.winfo_height()))
+            elif type(pos) is tuple:
+                self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx()+pos[0], parent.winfo_rooty()+pos[1]))
+            else:
+                self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.infoWindow.title(title)
         self.infoWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.infoWindow.resizable(False, False)
