@@ -876,7 +876,8 @@ class Spectrum(object):
     def var(self):
         return self._var
     
-    @property normWavelength(self): 
+    @property
+    def normWavelength(self): 
         return self._normWavelength
 
     @property
