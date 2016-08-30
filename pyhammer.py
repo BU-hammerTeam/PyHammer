@@ -280,7 +280,7 @@ class StartGUI(object):
 
         # Define Input Widgets
         self.infileFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.infileLabel = ttk.Label(self.infileFrame, text = 'Provide an existing input file or choose to create a new input file.')
+        self.infileLabel = ttk.Label(self.infileFrame, text = 'Provide an existing input file or create a new input file.')
         self.infile = tk.StringVar(value = ('' if options['infile'] is None else options['infile']))
         self.infileEntry = ttk.Entry(self.infileFrame, textvariable = self.infile)
         self.infileBrowseButton = ttk.Button(self.infileFrame, text = 'Browse', command = lambda: self.browse(self.infileEntry, 'file'))
