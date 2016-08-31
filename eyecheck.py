@@ -1,7 +1,7 @@
 import os
+import matplotlib
 if os.name == 'posix':
-    import matplotlib
-    matplotlib.use("TkAgg")
+    matplotlib.use('Qt4Agg')
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
@@ -322,13 +322,13 @@ class Eyecheck(object):
             plt.plot(np.power(10,self.specObj.loglam), self.specObj.flux, '-r', alpha = 0.75, label = 'Your Spectrum')
         else:
             plt.plot(np.power(10,self.specObj.loglam), self.specObj.smoothFlux, '-r', alpha = 0.75, label = 'Your Spectrum')
-        spectraName = os.path.basename(self.outData[self.specIndex,0])[:-5]
+        spectraName = os.path.basename(os.path.splitext(self.outData[self.specIndex,0])[0])
 
         # *** Set Plot Labels ***
         
         plt.xlabel(r'$\mathrm{wavelength\;[\AA]}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
-        plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName + '}$', fontsize = 16)
+        plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName.replace('_','\_') + '}$', fontsize = 16)
 
         # *** Set Legend Settings ***
 
