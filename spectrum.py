@@ -249,7 +249,7 @@ class Spectrum(object):
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
-        elif (filetype.lower == 'csv'):
+        elif (filetype.lower() == 'csv'):
             # Implement reading a csv file
             # Need to add in a Keyword to have the user be able to input error but assume variance
             # Also want a vacuum keyword! 
