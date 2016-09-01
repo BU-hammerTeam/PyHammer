@@ -276,9 +276,20 @@ class Spectrum(object):
             # in this method. Just skip the file.
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
             return False, errorMessage
-
         
         self.interpOntoGrid()
+
+        # Determine wavelength to normalize flux at
+        normIndex = bisect.bisect_right(self._wavelength, 8000)
+        if np.isnan(self._flux[normIndex]):
+            # If we cannot use the default 8000 angstrom to normalize by, find the
+            # median of the wavelengths to use as the new wavelength
+            nonNanWave =  self._wavelength[np.isfinite(self._flux)]
+            self._normWavelength = (nonNanWave[-1] + nonNanWave[0])/2
+        else:
+            # Use default of 8000 if the flux is defined there
+            self._normWavelength = 8000
+        
         return True, ''
 
     def calcSN(self):
@@ -526,8 +537,7 @@ class Spectrum(object):
                                     
         tempFlux = temp[1].data['flux']
         tempWave = 10**temp[1].data['loglam']
-        tempNormIndex = bisect.bisect_right(tempWave, self._normWavelength) 
-        tempFlux = tempFlux/tempFlux[tempNormIndex]
+        tempFlux = Spectrum.normalize(tempWave, self._normWavelength, tempFlux)
 
         # Get the regions for correlation
         specRegion1 = np.where( (wave > 5000) & (wave < 6000) )
@@ -820,25 +830,28 @@ class Spectrum(object):
         self._wavelength = self._wavelength / (shift / (299792.458) + 1)
         
         return 
-    
-    def normalizeFlux(self): 
-        
+
+    def normalizeFlux(self):
+        """Defined purely for convenience in normalizing the loaded spectrum."""
+        self._flux = Spectrum.normalize(self._wavelength, self._normWavelength, self._flux)
+
+    @staticmethod
+    def normalize(wavelength, normWavelength, flux):
         """
-        normalize the observed flux at 8000 Angstroms (where the templates are all normalized) 
+        Normalize the observed flux at 8000 Angstroms (where the templates are all normalized) 
         for better comparisons to templates
         """
         
-        normIndex = bisect.bisect_right(self._wavelength, self._normWavelength)
-        if np.isnan(self._flux[normIndex]): 
-            nonNanWave =  self._wavelength[np.where( np.isfinite(self._flux) )]
-            self._normWavelength = (nonNanWave[-1] + nonNanWave[0])/2
-            normIndexNew = bisect.bisect_right(self._wavelength, self._normWavelength)
-            normFactor = np.mean(self._flux[normIndexNew-10:normIndexNew+10])
-            self._flux = self._flux/normFactor
-        else:
-            normFactor = np.mean(self._flux[normIndex-10:normIndex+10])
-            self._flux = self._flux/normFactor
+        normIndex = bisect.bisect_right(wavelength, normWavelength)
 
+        if np.isnan(flux[normIndex]): 
+            nonNanWave =  wavelength[np.where( np.isfinite(self._flux) )]
+            normWavelength = (nonNanWave[-1] + nonNanWave[0])/2
+            normIndex = bisect.bisect_right(wavelength, normWavelength)
+
+        normFactor = np.mean(flux[normIndex-10:normIndex+10])
+
+        return flux / normFactor
 
 
     ##
