@@ -112,8 +112,10 @@ def main(options):
             shift = spec.findRadialVelocity()
 
             # --- 5 ---
-            # Call shiftToRest that shifts the spectrum to rest wavelengths
+            # Call shiftToRest that shifts the spectrum to rest wavelengths,
+            # then interp back onto the grid
             spec.shiftToRest(shift)
+            spec.interpOntoGrid()
 
             # --- 6 ---
             # Repeat guessSpecType function to get a better guess of the spectral 
