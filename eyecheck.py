@@ -307,6 +307,12 @@ class Eyecheck(object):
             flux = hdulist[1].data['flux'][::10]
             std = hdulist[1].data['std'][::10]
 
+            # The templates are all normalized to 8000 Angstroms. The loaded spectrum
+            # a normalized to this as well, but if they're not defined at 8000 Angstroms,
+            # it is normalized to a different value that the template needs to be normalized to
+            if self.specObj.normWavelength != 8000:
+                flux = Spectrum.normalize(lam, self.specObj.normWavelength, flux)
+
             # Plot template error bars and spectrum line
             plt.plot(lam, flux, '-k', label = 'Template')
             if self.showTemplateError.get():    # Only plot template error if option is selected to do so
@@ -319,9 +325,9 @@ class Eyecheck(object):
         # *** Plot the user's data ***
         
         if self.smoothState.get() == False:
-            plt.plot(np.power(10,self.specObj.loglam), self.specObj.flux, '-r', alpha = 0.75, label = 'Your Spectrum')
+            plt.plot(self.specObj.wavelength, self.specObj.flux, '-r', alpha = 0.75, label = 'Your Spectrum')
         else:
-            plt.plot(np.power(10,self.specObj.loglam), self.specObj.smoothFlux, '-r', alpha = 0.75, label = 'Your Spectrum')
+            plt.plot(self.specObj.wavelength, self.specObj.smoothFlux, '-r', alpha = 0.75, label = 'Your Spectrum')
         spectraName = os.path.basename(os.path.splitext(self.outData[self.specIndex,0])[0])
 
         # *** Set Plot Labels ***
