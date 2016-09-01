@@ -316,7 +316,7 @@ class Eyecheck(object):
             # Plot template error bars and spectrum line
             plt.plot(lam, flux, '-k', label = 'Template')
             if self.showTemplateError.get():    # Only plot template error if option is selected to do so
-                plt.fill_between(lam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template Error')
+                plt.fill_between(lam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template RMS')
             templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
         else:
             # No template exists, plot nothing
@@ -343,7 +343,7 @@ class Eyecheck(object):
         # does not appear in the legend. In those cases, we will fake it out by
         # putting in a fake legend entry to match the fill_between plot.
         if pltVersion < '1.5' and self.showTemplateError.get() and templateFile is not None:
-            labels.append('Template Error')
+            labels.append('Template RMS')
             handles.append(Rectangle((0,0),0,0, color = 'b', ec = 'None', alpha = 0.1))
         labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
         leg = plt.legend(handles, labels, loc = 0)
