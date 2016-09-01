@@ -82,6 +82,16 @@ From the ipython environment use the following command.
 
     run pyhammer.py -f -i test_case/exampleInputFile.txt
 
+##FAQ
+
+1. **What wavelength range can this classify over?**
+
+   The templates used to classify your spectra are defined over the range 3,650 to 10,200 Angstroms. The process for classifying involves matching on specifically chosen spectral lines which range from 3,925 Angstroms to 10,000 Angstroms. Your spectrum should be defined for at least part of that range, although it need not span the full range and can be defined outside that range.
+
+2. **Why is a template not showing during the eyecheck process?**
+
+   The templates were compiled by averaging SDSS DR12 spectra for each spectral and metallicity type. In some cases, not enough spectra existed to provide a template. If you choose a spectral type in the eyecheck program for which a template is not available, nothing will be shown.
+
 ##Publications
 
 This project and accompanying work is described Appendix A in Kesseli et al. (in prep.)
