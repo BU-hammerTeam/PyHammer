@@ -25,17 +25,56 @@ PyHammer relies on several core Python modules as well as third party modules. I
 |AstroPy   | 1.2.1             |`import astropy; astropy.__version__`      |
 <sup>1</sup>Commands are run in Python environment
 
+####Inputs
+
+Before running the program, you need an input file to specify which spectrum to classify. The input file can be created either before hand as a text or csv file, or else in the program itself. The input file format should be to list the filenames of the spectra you want to classify in the first column and the spectrum data types in the second column. The spectra filenames can have the full path specified or a common path for all spectra files can be specified during execution. The spectrum data types accepted are  `DR7fits` (SDSS EDR - DR8), `DR12fits` (SDSS DR9 - DR12), `fits`, `txt`, and `csv`. 
+
+The [example input file](/test_case/exampleInputFile.txt) in the [test_case](/test_case) directory is defined below for reference.
+
+    test_case/spec-0618-52049-0372.fits DR12fits
+    test_case/spec-1079-52621-0509.fits DR12fits
+    test_case/spec-1123-52882-0065.fits DR12fits
+    test_case/spec-4068-55445-0924.fits DR12fits
+    test_case/spec-4961-55719-0378.fits DR12fits
+    test_case/spec-7332-56683-0788.fits DR12fits
+    test_case/spec-7454-56751-0770.fits DR12fits
+    test_case/spec-5047-55833-0936.fits DR12fits
+    test_case/spec-3764-55514-0972.fits DR12fits
+
 ##Running PyHammer
 
 On the command line, navigate to the PyHammer folder and run with the command `python pyhammer.py`. In the ipython environment, the command `run pyhammer.py` can be used. This code should not be imported!
 
-The first time you run the code, you can supply the flag `-h` to see all options and flags available to the run command. By default, PyHammer will run in GUI mode, but command line mode can be used with the `-c` flag.
+Along with the run command, various flags and command line options can be provided. The first time you run the code, you can supply the flag `-h` to see all options and flags available to the run command. By default, PyHammer will run in GUI mode, but command line mode can be used with the `-c` flag. A list of all options is shown below
 
-For each run, you will need an input file that contains a list of all the spectra fits files you would like to classify, along with which fits data type each file is. The fits data types accepted are  `DR7fits` (SDSS EDR - DR8), `DR12fits` (SDSS DR9 - DR12), `fits`, `txt`, and `csv`.
+    Options             Description
+    -c, --cmd           Flag to choose to run on the command line.
+    -e, --eyecheck      Flag indicating pyhammer should skip classifying
+                        and go straight to checking the spectra by eye.
+    -f, --full          Flag indicating the full path to the spectra is
+                        provided in the input file list.
+    -g, --gui           Flag to choose to run using the gui.
+    -i, --infile        The full path to the input file or the name, if it
+                        is in the pyhammer folder. If nothing is
+                        provided, it will be asked for later.
+    -o, --outfile       The full path to the output file or a filename
+                        which outputs to the pyhammer folder. If nothing is
+                        provided, the default pyhammerResults.csv will be
+                        created in the pyhammer folder.
+    -p, --path          The full path to the spectra. This is only necessary
+                        if the input file list does not prepend the path to
+                        the spectra filenames.
+    -r, --rejectfile    The full path to the file where reject spectra will
+                        be listed or a filename which outputs to the
+                        pyhammer folder . If nothing is provided, the
+                        default rejectSpectra.csv will be created in the
+                        pyhammer folder.
+    -s, --sncut         The S/N necessary before a spectra will be classified.
+                        A signal to noise of ~3-5 per pixel is recommended.
 
 ####Test Case
 
-An [example input file](/test_case/exampleInputFile.txt) along with a set of ten corresponding spectra are located in the [test_case](/test_case) directory. Run this test case from the command line with the following command.
+In the [test_case](/test_case) directory is an example input file and a set of 10 corresponding spectra. Run this test case from the command line with the following command.
 
     python pyhammer.py -f -i test_case/exampleInputFile.txt
 
