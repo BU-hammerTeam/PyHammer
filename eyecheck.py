@@ -1,7 +1,7 @@
 import os
 import matplotlib
 if os.name == 'posix':
-    matplotlib.use('Qt4Agg')
+    matplotlib.use('Qt4Agg') # Force Mac users to use this backend
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
@@ -12,6 +12,7 @@ from astropy.io import fits
 import warnings
 import time
 import csv
+from spectrum import *
 import pdb
 from gui_utils import *
 
@@ -317,7 +318,12 @@ class Eyecheck(object):
             plt.plot(lam, flux, '-k', label = 'Template')
             if self.showTemplateError.get():    # Only plot template error if option is selected to do so
                 plt.fill_between(lam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template RMS')
-            templateName = os.path.split(templateFile)[1][:-5].replace('_','\;')
+            # Determine and format the template name for the title, from the filename
+            templateName = os.path.basename(os.path.splitext(templateFile)[0])
+            if '_' in templateName:
+                ii = templateName.find('_')+1 # Index of first underscore, before metallicity
+                templateName = templateName[:ii] + '[Fe/H] = ' + templateName[ii:]
+                templateName = templateName.replace('_',',\;')
         else:
             # No template exists, plot nothing
             templateName = 'Not\;Available'
@@ -329,10 +335,11 @@ class Eyecheck(object):
         else:
             plt.plot(self.specObj.wavelength, self.specObj.smoothFlux, '-r', alpha = 0.75, label = 'Your Spectrum')
         spectraName = os.path.basename(os.path.splitext(self.outData[self.specIndex,0])[0])
+        
 
         # *** Set Plot Labels ***
         
-        plt.xlabel(r'$\mathrm{wavelength\;[\AA]}$', fontsize = 16)
+        plt.xlabel(r'$\mathrm{Wavelength\;[\AA]}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
         plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName.replace('_','\_') + '}$', fontsize = 16)
 
@@ -708,8 +715,10 @@ class Eyecheck(object):
             whichever radio buttons are selected, or else from input to this
             function. This will search for filenames matching a specific format.
             The first attempt will be to look for a filename of the format
-            "XX.fits". The next format it will try (if the first doesn't exist)
-            is "XX_+X.X.fits". After that it will try "XX_+X.X_Dwarf.fits".
+            "SS_+M.M_Dwarf.fits", where the SS is the spectral type and subtype
+            and +/-M.M is the [Fe/H] metallicity. The next next format it will
+            try (if the first doesn't exist) is "SS_+M.M.fits". After that it
+            will try "SS.fits".
         """
         # If values weren't passed in for certain states, assume we should
         # use what is chosen on the GUI
