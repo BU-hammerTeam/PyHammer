@@ -96,6 +96,10 @@ From the ipython environment use the following command.
    
    This is a warning output by the tkinter module for Mac users using the Anaconda distribution. It is a known warning as a result of their compiling tkinter into the distribution under an older version of OS X. It causes no issues or problems and can be ignored.
 
+4. ** Why can't I choose to classify my spectra as K8 or K9?**
+
+   It is a general consensus (though by no means unanimous, ref. [Johnson & Morgan 1953][Johnson_Morgan], [Keenan & McNeil 1989](Keenan_McNeil)) that the K8 and K9 stellar types are sufficiently similar to their neighboring spectral types that they need not exist. Instead, the spectral classification jumps from K7 directly to M0. As such, we disallow selecting those spectral types in the eyecheck GUI. Corresondingly, the automatic spectral typing algorithm will not match to a K8 or K9 spectral type.
+
 ##Publications
 
 This project and accompanying work is described Appendix A in Kesseli et al. (in prep.)
@@ -110,3 +114,5 @@ This project was developed by a select group of graduate students at the Departm
 [covey+07]: http://adsabs.harvard.edu/abs/2007AJ....134.2398C
 [conda]: https://www.continuum.io/downloads
 [backend_problem]: https://github.com/mperrin/webbpsf/issues/103
+[Johnson_Morgan]: http://adsabs.harvard.edu/abs/1953ApJ...117..313J
+[Keenan_McNeil]: http://adsabs.harvard.edu/abs/1989ApJS...71..245K
