@@ -92,6 +92,10 @@ From the ipython environment use the following command.
 
    The templates were compiled by averaging SDSS DR12 spectra for each spectral and metallicity type. In some cases, not enough spectra existed to provide a template. If you choose a spectral type in the eyecheck program for which a template is not available, nothing will be shown.
 
+3. **I'm seeing an output of the form _setCanCycle: is deprecated.  Please use setCollectionBehavior instead_. What is this?**
+   
+   This is a warning output by the tkinter module for Mac users using the Anaconda distribution. It is a known warning as a result of their compiling tkinter into the distribution under an older version of OS X. It causes no issues or problems and can be ignored.
+
 ##Publications
 
 This project and accompanying work is described Appendix A in Kesseli et al. (in prep.)
