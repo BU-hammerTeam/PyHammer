@@ -171,7 +171,7 @@ class Spectrum(object):
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
-        elif (filetype.lower() == 'dr7fits'):
+        elif (filetype.lower() == 'sdssdr7fits'):
             # Implement reading a sdss EDR through DR8 fits file
             try:
                 with warnings.catch_warnings():
@@ -192,7 +192,7 @@ class Spectrum(object):
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
             
-        elif (filetype.lower() == 'dr12fits'): 
+        elif (filetype.lower() == 'sdssdr12fits'): 
             # Implement reading a sdss DR9 through DR12 fits file
             try:
                 with warnings.catch_warnings():
