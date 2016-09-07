@@ -301,7 +301,7 @@ class StartGUI(object):
         ToolTip(self.selectFiles, 'Select a set of spectrum files\nto add to the input file')
         ttk.Separator(self.createFrame, orient = tk.VERTICAL).grid(row = 2, column = 1, padx = 4, stick = 'wns')
         self.dataType = tk.StringVar()
-        self.dataTypeList = ttk.OptionMenu(self.createFrame, self.dataType, 'SDSSDR12fits', 'SDSSDR12fits', 'SDSSDR7fits', 'fits', 'txt', 'csv')
+        self.dataTypeList = ttk.OptionMenu(self.createFrame, self.dataType, 'SDSSdr12', 'SDSSdr12', 'SDSSdr7', 'fits', 'txt', 'csv')
         self.applyType = ttk.Button(self.createFrame, text = 'Apply Data Type', command = self.applyType)
         ToolTip(self.applyType, 'Append the selected data type to every file in the list')
 
