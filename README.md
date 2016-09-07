@@ -27,19 +27,19 @@ PyHammer relies on several core Python modules as well as third party modules. I
 
 ####Inputs
 
-Before running the program, you need an input file to specify which spectrum to classify. The input file can be created either before hand as a text or csv file, or else in the program itself. The input file format should be to list the filenames of the spectra you want to classify in the first column and the spectrum data types in the second column. The spectra filenames can have the full path specified or a common path for all spectra files can be specified during execution. The spectrum data types accepted are  `SDSSDR7fits` (SDSS EDR - DR8), `SDSSDR12fits` (SDSS DR9 - DR13), `fits`, `txt`, and `csv`. 
+Before running the program, you need an input file to specify which spectrum to classify. The input file can be created either before hand as a text or csv file, or else in the program itself. The input file format should be to list the filenames of the spectra you want to classify in the first column and the spectrum data types in the second column. The spectra filenames can have the full path specified or a common path for all spectra files can be specified during execution. The spectrum data types accepted are  `SDSSdr7` (SDSS EDR - DR8), `SDSSdr12` (SDSS DR9 - DR13), `fits`, `txt`, and `csv`. 
 
 The [example input file](/test_case/exampleInputFile.txt) in the [test_case](/test_case) directory is defined below for reference.
 
-    test_case/spec-0618-52049-0372.fits SDSSDR12fits
-    test_case/spec-1079-52621-0509.fits SDSSDR12fits
-    test_case/spec-1123-52882-0065.fits SDSSDR12fits
-    test_case/spec-4068-55445-0924.fits SDSSDR12fits
-    test_case/spec-4961-55719-0378.fits SDSSDR12fits
-    test_case/spec-7332-56683-0788.fits SDSSDR12fits
-    test_case/spec-7454-56751-0770.fits SDSSDR12fits
-    test_case/spec-5047-55833-0936.fits SDSSDR12fits
-    test_case/spec-3764-55514-0972.fits SDSSDR12fits
+    test_case/spec-0618-52049-0372.fits SDSSdr12
+    test_case/spec-1079-52621-0509.fits SDSSdr12
+    test_case/spec-1123-52882-0065.fits SDSSdr12
+    test_case/spec-4068-55445-0924.fits SDSSdr12
+    test_case/spec-4961-55719-0378.fits SDSSdr12
+    test_case/spec-7332-56683-0788.fits SDSSdr12
+    test_case/spec-7454-56751-0770.fits SDSSdr12
+    test_case/spec-5047-55833-0936.fits SDSSdr12
+    test_case/spec-3764-55514-0972.fits SDSSdr12
 
 ##Running PyHammer
 
