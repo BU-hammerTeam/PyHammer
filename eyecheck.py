@@ -242,19 +242,19 @@ class Eyecheck(object):
 
         # *** Set key bindings ***
         
-        self.root.bind('o', lambda event: self.callback_odd())
-        self.root.bind('b', lambda event: self.callback_bad())
-        self.root.bind('s', lambda event: self.callback_smooth(toggle = True))
-        self.root.bind('e', lambda event: self.showTemplateError.set(not self.showTemplateError.get()))
-        self.root.bind('e', lambda event: self.updatePlot(), add = '+')
-        self.root.bind('l', lambda event: self.lockSmooth.set(not self.lockSmooth.get()))
+        self.root.bind('<Control-o>', lambda event: self.callback_odd())
+        self.root.bind('<Control-b>', lambda event: self.callback_bad())
+        self.root.bind('<Control-s>', lambda event: self.callback_smooth(toggle = True))
+        self.root.bind('<Control-e>', lambda event: self.showTemplateError.set(not self.showTemplateError.get()))
+        self.root.bind('<Control-e>', lambda event: self.updatePlot(), add = '+')
+        self.root.bind('<Control-l>', lambda event: self.lockSmooth.set(not self.lockSmooth.get()))
         self.root.bind('<Return>', lambda event: self.callback_next())
-        self.root.bind('k', lambda event: self.callback_back())
+        self.root.bind('<Control-k>', lambda event: self.callback_back())
         self.root.bind('<Left>', lambda event: self.callback_earlier())
         self.root.bind('<Right>', lambda event: self.callback_later())
         self.root.bind('<Down>', lambda event: self.callback_lower())
         self.root.bind('<Up>', lambda event: self.callback_higher())
-        self.root.bind('p', lambda event: self.callback_hammer_time())
+        self.root.bind('<Control-p>', lambda event: self.callback_hammer_time())
 
         # Force the GUI to appear as a top level window, on top of all other windows
         self.root.lift()
@@ -424,13 +424,13 @@ class Eyecheck(object):
             '<Up>\tHigher metallicity button\n'
             '<Down>\tLower metallicity button\n'
             '<Enter>\tAccept spectral classification\n'
-            '<K>\tMove to previous spectrum\n'
-            '<O>\tClassify spectrum as odd\n'
-            '<B>\tClassify spectrum as bad\n'
-            '<E>\tToggle the template error\n'
-            '<S>\tSmooth/Unsmooth the spectrum\n'
-            '<L>\tLock the smooth state between spectra\n'
-            '<P>')
+            '<Ctrl-K>\tMove to previous spectrum\n'
+            '<Ctrl-O>\tClassify spectrum as odd\n'
+            '<Ctrl-B>\tClassify spectrum as bad\n'
+            '<Ctrl-E>\tToggle the template error\n'
+            '<Ctrl-S>\tSmooth/Unsmooth the spectrum\n'
+            '<Ctrl-L>\tLock the smooth state between spectra\n'
+            '<Ctrl-P>')
         tipStr = (
             'The following are a set of tips for useful features of the '
             'program.\n\n'
@@ -583,7 +583,7 @@ class Eyecheck(object):
                        (46,1),(45,12),(46,1),(32,2),(10,1),(32,9),(42,1),(32,7),(91,1),(32,1),(93,1),(95,11),(124,1),(47,2),(80,1),(121,1),(72,1),
                        (97,1),(109,2),(101,1),(114,1),(47,2),(124,1),(32,2),(10,1),(32,14),(42,1),(32,2),(41,1),(32,1),(40,1),(32,11),(39,1),(45,12),
                        (39,1),(32,2),(10,1),(32,17),(39,1),(45,1),(39,1),(32,1),(42,1),(32,25),(10,1),(32,13),(42,1),(32,33),(10,1),(32,19),(42,1),(32,27)]
-            InfoWindow(''.join([chr(c[0])*c[1] for c in chrList]), parent = self.root, height = 9, font = 'Courier')
+            InfoWindow(''.join([chr(c[0])*c[1] for c in chrList]), parent = self.root, height = 9, fontFamily = 'Courier')
         
 
     ##
