@@ -4,7 +4,7 @@
 
 ###A Python Spectral Typing Suite 
 
-PyHammer is a tool developed to allow rapid and automatic spectral classification of stars according to the Morgan-Keenan classification system. Working in the range of 3,650 - 10,200 Angstroms, the automatic spectral typing algorithm compares important spectral lines to template spectra and determines the best matching spectral type, ranging from O to L type stars. This tool has the additional features that it can determine a star's metallicity and radial velocity shifts. Once the automatic classification algorithm has run, PyHammer provides the user an interface for determine spectral types for themselves by comparing their spectra to provided templates.
+PyHammer is a tool developed to allow rapid and automatic spectral classification of stars according to the Morgan-Keenan classification system. Working in the range of 3,650 - 10,200 Angstroms, the automatic spectral typing algorithm compares important spectral lines to template spectra and determines the best matching spectral type, ranging from O to L type stars. This tool has the additional features that it can determine a star's [Fe/H] metallicity and radial velocity shifts. Once the automatic classification algorithm has run, PyHammer provides the user an interface for determining spectral types for themselves by comparing their spectra to provided templates.
 
 Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in [Covey et al. 2007][covey+07]
 
@@ -96,9 +96,17 @@ From the ipython environment use the following command.
    
    This is a warning output by the tkinter module for Mac users using the Anaconda distribution. It is a known warning as a result of their compiling tkinter into the distribution under an older version of OS X. It causes no issues or problems and can be ignored.
 
-4. ** Why can't I choose to classify my spectra as K8 or K9?**
+4. **Why can't I choose to classify my spectra as K8 or K9?**
 
    It is a general consensus (though by no means unanimous, ref. [Johnson & Morgan 1953][Johnson_Morgan], [Keenan & McNeil 1989](Keenan_McNeil)) that the K8 and K9 stellar types are sufficiently similar to their neighboring spectral types that they need not exist. Instead, the spectral classification jumps from K7 directly to M0. As such, we disallow selecting those spectral types in the eyecheck GUI. Corresondingly, the automatic spectral typing algorithm will not match to a K8 or K9 spectral type.
+  
+5. **Can I use my own templates?**
+   
+   Yes. You can choose to replace the templates in the [template directory](/resources/templates), or else provide your own for the templates which don't exist. Note however, that templates must conform to specific conventions.
+
+   a. In order to be recognized, the filename must take one of three forms: `SS.fits`, `SS_+M.M.fits`, `SS_+M.M_Dwarf.fits`. In these names, `SS` is the spectral type and subtype (e.g., M5) and `+M.M` is the [Fe/H] metallicity where you must specify the sign, either positive or negative (0.0 is considered positive) (e.g., +0.0, -0.5, +1.0).
+   
+   b. The template itself must be configured such that it is "normalized" to the flux at 8000 Angstroms. In other words, the flux in the template file must be divided by the flux at 8000 Angstroms, making the flux at that point equal to one.
 
 ##Publications
 
