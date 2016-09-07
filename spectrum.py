@@ -113,7 +113,7 @@ class Spectrum(object):
         # Color bands
         self.indexDict['region1'] = [ 4160,  4210, 7480, 7580]
         self.indexDict['region2'] = [ 4550,  4650, 7480, 7580]
-        self.indexDict['region3'] = [ 5700,  5800, 7480, 7580]
+        self.indexDict['region3'] = [ 6000,  6100, 7480, 7580]
         self.indexDict['region4'] = [ 9100,  9200, 7480, 7580]
         self.indexDict['region5'] = [10100, 10200, 7480, 7580] 
         
