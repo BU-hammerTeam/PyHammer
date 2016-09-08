@@ -561,11 +561,11 @@ class Spectrum(object):
         nonNanWave =  self._wavelength[np.where( np.isfinite(self._flux) )]
 
         if nonNanWave[0] < 5000 and nonNanWave[-1] > 6000:
-            shift1 = self.xcorl(flux[specRegion1], tempFlux[specRegion1], 50, 'fine')
+            shift1 = float(self.xcorl(flux[specRegion1], tempFlux[specRegion1], 50, 'fine'))
             if nonNanWave[-1] > 7000:
-                shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine')
+                shift2 = float(self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine'))
                 if nonNanWave[-1] > 8000:
-                    shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
+                    shift3 = float(self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine'))
                 else:
                     print('CAUTION: radial velocity may not be accurate, smaller wavelength region than tested on')
                     shift3 = np.nan
@@ -577,9 +577,9 @@ class Spectrum(object):
         elif nonNanWave[0] > 5000 and nonNanWave[0] < 6000 and nonNanWave[-1] > 7000:
             print('CAUTION: radial velocity may not be accurate, smaller wavelength region than tested on')
             shift1 = np.nan
-            shift2 = self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine')
+            shift2 = float(self.xcorl(flux[specRegion2], tempFlux[specRegion2], 50, 'fine'))
             if nonNanWave[-1] > 8000:
-                shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
+                shift3 = float(self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine'))
             else:
                 shift3 = np.nan
 
@@ -587,7 +587,7 @@ class Spectrum(object):
             print('CAUTION: radial velocity may not be accurate, smaller wavelength region than tested on')
             shift1 = np.nan
             shift2 = np.nan
-            shift3 = self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine')
+            shift3 = float(self.xcorl(flux[specRegion3], tempFlux[specRegion3], 50, 'fine'))
 
         else:
             print('Spectrum too short to compute accurate radial velocity')
@@ -610,6 +610,8 @@ class Spectrum(object):
         # Look for convergence of the radial velocities
         rvs = np.array([radVel1, radVel2, radVel3])
         snrs = np.array([snr1, snr2, snr3])
+        #make sure none of the rvs are nans, if so get rid of them
+        rvs = rvs[np.isfinite(rvs)]
 
         true = False
         firstTime = 1
