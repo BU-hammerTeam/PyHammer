@@ -165,8 +165,17 @@ class Spectrum(object):
                 errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
                 return False, errorMessage
             try:
-                self._flux = spec[0].data[0]
-                self._wavelength = ( spec[0].header['CRVAL1'] - (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(spec[0].data[0]),1))
+                #there seems to be an array within an array (making len 1 of flux sometimes)
+                #check for that
+                if len(spec[0].data[0]) > 1:
+                    self._flux = spec[0].data[0]
+                else: 
+                    self._flux = spec[0].data[0][0]
+                #get wavelength
+                self._wavelength = ( spec[0].header['CRVAL1'] + (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(self._flux),1))
+                #create a simple poisson error
+                err = abs(self._flux)**0.05 + 1E-16
+                self._var = err**2
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
