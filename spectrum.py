@@ -276,6 +276,9 @@ class Spectrum(object):
                 if len(f[1]) > 2:
                     err = f[:,2].astype(np.float)
                     self._var = err**2
+                else: 
+                    err = abs(self._flux)**0.05 + 1E-16
+                    self._var = err**2
             except Exception as e:
                 errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
                 return False, errorMessage
