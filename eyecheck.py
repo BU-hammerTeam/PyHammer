@@ -99,6 +99,7 @@ class Eyecheck(object):
         self.smoothState = tk.BooleanVar(value = False)
         self.lockSmooth = tk.BooleanVar(value = False)
         self.showTemplateError = tk.BooleanVar(value = True)
+        self.removeSdssSpikeState = tk.BooleanVar(value = False)
 
         # *** Define figure variables ***
         
@@ -146,7 +147,7 @@ class Eyecheck(object):
         """
         # Write the outData to the output file
         with open(self.options['outfile'], 'w') as outfile:
-            outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed Metallicity,User Spectral Type,User Metallicity\n')
+            outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
             for i, spectra in enumerate(self.outData):
                 for j, col in enumerate(spectra):
                     outfile.write(col)
@@ -181,6 +182,7 @@ class Eyecheck(object):
         optionsMenu.add_checkbutton(label = 'Show Template Error', variable = self.showTemplateError, command = self.updatePlot)
         optionsMenu.add_checkbutton(label = 'Smooth Spectrum', variable = self.smoothState, command = self.callback_smooth)
         optionsMenu.add_checkbutton(label = 'Lock Smooth State', variable = self.lockSmooth)
+        optionsMenu.add_checkbutton(label = 'Remove SDSS Stitch Spike', variable = self.removeSdssSpikeState, command = self.updatePlot)
         optionsMenu.add_separator()
         optionsMenu.add_command(label = 'Quit', command = self.areYouSure)
 
@@ -196,7 +198,7 @@ class Eyecheck(object):
         
         # *** Define labels ***
         
-        for i, name in enumerate(['Spectrum', 'Type', 'Subtype', 'Metallicity', 'Switch Type', 'Switch Metallicity', 'Spectrum Choices']):
+        for i, name in enumerate(['Spectrum', 'Type', 'Subtype', '[Fe/H]', 'Switch Type', 'Switch [Fe/H]', 'Spectrum Choices']):
             ttk.Label(self.root, text = name).grid(row = i, column = 0, columnspan = 1+(i>3),
                                                    stick = 'e', pady = (10*(i==4),10*(i==0)))
 
@@ -248,6 +250,8 @@ class Eyecheck(object):
         self.root.bind('<Control-e>', lambda event: self.showTemplateError.set(not self.showTemplateError.get()))
         self.root.bind('<Control-e>', lambda event: self.updatePlot(), add = '+')
         self.root.bind('<Control-l>', lambda event: self.lockSmooth.set(not self.lockSmooth.get()))
+        self.root.bind('<Control-r>', lambda event: self.removeSdssSpikeState.set(not self.removeSdssSpikeState.get()))
+        self.root.bind('<Control-r>', lambda event: self.updatePlot(), add = '+')
         self.root.bind('<Return>', lambda event: self.callback_next())
         self.root.bind('<Control-k>', lambda event: self.callback_back())
         self.root.bind('<Left>', lambda event: self.callback_earlier())
@@ -309,7 +313,7 @@ class Eyecheck(object):
             std = hdulist[1].data['std'][::10]
 
             # The templates are all normalized to 8000 Angstroms. The loaded spectrum
-            # a normalized to this as well, but if they're not defined at 8000 Angstroms,
+            # are normalized to this by default as well, but if they're not defined at 8000 Angstroms,
             # it is normalized to a different value that the template needs to be normalized to
             if self.specObj.normWavelength != 8000:
                 flux = Spectrum.normalize(lam, self.specObj.normWavelength, flux)
@@ -329,11 +333,18 @@ class Eyecheck(object):
             templateName = 'Not\;Available'
             
         # *** Plot the user's data ***
-        
+
+        # Get the flux and fix it as the user requested
         if self.smoothState.get() == False:
-            plt.plot(self.specObj.wavelength, self.specObj.flux, '-r', alpha = 0.75, label = 'Your Spectrum')
+            flux = self.specObj.flux
         else:
-            plt.plot(self.specObj.wavelength, self.specObj.smoothFlux, '-r', alpha = 0.75, label = 'Your Spectrum')
+            flux = self.specObj.smoothFlux
+            
+        if self.removeSdssSpikeState.get() == True:
+            flux = Spectrum.removeSdssStitchSpike(self.specObj.wavelength, flux)
+
+        # Plot it all up and define the title name
+        plt.plot(self.specObj.wavelength, flux, '-r', alpha = 0.75, label = 'Your Spectrum')
         spectraName = os.path.basename(os.path.splitext(self.outData[self.specIndex,0])[0])
         
 
@@ -430,6 +441,7 @@ class Eyecheck(object):
             '<Ctrl-E>\tToggle the template error\n'
             '<Ctrl-S>\tSmooth/Unsmooth the spectrum\n'
             '<Ctrl-L>\tLock the smooth state between spectra\n'
+            '<Ctrl-R>\tToggle removing the stiching spike in SDSS spectra\n'
             '<Ctrl-P>')
         tipStr = (
             'The following are a set of tips for useful features of the '
@@ -448,6 +460,10 @@ class Eyecheck(object):
             'the smooth button state reset. You can choose to keep the smooth '
             'button state between loading spectrum by selecting the menu option '
             '"Lock Smooth State".\n\n'
+            'In SDSS spectra, there is a spike that occurs between 5569 and 5588'
+            'angstroms caused by stitching together the results from both detectors.'
+            'You can choose to artificially remove this spike for easier viewing by'
+            'selecting the "Remove SDSS Stitch Spike" from the Options menu.\n\n'
             'Some keys may need to be hit rapidly.')
         contactStr = (
             'Aurora Kesseli\n'
