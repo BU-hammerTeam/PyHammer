@@ -112,7 +112,7 @@ From the ipython environment use the following command.
 
 ##Publications
 
-This project and accompanying work is described Appendix A in Kesseli et al. (in prep.)
+This project and accompanying work is described Appendix A in Kesseli et al. (in prep.). If you use the program, please cite Kesseli et al. (in prep). 
 
 ##Acknowledgements
 
