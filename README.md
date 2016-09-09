@@ -27,7 +27,7 @@ PyHammer relies on several core Python modules as well as third party modules. I
 
 ####Inputs
 
-Before running the program, you need an input file to specify which spectrum to classify. The input file can be created either before hand as a text or csv file and choosing that file (by clicking `Browse`), or else created in the program itself (by clicking `Create`). The input file format should be to list the filenames of the spectra you want to classify in the first column and the spectrum data types in the second column. The spectra filenames can have the full path specified or a common path for all spectra files can be specified during execution.  
+Before running the program, you need an input file to specify which spectrum to classify. The input file can be created either before hand as a text or csv file and choosing that file (by clicking `Browse` in the GUI), or else created in the program itself (by clicking `Create` in the GUI). The input file format should be to list the filenames of the spectra you want to classify in the first column and the spectrum data types in the second column. The spectra filenames can have the full path specified or a common path for all spectra files can be specified during execution.  
 
 The [example input file](/test_case/exampleInputFile.txt) in the [test_case](/test_case) directory is defined below for reference.
 
