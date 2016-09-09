@@ -312,8 +312,13 @@ class Spectrum(object):
         Output:
             Signal to noise for the spectrum.
         """
-        
-        signalToNoise = np.median(self._flux)/np.median((self._var)**0.5)
+
+        # The median has to take care of the flux or variance having nans in it. We
+        # specifically choose to call out finite values rather than using nanmedian
+        # because np.nanmedian was only added in version 1.9 and we want to be as
+        # backwards compatible with numpy as possible.
+        signalToNoise = np.nanmedian(self._flux[np.isfinite(self._flux)]) /
+                        np.median((self._var[np.isfinite(self._var)])**0.5)
         
         return signalToNoise
         
@@ -846,6 +851,10 @@ class Spectrum(object):
         """Defined purely for convenience in normalizing the loaded spectrum."""
         self._flux = Spectrum.normalize(self._wavelength, self._normWavelength, self._flux)
 
+    ##
+    # Static Methods
+    #    
+
     @staticmethod
     def normalize(wavelength, normWavelength, flux):
         """
@@ -864,6 +873,30 @@ class Spectrum(object):
 
         return flux / normFactor
 
+    @staticmethod
+    def removeSdssStitchSpike(wavelength, flux):
+        """
+        All SDSS spectrum have a spike in the spectra between 5569 and 5588 angstroms where
+        the two detectors meet. This method will remove the spike at that point by linearly
+        interpolating across that gap.
+        """
+
+        # Make a copy so as to not alter the original, passed in flux
+        flux = flux.copy()
+
+        # Search for the indices of the bounding wavelengths on the spike. Use the
+        # fact that the wavelength is an array in ascending order to search quickly
+        # via the searchsorted method.
+        lower = np.searchsorted(wavelength, 5569)
+        upper = np.searchsorted(wavelength, 5588)
+
+        # Define the flux in the stitch region to be linearly interpolated values between
+        # the lower and upper bounds of the region.
+        flux[lower:upper] = np.interp(wavelength[lower:upper],
+                                      [wavelength[lower],wavelength[upper]],
+                                      [flux[lower],flux[upper]])
+
+        return flux
 
     ##
     # Property Methods
