@@ -59,7 +59,7 @@ def main(options):
         # Open and setup the output files
         outfile = open(options['outfile'], 'w')
         rejectfile = open(options['rejectfile'], 'w')
-        outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed Metallicity,User Spectral Type,User Metallicity\n')
+        outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
         rejectfile.write('#Filename,File Type,Spectra S/N\n')
 
         # Define the string to contain all failure messages. These will be compiled
