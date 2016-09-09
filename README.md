@@ -4,7 +4,7 @@
 
 ###A Python Spectral Typing Suite 
 
-PyHammer is a tool developed to allow rapid and automatic spectral classification of stars according to the Morgan-Keenan classification system. Working in the range of 3,650 - 10,200 Angstroms, the automatic spectral typing algorithm compares important spectral lines to template spectra and determines the best matching spectral type, ranging from O to L type stars. This tool has the additional features that it can determine a star's [Fe/H] metallicity and radial velocity shifts. Once the automatic classification algorithm has run, PyHammer provides the user an interface for determining spectral types for themselves by comparing their spectra to provided templates.
+PyHammer is a tool developed to allow rapid and automatic spectral classification of stars according to the Morgan-Keenan classification system. Working in the range of 3,650 - 10,200 Angstroms, the automatic spectral typing algorithm compares important spectral lines to template spectra and determines the best matching spectral type, ranging from O to L type stars. This tool has the additional features that it can determine a star's metallicity ([Fe/H]) and radial velocity shifts. Once the automatic classification algorithm has run, PyHammer provides the user an interface for determining spectral types visually by comparing their spectra to provided templates.
 
 Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in [Covey et al. 2007][covey+07]
 
@@ -41,7 +41,7 @@ The [example input file](/test_case/exampleInputFile.txt) in the [test_case](/te
     test_case/spec-5047-55833-0936.fits SDSSdr12
     test_case/spec-3764-55514-0972.fits SDSSdr12
     
-The spectrum data types accepted are  `SDSSdr7` (SDSS EDR - DR8), `SDSSdr12` (SDSS DR9 - DR13), `fits`, `txt`, and `csv`. All the spectra need to be in Angstroms, and need to cover part (but not all) of the region between 3650 and 10200 Angstroms. The `SDSSdr7` file type reads in the fits files given by the Sloan Digital Sky Survey's Early Data Release through Data Release 8, while the `SDSSdr12` file type reads in the fits files given by SDSS's Data Release 9 through Data Release 13. The `fits` file type reads in fits files created with IRAF or PyRAF. The `txt` files must have: wavelength (in Angsrtoms) in the first column, flux in the second column, and an optional third column, containing the error (although this is not necessary). The `csv` files should have the same format as the `txt` files, with wavelength, then flux, and an optional error in the third column.
+The spectrum data types accepted are  `SDSSdr7` (SDSS EDR - DR8), `SDSSdr12` (SDSS DR9 - DR13), `fits`, `txt`, and `csv`. All the spectra need to be in Angstroms, and need to cover part (but not all) of the region between 3650 and 10200 Angstroms. The `SDSSdr7` file type reads in the fits files given by the Sloan Digital Sky Survey's Early Data Release through Data Release 8, while the `SDSSdr12` file type reads in the fits files given by SDSS's Data Release 9 through Data Release 13. The `fits` file type reads in fits files created with IRAF or PyRAF. The `txt` files must have: wavelength (in Angsrtoms) in the first column, flux in the second column, and an optional third column, containing the error (although this is not necessary). The `csv` files should have the same format as the `txt` files with columns separated by commas, with wavelength, then flux, and an optional error in the third column.
 
 ##Running PyHammer
 
