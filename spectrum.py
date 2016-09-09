@@ -317,8 +317,7 @@ class Spectrum(object):
         # specifically choose to call out finite values rather than using nanmedian
         # because np.nanmedian was only added in version 1.9 and we want to be as
         # backwards compatible with numpy as possible.
-        signalToNoise = np.nanmedian(self._flux[np.isfinite(self._flux)]) /
-                        np.median((self._var[np.isfinite(self._var)])**0.5)
+        signalToNoise = np.nanmedian(self._flux[np.isfinite(self._flux)]) / np.median((self._var[np.isfinite(self._var)])**0.5)
         
         return signalToNoise
         
