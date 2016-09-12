@@ -27,7 +27,7 @@ PyHammer relies on several core Python modules as well as third party modules. I
 
 ####Inputs
 
-Before running the program, you need an input file to specify which spectrum to classify. The input file can be created either before hand as a text or csv file and choosing that file (by clicking `Browse` in the GUI), or else created in the program itself (by clicking `Create` in the GUI). The input file format should be to list the filenames of the spectra you want to classify in the first column and the spectrum data types in the second column. The spectra filenames can have the full path specified or a common path for all spectra files can be specified during execution.  
+Before running the program, you need an input file to specify which spectrum to classify. The input file can be created either beforehand as a text or csv file and choosing that file (by clicking `Browse` in the GUI), or else created in the program itself (by clicking `Create` in the GUI). The input file format should be to list the filenames of the spectra you want to classify in the first column and the spectrum data types in the second column. The spectrum filenames can have the full path specified or a common path for all spectra files can be specified during execution.
 
 The [example input file](/test_case/exampleInputFile.txt) in the [test_case](/test_case) directory is defined below for reference.
 
@@ -41,7 +41,13 @@ The [example input file](/test_case/exampleInputFile.txt) in the [test_case](/te
     test_case/spec-5047-55833-0936.fits SDSSdr12
     test_case/spec-3764-55514-0972.fits SDSSdr12
     
-The spectrum data types accepted are  `SDSSdr7` (SDSS EDR - DR8), `SDSSdr12` (SDSS DR9 - DR13), `fits`, `txt`, and `csv`. All the spectra need to be in Angstroms, and need to cover part (but not all) of the region between 3650 and 10200 Angstroms. The `SDSSdr7` file type reads in the fits files given by the Sloan Digital Sky Survey's Early Data Release through Data Release 8, while the `SDSSdr12` file type reads in the fits files given by SDSS's Data Release 9 through Data Release 13. The `fits` file type reads in fits files created with IRAF or PyRAF. The `txt` files must have: wavelength (in Angsrtoms) in the first column, flux in the second column, and an optional third column, containing the error (although this is not necessary). The `csv` files should have the same format as the `txt` files with columns separated by commas, with wavelength, then flux, and an optional error in the third column.
+All the spectra need to be in Angstroms, and must cover part (but not all) of the region between 3650 and 10200 Angstroms. The following spectrum data types are accepted.
+
+ - `SDSSdr7` – Fits files given by the Sloan Digital Sky Survey's Early Data Release through Data Release 8
+ - `SDSSdr12` – Fits files given by Sloan Digital Sky Survey's Data Release 9 through Data Release 13. 
+ - `fits` – Fits files created with IRAF or PyRAF. 
+ - `txt` – Files must have at least two columns containing wavelength (in Angstroms) in the first column and flux in the second column. An optional third column can be provided containing the error. If this is not provided, it will be calculated.
+ - `csv` – Files should have the same format as the `txt` files with columns separated by commas rather than spaces, first having wavelength, then flux, and an optional error in the third column.
 
 ##Running PyHammer
 
