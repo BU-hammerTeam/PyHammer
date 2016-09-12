@@ -1,4 +1,5 @@
 import sys
+import os
 import os.path
 import getopt
 import numpy as np
@@ -208,7 +209,7 @@ class StartGUI(object):
 
         self.root = tk.Tk()
         self.root.title('PyHammer Settings')
-        self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
+        if os.name == 'nt': self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.root.resizable(False,False)
         self.root.geometry('+100+100')
 

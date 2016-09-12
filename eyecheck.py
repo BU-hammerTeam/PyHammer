@@ -167,7 +167,7 @@ class Eyecheck(object):
         # *** Set root window properties ***
         
         self.root.title('PyHammer Eyecheck')
-        self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
+        if os.name == 'nt': self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.root.resizable(False, False)
         self.root.geometry('+100+100')
         # Set the close protocol to call this class' personal exit function

@@ -75,7 +75,7 @@ class InfoWindow(object):
             else:
                 self.infoWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.infoWindow.title(title)
-        self.infoWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
+        if os.name == 'nt': self.infoWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.infoWindow.resizable(False, False)
 
         # Define the window contents
@@ -161,7 +161,7 @@ class ModalWindow(object):
             self.modalWindow.grab_set() # Make the root window non-interactive
             self.modalWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.modalWindow.title(title)
-        self.modalWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
+        if os.name == 'nt': self.modalWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.modalWindow.resizable(False, False)
 
         # Setup the widgets in the window
@@ -241,7 +241,7 @@ class OptionWindow(object):
             self.optionWindow.grab_set()   # Make the root window non-interactive
             self.optionWindow.geometry('+%i+%i' % (parent.winfo_rootx(), parent.winfo_rooty()))
         self.optionWindow.title(title)
-        self.optionWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
+        if os.name == 'nt': self.optionWindow.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
         self.optionWindow.resizable(False, False)
 
         # Setup some GUI parameters
