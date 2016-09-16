@@ -290,7 +290,7 @@ class Spectrum(object):
             return False, errorMessage
         
         self.interpOntoGrid()
-
+        
         # Determine wavelength to normalize flux at
         normIndex = bisect.bisect_right(self._wavelength, 8000)
         if np.isnan(self._flux[normIndex]):

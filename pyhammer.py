@@ -585,7 +585,7 @@ class StartGUI(object):
             for line in range(1, lineCount+1):
                 curLine = self.createWindow.get('{}.0'.format(line), '{}.end'.format(line)).lower().strip()
                 if curLine == '' or curLine == '\n': continue
-                if not any([curLine.endswith(','+s) or curLine.endswith(' '+s) for s in ['fits', 'dr7fits', 'dr12fits', 'csv', 'txt']]):
+                if not any([curLine.endswith(','+s) or curLine.endswith(' '+s) for s in ['fits', 'sdssdr12', 'sdssdr7', 'csv', 'txt']]):
                     message += '- Not all lines in the input file have a correctly supplied data type.'
                     break
 
