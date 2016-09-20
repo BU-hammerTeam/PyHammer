@@ -1,4 +1,4 @@
-###_CURRENTLY UNDER DEVELOPMENT, USE AT OWN RISK!_
+###_Version 1.0 is Officially Released!_
 
 # PyHammer
 
