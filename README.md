@@ -6,7 +6,7 @@
 
 PyHammer is a tool developed to allow rapid and automatic spectral classification of stars according to the Morgan-Keenan classification system. Working in the range of 3,650 - 10,200 Angstroms, the automatic spectral typing algorithm compares important spectral lines to template spectra and determines the best matching spectral type, ranging from O to L type stars. This tool has the additional features that it can determine a star's metallicity ([Fe/H]) and radial velocity shifts. Once the automatic classification algorithm has run, PyHammer provides the user an interface for determining spectral types visually by comparing their spectra to provided templates.
 
-Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in [Covey et al. 2007][covey+07]
+Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in [Covey et al. 2007][covey+07] available on [GitHub][hammerGitHub]
 
 ##Requirements
 
@@ -118,7 +118,7 @@ From the ipython environment use the following command.
 
 ##Publications
 
-This project and accompanying work is described Appendix A in Kesseli et al. (in prep.). If you use the program, please cite Kesseli et al. (in prep). 
+This project and accompanying work is described Appendix A in Kesseli et al. (in prep.). If you use the program, please cite Kesseli et al. (submitted). 
 
 ##Acknowledgements
 
@@ -128,6 +128,7 @@ This project was developed by a select group of graduate students at the Departm
 
 [thehammer]: http://myweb.facstaff.wwu.edu/~coveyk/thehammer.html
 [covey+07]: http://adsabs.harvard.edu/abs/2007AJ....134.2398C
+[hammerGitHub]: https://github.com/jradavenport/TheHammer
 [conda]: https://www.continuum.io/downloads
 [backend_problem]: https://github.com/mperrin/webbpsf/issues/103
 [Johnson_Morgan]: http://adsabs.harvard.edu/abs/1953ApJ...117..313J
