@@ -1,6 +1,11 @@
-###_Version 1.0 is Officially Released!_
-
 # PyHammer
+
+[![GitHub release](https://img.shields.io/github/release/BU-hammerTeam/PyHammer.svg)](https://github.com/BU-hammerTeam/PyHammer/releases/latest)
+[![GitHub commits](https://img.shields.io/github/commits-since/BU-hammerTeam/PyHammer/v1.0.svg)](https://github.com/BU-hammerTeam/PyHammer/commits/master)
+[![GitHub issues](https://img.shields.io/github/issues/BU-hammerTeam/PyHammer.svg)](https://github.com/BU-hammerTeam/PyHammer/issues)
+[![license](https://img.shields.io/github/license/BU-hammerTeam/PyHammer.svg)](https://github.com/BU-hammerTeam/PyHammer/blob/master/license.txt)
+[![Python Supported](https://img.shields.io/badge/Python%20Supported-3-brightgreen.svg)](conda)
+[![Maintenance](https://img.shields.io/maintenance/yes/2017.svg)]()
 
 ###A Python Spectral Typing Suite 
 
@@ -14,15 +19,15 @@ PyHammer is written in and should be run with **Python 3**. It *will not* work i
 
 ####Python Module Dependencies
 
-PyHammer relies on several core Python modules as well as third party modules. It is suggested that Python be installed with [Anaconda][conda], which comes packaged with all required modules. The table below lists all third party modules as well as suggested versions. Modules can be upgraded through the commands `pip install --upgrade <module_name>` or else `conda update <module_name>` if Anaconda is installed.
+PyHammer relies on several core Python modules as well as third party modules. It is suggested that Python be installed with [Anaconda][conda], which comes packaged with all required modules. The table below lists all third party modules as well as suggested minimum versions. Modules can be upgraded through the commands `pip install --upgrade <module_name>` or else `conda update <module_name>` if Anaconda is installed.
 
-| Module   | Suggested Version | Command to Check Version<sup>1</sup>      |
-|:--------:|:------------------|:------------------------------------------|
-|NumPy     | 1.11              |`import numpy; numpy.__version__`          |
-|SciPy     | 0.18              |`import scipy; scipy.__version__`          |
-|Matplotlib| 1.5               |`import matplotlib; matplotlib.__version__`|
-|TkInter   | 8                 |`import tkinter; tkinter.TkVersion`        |
-|AstroPy   | 1.2.1             |`import astropy; astropy.__version__`      |
+| Module   | Minimum Version | Command to Check Version<sup>1</sup>      |
+|:--------:|:----------------|:------------------------------------------|
+|NumPy     | 1.11            |`import numpy; numpy.__version__`          |
+|SciPy     | 0.18            |`import scipy; scipy.__version__`          |
+|Matplotlib| 1.5             |`import matplotlib; matplotlib.__version__`|
+|TkInter   | 8               |`import tkinter; tkinter.TkVersion`        |
+|AstroPy   | 1.2.1           |`import astropy; astropy.__version__`      |
 <sup>1</sup>Commands are run in Python environment
 
 ####Inputs
@@ -118,7 +123,7 @@ From the ipython environment use the following command.
 
 ##Publications
 
-This project and accompanying work is described Appendix A in Kesseli et al. (in prep.). If you use the program, please cite Kesseli et al. (submitted). 
+This project and accompanying work is described Appendix A in Kesseli et al. (2017). This paper is also published at  	[arXiv:1702.06957][arXiv_version]. If you use the program, please cite Kesseli et al. (2017). 
 
 ##Acknowledgements
 
@@ -133,3 +138,4 @@ This project was developed by a select group of graduate students at the Departm
 [backend_problem]: https://github.com/mperrin/webbpsf/issues/103
 [Johnson_Morgan]: http://adsabs.harvard.edu/abs/1953ApJ...117..313J
 [Keenan_McNeil]: http://adsabs.harvard.edu/abs/1989ApJS...71..245K
+[arXiv_version]: https://arxiv.org/abs/1702.06957
