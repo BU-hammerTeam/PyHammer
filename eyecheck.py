@@ -1,7 +1,16 @@
 import os
 import matplotlib
 if os.name == 'posix':
-    matplotlib.use('Qt4Agg') # Force Mac users to use this backend
+    import sys
+    import importlib
+    ver = sys.version_info
+    findMdl = (importlib.find_loader if ver.minor < 4 else importlib.util.find_spec)
+    if findMdl('PyQt5') is not None:
+        matplotlib.use('Qt5Agg')
+    elif findMdl('PyQt4') is not None:
+        matplotlib.use('Qt4Agg')
+    else:
+        raise Exception('No suitable matplotlib backend was found.')
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
