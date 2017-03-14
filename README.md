@@ -7,7 +7,7 @@
 [![Python Supported](https://img.shields.io/badge/Python%20Supported-3-brightgreen.svg)](conda)
 [![Maintenance](https://img.shields.io/maintenance/yes/2017.svg)]()
 
-###A Python Spectral Typing Suite 
+### A Python Spectral Typing Suite 
 
 PyHammer is a tool developed to allow rapid and automatic spectral classification of stars according to the Morgan-Keenan classification system. Working in the range of 3,650 - 10,200 Angstroms, the automatic spectral typing algorithm compares important spectral lines to template spectra and determines the best matching spectral type, ranging from O to L type stars. This tool has the additional features that it can determine a star's metallicity ([Fe/H]) and radial velocity shifts. Once the automatic classification algorithm has run, PyHammer provides the user an interface for determining spectral types visually by comparing their spectra to provided templates.
 
