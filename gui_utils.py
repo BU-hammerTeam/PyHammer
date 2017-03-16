@@ -365,3 +365,39 @@ class ToolTip(object):
 
     def hidetip(self):
         self.tipWindow.withdraw()
+
+class Scale(ttk.Scale):
+    """
+    Description:
+        This class is a subclass of the ttk Scale object. The entire
+        purpose of this class is to extend and override some of the
+        default functionality of the ttk Scale class. The two primary
+        changes are that
+        1. The scale can only snap to integer values, no smooth sliding
+        2. Left clicking (Button-1) functionality is replaced with
+           right clicking functionality, namely that the slider follows
+           and snaps to the mouse.
+
+    Input:
+        root: The parent tkinter object that this scale exists in.
+        **kwargs: The standard kwargs one would pass to the ttk Scale object.
+
+    Example:
+        root = tk.Tk()
+        Scale(root, to = 10).pack()
+        root.mainloop()
+    """
+
+    def __init__(self, root, **kwargs):
+        super().__init__(root, **kwargs)
+        self.configure(command = self.snapToValue)
+        self.bind('<Button-1>', self.generateButtonPress_3)
+
+    def snapToValue(self, val):
+        scaleVal = float(self.get())
+        if int(scaleVal) != scaleVal:
+            self.set(round(float(val)))
+
+    def generateButtonPress_3(self, event):
+        self.event_generate('<Button-3>', x = event.x, y = event.y)
+        return 'break'
