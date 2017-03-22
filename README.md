@@ -15,7 +15,12 @@ Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in
 
 See the [PyHammer Wiki](https://github.com/BU-hammerTeam/PyHammer/wiki) for more information on this program or the accompanying paper.
 
+### Publications
+
+We will have an peer-reviewd, published paper out soon, but in the mean time see our [arXiv version][arXiv_version].
+
 [thehammer]: http://myweb.facstaff.wwu.edu/~coveyk/thehammer.html
 [covey+07]: http://adsabs.harvard.edu/abs/2007AJ....134.2398C
 [hammerGitHub]: https://github.com/jradavenport/TheHammer
 [pyhammerwiki]: https://github.com/BU-hammerTeam/PyHammer/wiki
+[arXiv_version]: https://arxiv.org/abs/1702.06957
