@@ -17,7 +17,7 @@ See the [PyHammer Wiki](https://github.com/BU-hammerTeam/PyHammer/wiki) for more
 
 ### Publications
 
-We will have an peer-reviewed, published paper out soon, but in the mean time see our [arXiv version][arXiv_version].
+We will have a peer-reviewed, published paper out soon, but in the mean time see our [arXiv version][arXiv_version].
 
 [thehammer]: http://myweb.facstaff.wwu.edu/~coveyk/thehammer.html
 [covey+07]: http://adsabs.harvard.edu/abs/2007AJ....134.2398C
