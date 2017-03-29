@@ -1,13 +1,4 @@
-import numpy as np
-from numpy import ma
-from scipy.interpolate import interp1d
-from astropy.io import fits
-import bisect
-import pickle
-import os
-import warnings
-import csv
-import pdb
+from pyhamimports import *
 
 class Spectrum(object):
     """
@@ -129,165 +120,92 @@ class Spectrum(object):
         except ValueError:
             return False
             
-    def readFile(self, filename, filetype = 'fits'):
+    def readFile(self, filename, filetype = None):
         """
         readFile(filename, filetype = 'fits')
 
         Description:
-        This method will read in the file provided by
-        filename and according to the input filetype.
-        The result will be to store the wavelength, flux,
-        and noise arrays into the instance variables of
-        this object.
+            This method will read in the file provided by
+            filename and according to the input filetype.
+            The result will be to store the wavelength, flux,
+            and noise arrays into the instance variables of
+            this object.
 
         Input:
-        filename - The name of the file to be read. This
-                   will require either a full path.
-        filetype - The file type to be read. This should
-                   be a string specifying either fits,
-                   ssdsfits, or txt. This is fits by default.
+            filename: The name of the file to be read. This
+                will require either a full path.
+            filetype: The file type to be read. This should
+                be a string specifying either fits, ssdsfits,
+                or txt. This is fits by default.
         
         Output:
-        A boolean indicating the success of reading the file.
+            A boolean indicating the success of reading the file.
         """
-        
-        if (filetype.lower() == 'fits'):
-            # Implement reading a regular fits file
-            # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
-            # Need error vs variance keyword
-            try:
-                with warnings.catch_warnings():
-                    # Ignore a very particular warning from some versions of astropy.io.fits
-                    # that is a known bug and causes no problems with loading fits data.
-                    warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
-                    spec = fits.open(filename) 
-            except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            try:
-                #there seems to be an array within an array (making len 1 of flux sometimes)
-                #check for that
-                if len(spec[0].data[0]) > 1:
-                    self._flux = spec[0].data[0]
-                else: 
-                    self._flux = spec[0].data[0][0]
-                #get wavelength
-                self._wavelength = ( spec[0].header['CRVAL1'] + (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(self._flux),1))
-                #create a simple poisson error
-                err = abs(self._flux)**0.05 + 1E-16
-                self._var = err**2
-            except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            
-        elif (filetype.lower() == 'sdssdr7'):
-            # Implement reading a sdss EDR through DR8 fits file
-            try:
-                with warnings.catch_warnings():
-                    # Ignore a very particular warning from some versions of astropy.io.fits
-                    # that is a known bug and causes no problems with loading fits data.
-                    warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
-                    spec = fits.open(filename)
-            except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            try:
-                np.seterr(divide = 'ignore')    # Ignore any potential division by zero
-                self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
-                self._flux = spec[0].data[0]
-                self._var = 1 / spec[0].data[2]
-                #self._airToVac()
-            except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            
-        elif (filetype.lower() == 'sdssdr12'): 
-            # Implement reading a sdss DR9 through DR12 fits file
-            try:
-                with warnings.catch_warnings():
-                    # Ignore a very particular warning from some versions of astropy.io.fits
-                    # that is a known bug and causes no problems with loading fits data.
-                    warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
-                    spec = fits.open(filename)
-            except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            try:
-                np.seterr(divide = 'ignore')    # Ignore any potential division by zero
-                self._wavelength = 10**spec[1].data['loglam']
-                self._flux = spec[1].data['flux']
-                self._var = 1 / spec[1].data['ivar']
-                #self._airToVac()
-            except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            
-        elif (filetype.lower() == 'txt'):
-            # Implement reading a txt file
-            # Need to add in a Keyword to have the user be able to input error but assume variance
-            # Also want a vacuum keyword! 
-            try:
-                f = open(filename)
-            except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            try:
-                data = f.read()
-                f.close()
-                lineList = data.splitlines()
-                
-                wave = []
-                flux = []
-                var = []
-                for line in lineList:
-                    lTemp = line.split()
-                    if self.isNumber(lTemp[0]) and self.isNumber(lTemp[1]): 
-                        wave.append(float(lTemp[0]))
-                        flux.append(float(lTemp[1]))
-                        if len(lTemp) > 2 and self.isNumber(lTemp[2]):
-                            err = float(lTemp[2])
-                            var.append(err**2)
-                        else:
-                            err = max(0,float(lTemp[1]))**0.05 + 1E-16
-                            var.append(err**2)
-                
-                self._wavelength = np.asarray(wave) 
-                self._flux = np.asarray(flux) 
-                self._var = np.asarray(var) 
-            except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            
-        elif (filetype.lower() == 'csv'):
-            # Implement reading a csv file
-            # Need to add in a Keyword to have the user be able to input error but assume variance
-            # Also want a vacuum keyword! 
-            try:
-                with open(filename, 'r') as file:
-                    reader = csv.reader(file)
-                    f = list(reader)[1:] # Ignore the header line
-            except IOError as e:
-                errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            try:
-                f = np.array(f)
-                self._wavelength = f[:,0].astype(np.float)
-                self._flux = f[:,1].astype(np.float)
-                if len(f[1]) > 2:
-                    err = f[:,2].astype(np.float)
-                    self._var = err**2
-                else: 
-                    err = abs(self._flux)**0.05 + 1E-16
-                    self._var = err**2
-            except Exception as e:
-                errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
-                return False, errorMessage
-            
-        else:
+
+        if isinstance(filetype, str): filetype = filetype.lower()
+
+        if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', None]:
             # The user supplied an option not accounted for
             # in this method. Just skip the file.
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
-            return False, errorMessage
+            return errorMessage, None
+
+        # Try reading a regular .fits file
+        if (filetype in ['fits', None]):
+            msg = self.__readFileFits(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'fits'
+
+        # Try reading an SDSS .fits file from EDR to DR8
+        if (filetype in ['sdssdr7', None]):
+            msg = self.__readFileSDSSdr7(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'sdssdr7'
+
+        # Try reading an SDSS .fits file from DR9 to DR12
+        if (filetype in ['sdssdr12', None]): 
+            msg = self.__readFileSDSSdr12(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'sdssdr12'
+
+        # Try reading a plaintext file with the data in columns
+        if (filetype in ['txt', None]):
+            msg = self.__readFileTxt(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'txt'
+
+        # Try reading a .csv file with the data in columns
+        if (filetype in ['csv', None]):
+            msg = self.__readFileCsv(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'csv'
+
+        # If the user didn't supply a filetype for us, and we
+        # didn't manage to figure out which one it was, simply
+        # return with an error message stating so.
+        if filetype is None:
+            return 'Could not identify format of data.', None
+        
+
+        # -----
+        # If we've made it to here, then we've loaded up the
+        # data from the file properly and we can try to do
+        # some further processing
         
         self.interpOntoGrid()
         
@@ -302,7 +220,149 @@ class Spectrum(object):
             # Use default of 8000 if the flux is defined there
             self._normWavelength = 8000
         
-        return True, ''
+        return None, filetype
+
+    def __readFileFits(self, filename):
+        """Tries to read a regular fits file"""
+        # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
+        # Need error vs variance keyword
+        try:
+            with warnings.catch_warnings():
+                # Ignore a very particular warning from some versions of astropy.io.fits
+                # that is a known bug and causes no problems with loading fits data.
+                warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                spec = fits.open(filename) 
+        except IOError as e:
+            errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+            return errorMessage
+        try:
+            # There seems to be an array within an array (making len 1 of flux sometimes)
+            # check for that
+            if len(spec[0].data[0]) > 1:
+                self._flux = spec[0].data[0]
+            else: 
+                self._flux = spec[0].data[0][0]
+            # Get wavelength
+            self._wavelength = ( spec[0].header['CRVAL1'] + (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(self._flux),1))
+            # Create a simple poisson error
+            err = abs(self._flux)**0.05 + 1E-16
+            self._var = err**2
+        except Exception as e:
+            errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+            return errorMessage
+
+        return None
+
+    def __readFileSDSSdr7(self, filename):
+        """Tries to read an SDSS EDR through DR8 fits file"""
+        try:
+            with warnings.catch_warnings():
+                # Ignore a very particular warning from some versions of astropy.io.fits
+                # that is a known bug and causes no problems with loading fits data.
+                warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                spec = fits.open(filename)
+        except IOError as e:
+            errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+            return errorMessage
+        try:
+            np.seterr(divide = 'ignore')    # Ignore any potential division by zero
+            self._wavelength = 10**( spec[0].header['coeff0'] + spec[0].header['coeff1']*np.arange(0,len(spec[0].data[0]), 1))
+            self._flux = spec[0].data[0]
+            self._var = 1 / spec[0].data[2]
+            #self._airToVac()
+        except Exception as e:
+            errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+            return errorMessage
+
+        return None
+
+    def __readFileSDSSdr12(self, filename):
+        """Tries to read an SDSS DR9 through DR12 fits file"""
+        try:
+            with warnings.catch_warnings():
+                # Ignore a very particular warning from some versions of astropy.io.fits
+                # that is a known bug and causes no problems with loading fits data.
+                warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                spec = fits.open(filename)
+        except IOError as e:
+            errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+            return errorMessage
+        try:
+            np.seterr(divide = 'ignore')    # Ignore any potential division by zero
+            self._wavelength = 10**spec[1].data['loglam']
+            self._flux = spec[1].data['flux']
+            self._var = 1 / spec[1].data['ivar']
+            #self._airToVac()
+        except Exception as e:
+            errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+            return errorMessage
+
+        return None
+
+    def __readFileTxt(self, filename):
+        """Reads a plaintext file"""
+        # Need to add in a Keyword to have the user be able to input error but assume variance
+        # Also want a vacuum keyword! 
+        try:
+            f = open(filename)
+        except IOError as e:
+            errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+            return errorMessage
+        try:
+            data = f.read()
+            f.close()
+            lineList = data.splitlines()
+            
+            wave = []
+            flux = []
+            var = []
+            for line in lineList:
+                lTemp = line.split()
+                if self.isNumber(lTemp[0]) and self.isNumber(lTemp[1]): 
+                    wave.append(float(lTemp[0]))
+                    flux.append(float(lTemp[1]))
+                    if len(lTemp) > 2 and self.isNumber(lTemp[2]):
+                        err = float(lTemp[2])
+                        var.append(err**2)
+                    else:
+                        err = max(0,float(lTemp[1]))**0.05 + 1E-16
+                        var.append(err**2)
+            
+            self._wavelength = np.asarray(wave) 
+            self._flux = np.asarray(flux) 
+            self._var = np.asarray(var) 
+        except Exception as e:
+            errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+            return errorMessage
+
+        return None
+
+    def __readFileCsv(self, filename):
+        """Read a .csv file"""
+        # Need to add in a Keyword to have the user be able to input error but assume variance
+        # Also want a vacuum keyword! 
+        try:
+            with open(filename, 'r') as file:
+                reader = csv.reader(file)
+                f = list(reader)[1:] # Ignore the header line
+        except (UnicodeDecodeError, IOError) as e:
+            errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+            return errorMessage
+        try:
+            f = np.array(f)
+            self._wavelength = f[:,0].astype(np.float)
+            self._flux = f[:,1].astype(np.float)
+            if len(f[1]) > 2:
+                err = f[:,2].astype(np.float)
+                self._var = err**2
+            else: 
+                err = abs(self._flux)**0.05 + 1E-16
+                self._var = err**2
+        except Exception as e:
+            errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+            return errorMessage
+        
+        return None
 
     def calcSN(self):
         """

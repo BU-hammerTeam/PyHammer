@@ -1,16 +1,12 @@
-import sys
-import os
-import os.path
-import getopt
-import numpy as np
-import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog
-from time import time
-import pdb
+from pyhamimports import *
 from spectrum import Spectrum
 from eyecheck import Eyecheck
 from gui_utils import *
+
+
+###
+# Main Function
+#
 
 def main(options):
     """
@@ -19,10 +15,10 @@ def main(options):
     Description:
         This is the main part of the code that executes the
         actual pyhammer algorithms. This is arrived at either
-        by startCmd or StartGUI, both of which get all the
-        necessary options from the user and pass them to
-        this function. The general process of this function
-        should be to:
+        by pyhammerStartCmd or PyHammerStartGui, both of which
+        get all the necessary options from the user and pass
+        them to this function. The general process of this
+        function should be to:
         
         - Define a Spectrum object to be used in reading files.
         - Load each spectrum sequentially.
@@ -60,7 +56,7 @@ def main(options):
         # Open and setup the output files
         outfile = open(options['outfile'], 'w')
         rejectfile = open(options['rejectfile'], 'w')
-        outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
+        outfile.write('#Filename,File Type,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
         rejectfile.write('#Filename,File Type,Spectra S/N\n')
 
         # Define the string to contain all failure messages. These will be compiled
@@ -70,21 +66,25 @@ def main(options):
         for i, line in enumerate(infile):
             # Remove extra whitespace and other unwanted characters and split
             line = line.strip()
-            if line.find(',') > 0: line = line.replace(',',' ')
-            fname, ftype = ' '.join(line.split()).rsplit(' ',1)
+            if ',' in line: line = line.replace(',',' ')
+            if ' ' in line:
+                fname, ftype = ' '.join(line.split()).rsplit(' ',1)
+            else:
+                fname = line
+                ftype = None
 
             # Print statement of progress for user
             print(i+1, ') Processing ', os.path.basename(fname), sep = '')
 
             # Now read in the current file (this process reads in the file, converts air to 
             # vac when necessary and interpolates onto the template grid)
-            success, message = spec.readFile(options['spectraPath']+fname, ftype)
+            message, ftype = spec.readFile(options['spectraPath']+fname, ftype)
 
             # If the attempt at reading the file did not succeed, then we
             # should just continue
-            if not success:
-                rejectfile.write(fname + ',' + ftype + ',N/A\n')
-                rejectMessage += 'FILE: ' + fname + '  REASON: ' + message.replace('\n','') + '\n'
+            if message is not None:
+                rejectfile.write(fname + ',' + ('N/A' if ftype is None else ftype) + ',N/A\n')
+                rejectMessage += 'FILE: ' + fname + '\nREASON: ' + message.replace('\n','') + '\n\n'
                 continue
 
             # Now that we have the necessary data in the spec object, let's
@@ -96,7 +96,7 @@ def main(options):
                 snVal = spec.calcSN()
                 if snVal < options['sncut']:
                     rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                    rejectMessage += 'FILE: ' + fname + '  REASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut']) + '\n'
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut']) + '\n\n'
                     continue
             
             # --- 2 ---
@@ -137,8 +137,12 @@ def main(options):
             letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spec.guess['specType']]
             
             # Write the file
-            outfile.write(fname + ',' + str(shift) + ',' + letterSpt + str(spec.guess['subType']) +
-                          ',' + '{:+2.1f}'.format(spec.guess['metal']) + ',nan,nan' + '\n')
+            outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
+                          ftype + ',' +                                     # The filetype
+                          str(shift) + ',' +                                # The RV shift
+                          letterSpt + str(spec.guess['subType']) + ',' +    # The auto-guessed spectral type
+                          '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
+                          ',nan,nan\n')                                     # The to-be-determined user classifications
         
         # We're done so let's close all the files.
         infile.close()
@@ -149,14 +153,13 @@ def main(options):
         # the reject method.
         if rejectMessage != '':
             # Prepend to the reject message
-            rejectMessage = 'The following is a list of rejected spectra\n' \
-                            'along with the reason for its rejection.\n\n' + rejectMessage
-            notifyUser(options['useGUI'], rejectMessage)
+            message = 'At least one spectra was rejected. See the details for more information.'
+            notifyUser(options['useGUI'], message, details = rejectMessage)
             # Check if all spectra were skipped by seeing if the number of
-            # lines in the reject message is equal to the number of spectra
-            # processed (plus three lines for the prepended message). If
-            # they were all skipped, theres nothing to eyecheck so return.
-            if rejectMessage.count('\n') == i+4:
+            # lines in the reject message is equal to the number of processed
+            # times 3 (since each reject message has three newlines). If they
+            # were all skipped, theres nothing to eyecheck so return.
+            if rejectMessage.count('\n') == 3*(i+1):
                 notifyUser(options['useGUI'], 'All spectra were bad. Exiting PyHammer.')
                 # Clean up any temporary input files created
                 if os.path.basename(options['infile'])[:11] == 'temp_input_':
@@ -166,11 +169,11 @@ def main(options):
     # At this point, we should call up the GUI to do the eyechecking.
     Eyecheck(spec, options)
 
-    # Clean up any temporary input files created
+    # Finally, clean up any temporary input files created
     if os.path.basename(options['infile'])[:11] == 'temp_input_':
         os.remove(options['infile'])
 
-def notifyUser(useGUI, message):
+def notifyUser(useGUI, message, details = None):
     """
     Description:
         A method for handling sending messages to the
@@ -192,38 +195,67 @@ def notifyUser(useGUI, message):
     if not useGUI:
         # Simple case, just print the message.
         print(message, flush = True)
+        print(details, flush = True)
     else:
-        # More involved case, create a tk window to
-        # display the message.
-        InfoWindow(message, title = 'PyHammer Notification')
+        # More involved case, create a base pyqt window
+        # derive a message box from it to display the
+        # message, then close the base window and move on.
+        win = QMainWindow()
+        win.setWindowIcon(QIcon(os.path.join(os.path.split(__file__)[0],'resources','sun.ico')))
+        MessageBox(win, message, 'PyHammer Notification', details = details)
+        win.close()
 
-class StartGUI(object):
+###
+# Get PyHammer settings through GUI
+#
+
+class PyHammerSettingsGui(QMainWindow):
+    """
+    Description:
+        This class provies the user with a GUI for providing
+        settings. These settings will define everything the
+        rest of the PyHammer program needs to run including
+        the input files, output files, and settings to use
+        when running the auto-classify process. When the user
+        is ready, they can hit the "Start PyHammer" button.
+        A check will be performed to make sure the settings
+        are good and if so, this window will close itself
+        and call the main method in this file, passing along
+        the settings that it pulls from the GUI.
+
+    Inputs:
+        options: A dict containing the options the
+            user can specify. These may already
+            have default values if they were
+            provided when the program was launched.
+
+    Example:
+        This class inherits from the PyQt QMainWindow class.
+        As such, it needs to be run with the following commands
+
+        app = QApplication([])
+        PyHammerSettingsGui(options) # Pass in options dict
+        app.exec_()
+    """
 
     def __init__(self, options):
 
-        self.options = options
+        super().__init__()      # Call the parent class init method
 
-        self.defineHelpText()
+        self.options = options  # Store the options
 
-        # --- Create Window ---
+        # Create and show the GUI
 
-        self.root = tk.Tk()
-        self.root.title('PyHammer Settings')
-        if os.name == 'nt': self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
-        self.root.resizable(False,False)
-        self.root.geometry('+100+100')
+        self.defineHelpText()   # Define text to be display when user hits help buttons
+        self.createGui()        # Define all the variables used to create the GUI
+        self.layoutGui()        # Set the layout of the GUI components in the window
+        self.configureGui()     # Configure the GUI component settings
+        self.updateGui()        # Perform some updates to the display of the GUI
 
-        
-        self.defineWidgets()
-
-        self.layoutWidgets()
-
-        self.updateGui()
-
-        self.root.mainloop()
+        self.show()             # Finally, show the GUI to the user
 
     def defineHelpText(self):
-        
+      
         self.infileHelpText = (
             'Here you can provide an input file of spectra to process. '
             'Browse for an already created file, or else choose to create '
@@ -236,7 +268,7 @@ class StartGUI(object):
             'You should ideally supply the full path for each spectra, '
             "but if they're all in the same directory, a later setting "
             'allows for prepending the same path to all spectra.')
-        
+      
         self.outfileHelpText = (
             'You should include the full path to the output file '
             'which will contain the results of PyHammer. However, '
@@ -244,7 +276,7 @@ class StartGUI(object):
             'the pyhammer folder. The output file is, by default, '
             'set to PyHammerResults.csv unless specified otherwise. '
             'The output filetype should be a csv file.')
-        
+      
         self.rejectfileHelpText = (
             'You should include the full path to the reject file '
             'which will contain the list of any spectra unable to '
@@ -253,418 +285,491 @@ class StartGUI(object):
             'reject file is, by default, set to RejectSpectra.csv '
             'unless specified otherwise. The reject filetype should '
             'be a csv file.')
-        
+      
         self.fullPathHelpText = (
             'Choose whether or not the spectra listed in your input '
             'file have a full path specified. If you choose no, you '
             'will need to specify the full path to the spectra. ')
-        
+      
         self.spectraPathHelpText = (
             'If your spectra list does not contain the full path '
             'to the files in the name, provide a path to prepend '
             'to each spectra filename.')
-        
+      
         self.eyecheckHelpText = (
             'If you have already classified your spectra you can '
             'choose to skip directly to checking them by eye, rather '
             'than re-running the classification algorithm again. Note '
             'that you cannot skip to eye checking without first '
             'classifying your spectra and creating an output file.')
-        
+      
         self.sncutHelpText = (
             'If you would like to only classify spectra with a S/N '
             'above a threshold, provide that value here. If you do not '
             'want to provide a cutoff, leave this field blank. This '
             'option does not apply if you choose to skip to the eyecheck.')
 
-    def defineWidgets(self):
-        
-        # --- Input Field ---
+    def createGui(self):
+
+        # Define the basic, top-level GUI components
+        self.widget = QWidget()       # The central widget in the main window
+        self.grid = QVBoxLayout()     # The layout manager of the central widget
+        self.icon = QIcon(os.path.join(os.path.split(__file__)[0],'resources','sun.ico')) # The window icon
+
+        # Input Field
 
         # Define Input Widgets
-        self.infileFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.infileLabel = ttk.Label(self.infileFrame, text = 'Provide an existing input file or create a new input file.')
-        self.infile = tk.StringVar(value = ('' if options['infile'] is None else options['infile']))
-        self.infileEntry = ttk.Entry(self.infileFrame, textvariable = self.infile)
-        self.infileBrowseButton = ttk.Button(self.infileFrame, text = 'Browse', command = lambda: self.browse(self.infileEntry, 'file'))
-        self.infileBrowseToolTip = ToolTip(self.infileBrowseButton, 'Browse for an existing input file')
+        self.infileFrame = QFrame()
+        self.infileLabel = QLabel('Provide an existing input file or create a new input file', alignment = Qt.AlignCenter)
+        self.infileEntry = QLineEdit(placeholderText = 'Input File...')
+        self.infileBrowseButton = QPushButton('Browse')
+        self.infileCreateButton = QPushButton('Create')
         self.createPressed = False
-        self.createButton = ttk.Button(self.infileFrame, text = 'Create', command = self.createInputFile)
-        ToolTip(self.createButton, 'Create a new input file')
-        self.infileHelpButton = ttk.Button(self.infileFrame, text = '?', width = 2, command = lambda: InfoWindow(self.infileHelpText, parent = self.root, title = 'PyHammer Help', pos = 'right'))
+        self.infileHelpButton = QPushButton('?')
 
         # Define Create Widgets
-        self.createFrame = ttk.Frame(self.infileFrame, relief = tk.FLAT)
-        self.createWindow = tk.Text(self.createFrame, relief = tk.FLAT, wrap = tk.NONE, font = '-family courier -size 10')
-        self.scrollV = ttk.Scrollbar(self.createFrame, command = self.createWindow.yview)
-        self.scrollH = ttk.Scrollbar(self.createFrame, orient = tk.HORIZONTAL, command = self.createWindow.xview)
-        self.selectFiles = ttk.Button(self.createFrame, text = 'Select Spectra', command = self.createInputFromDirectory)
-        ToolTip(self.selectFiles, 'Select a set of spectrum files\nto add to the input file')
-        ttk.Separator(self.createFrame, orient = tk.VERTICAL).grid(row = 2, column = 1, padx = 4, stick = 'wns')
-        self.dataType = tk.StringVar()
-        self.dataTypeList = ttk.OptionMenu(self.createFrame, self.dataType, 'SDSSdr12', 'SDSSdr12', 'SDSSdr7', 'fits', 'txt', 'csv')
-        self.applyType = ttk.Button(self.createFrame, text = 'Apply Data Type', command = self.applyType)
-        ToolTip(self.applyType, 'Append the selected data type to every file in the list')
+        self.createFrame = QFrame()
+        self.textArea = QTextEdit()
+        self.selectSpectraButton = QPushButton('Select Spectra')
+        self.dataTypeList = QComboBox()
+        self.applyType = QPushButton('Apply Data Type')
 
-        # --- Output Field ---
+        # Output Field
+        self.outfileFrame = QFrame()
+        self.outfileLabel = QLabel('Provide an output file', alignment = Qt.AlignCenter)
+        self.outfileEntry = QLineEdit(placeholderText = 'Output File...')
+        self.outfileBrowseButton = QPushButton('Browse')
+        self.outfileHelpButton = QPushButton('?')
 
-        self.outfileFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.outfileLabel = ttk.Label(self.outfileFrame, text = 'Provide an output file')
-        self.outfile = tk.StringVar(value = options['outfile'])
-        self.outfileEntry = ttk.Entry(self.outfileFrame, textvariable = self.outfile)
-        self.outfileBrowseButton = ttk.Button(self.outfileFrame, text = 'Browse', command = lambda: self.browse(self.outfileEntry, 'file'))
-        self.outfileBrowseToolTip = ToolTip(self.outfileBrowseButton, 'Browse for an existing output file or define a new one')
-        self.outfileHelpButton = ttk.Button(self.outfileFrame, text = '?', width = 2, command = lambda: InfoWindow(self.outfileHelpText, parent = self.root, title = 'PyHammer Help', pos = 'right'))
+        # Reject Field
+        self.rejectFrame = QFrame()
+        self.rejectLabel = QLabel('Provide a reject file', alignment = Qt.AlignCenter)
+        self.rejectEntry = QLineEdit(placeholderText = 'Reject File...')
+        self.rejectBrowseButton = QPushButton('Browse')
+        self.rejectHelpButton = QPushButton('?')
 
-        # --- Reject Field ---
+        # Full Path Field
+        self.fullPathFrame = QFrame()
+        self.fullPathLabel = QLabel('Do the spectra in the input file contain full paths?', alignment = Qt.AlignCenter)
+        self.fullPathChoice = QButtonGroup()
+        self.fullPathYes = QRadioButton('Yes', checked = True)
+        self.fullPathNo = QRadioButton('No', checked = False)
+        self.fullPathChoice.addButton(self.fullPathYes, 0)
+        self.fullPathChoice.addButton(self.fullPathNo, 1)
+        self.fullPathHelpButton = QPushButton('?')
+      
+        # Spectra Path Field
+        self.spectraPathFrame = QFrame()
+        self.spectraPathLabel = QLabel('Provide a path to the spectra files', alignment = Qt.AlignCenter)
+        self.spectraPathEntry = QLineEdit(placeholderText = 'Path to spectra files...')
+        self.spectraPathBrowseButton = QPushButton('Browse')
+        self.spectraPathHelpButton = QPushButton('?')
 
-        self.rejectfileFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.rejectfileLabel = ttk.Label(self.rejectfileFrame, text = 'Provide a reject file')
-        self.rejectfile = tk.StringVar(value = options['rejectfile'])
-        self.rejectfileEntry = ttk.Entry(self.rejectfileFrame, textvariable = self.rejectfile)
-        self.rejectfileBrowseButton = ttk.Button(self.rejectfileFrame, text = 'Browse', command = lambda: self.browse(self.rejectfileEntry, 'file'))
-        self.rejectfileBrowseToolTip = ToolTip(self.rejectfileBrowseButton, 'Browse for an existing reject file or define a new one')
-        self.rejectfileHelpButton = ttk.Button(self.rejectfileFrame, text = '?', width = 2, command = lambda: InfoWindow(self.rejectfileHelpText, parent = self.root, title = 'PyHammer Help', pos = 'right'))
+        # Eyecheck Field
+        self.eyecheckFrame = QFrame()
+        self.eyecheckLabel = QLabel('Do you want to skip to classifying by eye?', alignment = Qt.AlignCenter)
+        self.eyecheckChoice = QButtonGroup()
+        self.eyecheckYes = QRadioButton('Yes', checked = True)
+        self.eyecheckNo = QRadioButton('No', checked = False)
+        self.eyecheckChoice.addButton(self.fullPathYes, 0)
+        self.eyecheckChoice.addButton(self.fullPathNo, 1)
+        self.eyecheckHelpButton = QPushButton('?')
 
-        # --- Full Path Field ---
+        # S/N Cut Field
+        self.sncutFrame = QFrame()
+        self.sncutLabel = QLabel('Enter a signal to noise cutoff', alignment = Qt.AlignCenter)
+        self.sncutEntry = QLineEdit(placeholderText = 'S/N cutoff...')
+        self.sncutHelpButton = QPushButton('?')
 
-        self.fullPathFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.fullPathLabel = ttk.Label(self.fullPathFrame, text = 'Do the spectra in the input file contain full paths?')
-        self.fullPath = tk.IntVar(value = (0 if options['fullPath'] is None else options['fullPath']))
-        self.fullPathYes = ttk.Radiobutton(self.fullPathFrame, text = 'Yes', value = 1, variable = self.fullPath, command = self.updateGui)
-        self.fullPathNo = ttk.Radiobutton(self.fullPathFrame, text = 'No', value = 0, variable = self.fullPath, command = self.updateGui)
-        self.fullPathHelpButton = ttk.Button(self.fullPathFrame, text = '?', width = 2, command = lambda: InfoWindow(self.fullPathHelpText, parent = self.root, title = 'PyHammer Help', pos = 'right'))
+        # Start Button
+        self.startButton = QPushButton('Start PyHammer')
 
-        # --- Spectra Path Field ---
-
-        self.spectraPathFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.spectraPathLabel = ttk.Label(self.spectraPathFrame, text = 'Provide the path to the spectra files')
-        self.spectraPath = tk.StringVar(value = ('' if options['spectraPath'] is None else options['spectraPath']))
-        self.spectraPathEntry = ttk.Entry(self.spectraPathFrame, textvariable = self.spectraPath)
-        self.spectraPathBrowseButton = ttk.Button(self.spectraPathFrame, text = 'Browse', command = lambda: self.browse(self.spectraPathEntry, 'directory'))
-        ToolTip(self.spectraPathBrowseButton, 'Browse for the directory containing the spectra files')
-        self.spectraPathHelpButton = ttk.Button(self.spectraPathFrame, text = '?', width = 2, command = lambda: InfoWindow(self.spectraPathHelpText, parent = self.root, title = 'PyHammer Help', pos = 'right'))
-
-        # --- Eyecheck Field ---
-
-        self.eyecheckFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.eyecheckLabel = ttk.Label(self.eyecheckFrame, text = 'Do you want to skip to classifying by eye?')
-        self.eyecheck = tk.IntVar(value = (0 if options['eyecheck'] is None else options['eyecheck']))
-        self.eyecheckYes = ttk.Radiobutton(self.eyecheckFrame, text = 'Yes', value = 1, variable = self.eyecheck, command = self.updateGui)
-        self.eyecheckNo = ttk.Radiobutton(self.eyecheckFrame, text = 'No', value = 0, variable = self.eyecheck, command = self.updateGui)
-        self.eyecheckHelpButton = ttk.Button(self.eyecheckFrame, text = '?', width = 2, command = lambda: InfoWindow(self.eyecheckHelpText, parent = self.root, title = 'PyHammer Help', pos = 'right'))
-
-        # --- S/N Cut Field ---
-
-        self.sncutFrame = ttk.Frame(self.root, relief = tk.FLAT)
-        self.sncutLabel = ttk.Label(self.sncutFrame, text = 'Enter a signal to noise cutoff')
-        self.sncut = tk.StringVar(value = ('' if options['sncut'] is None else options['sncut']))
-        self.sncutEntry = ttk.Entry(self.sncutFrame, textvariable = self.sncut)
-        self.sncutHelpButton = ttk.Button(self.sncutFrame, text = '?', width = 2, command = lambda: InfoWindow(self.sncutHelpText, parent = self.root, title = 'PyHammer Help', pos = 'right'))
-
-        # --- Start Button ---
-
-        self.startButton = ttk.Button(self.root, text = 'Start PyHammer', command = self.goToMain)
-
-    def layoutWidgets(self):
-        
-        # --- Input Field ---
-        
-        # Layout Create Widgets
-        self.createWindow.grid(row = 0, column = 0, columnspan = 4)
-        self.scrollV.grid(row = 0, column = 4, sticky = 'ns')
-        self.scrollH.grid(row = 1, column = 0, columnspan = 4, sticky = 'ew')
-        self.selectFiles.grid(row = 2, column = 0, sticky = 'w')
-        self.dataTypeList.grid(row = 2, column = 2, padx = (0,4), sticky = 'w')
-        self.applyType.grid(row = 2, column = 3, sticky = 'w')
-        self.createFrame.columnconfigure(3, weight = 1)
-        self.createWindow.configure(yscrollcommand = self.scrollV.set, xscrollcommand = self.scrollH.set)
-
-        # Layout Input Widgets
-        self.infileLabel.grid(row = 0, column = 0, columnspan = 4)
-        self.infileEntry.grid(row = 1, column = 0, padx = 1, pady = 1, sticky = 'ew')
-        self.infileBrowseButton.grid(row = 1, column = 1, padx = 1, pady = 1)
-        self.createButton.grid(row = 1, column = 2, padx = 1, pady = 1)
-        self.infileHelpButton.grid(row = 1, column = 3, padx = 1, pady = 1, sticky = 'e')
-
-        # Configure Input Frame
-        self.infileFrame.grid(row = 0, column = 0)
-        self.infileFrame.columnconfigure(0, minsize = 250, weight = 1)
-        self.infileFrame.columnconfigure(1, weight = 0)
-        self.infileFrame.columnconfigure(2, weight = 0)
-        self.infileFrame.columnconfigure(3, weight = 0)
-
-        # --- Output Field ---
-
-        # Layout Output Widgets
-        self.outfileLabel.grid(row = 0, column = 0, columnspan = 3)
-        self.outfileEntry.grid(row = 1, column = 0, padx = 1, pady = 1, sticky = 'ew')
-        self.outfileBrowseButton.grid(row = 1, column = 1, padx = 1, pady = 1)
-        self.outfileHelpButton.grid(row = 1, column = 2, padx = 1, pady = 1, sticky = 'e')
-
-        # Configure Output Frame
-        self.outfileFrame.grid(row = 2, column = 0, sticky = 'ew')
-        self.outfileFrame.columnconfigure(0, minsize = 250, weight = 1)
-
-        # --- Reject Field ---
-
-        # Layout Reject Widgets
-        self.rejectfileLabel.grid(row = 0, column = 0, columnspan = 3)
-        self.rejectfileEntry.grid(row = 1, column = 0, padx = 1, pady = 1, sticky = 'ew')
-        self.rejectfileBrowseButton.grid(row = 1, column = 1, padx = 1, pady = 1)
-        self.rejectfileHelpButton.grid(row = 1, column = 2, padx = 1, pady = 1, sticky = 'e')
-
-        # Configure Reject Frame
-        self.rejectfileFrame.grid(row = 4, column = 0, sticky = 'ew')
-        self.rejectfileFrame.columnconfigure(0, minsize = 250, weight = 1)
-
-        # --- Full Path Field ---
-
-        # Layout Full Path Widgets
-        self.fullPathLabel.grid(row = 0, column = 0, columnspan = 3)
-        self.fullPathYes.grid(row = 1, column = 0, padx = 5, stick = 'e')
-        self.fullPathNo.grid(row = 1, column = 1, padx = 5, sticky = 'w')
-        self.fullPathHelpButton.grid(row = 1, column = 2, padx = 1, pady = 1, sticky = 'e')
-
-        # Configure Full Path Frame
-        self.fullPathFrame.grid(row = 6, column = 0, sticky = 'ew')
-        self.fullPathFrame.columnconfigure(0, minsize = 0, weight = 1)
-        self.fullPathFrame.columnconfigure(1, weight = 1)
-        self.fullPathFrame.columnconfigure(2, weight = 0)
-
-        # --- Spectra Path Field ---
-
-        # Layout Reject Widgets
-        self.spectraPathLabel.grid(row = 0, column = 0, columnspan = 3)
-        self.spectraPathEntry.grid(row = 1, column = 0, padx = 1, pady = 1, sticky = 'ew')
-        self.spectraPathBrowseButton.grid(row = 1, column = 1, padx = 1, pady = 1)
-        self.spectraPathHelpButton.grid(row = 1, column = 2, padx = 1, pady = 1, sticky = 'e')
-
-        # Configure Spectra Path Frame
-        self.spectraPathFrame.grid(row = 8, column = 0, sticky = 'ew')
-        self.spectraPathFrame.columnconfigure(0, minsize = 250, weight = 1)
-
-        # --- Eyecheck Field ---
-
-        # Layout Eyecheck Widgets
-        self.eyecheckLabel.grid(row = 0, column = 0, columnspan = 3)
-        self.eyecheckYes.grid(row = 1, column = 0, padx = 5, stick = 'e')
-        self.eyecheckNo.grid(row = 1, column = 1, padx = 5, sticky = 'w')
-        self.eyecheckHelpButton.grid(row = 1, column = 2, padx = 1, pady = 1, sticky = 'e')
-
-        # Configure Eyecheck Frame
-        self.eyecheckFrame.grid(row = 10, column = 0, sticky = 'ew')
-        self.eyecheckFrame.columnconfigure(0, minsize = 0, weight = 1)
-        self.eyecheckFrame.columnconfigure(1, weight = 1)
-        self.eyecheckFrame.columnconfigure(2, weight = 0)
-
-        # --- SN Cut Field ---
-
-        # Layout Reject Widgets
-        self.sncutLabel.grid(row = 0, column = 0, columnspan = 2)
-        self.sncutEntry.grid(row = 1, column = 0, padx = 1, pady = 1, sticky = 'ew')
-        self.sncutHelpButton.grid(row = 1, column = 1, padx = 1, pady = 1, sticky = 'e')
-
-        # Configure S/N Cutoff Frame
-        self.sncutFrame.grid(row = 12, column = 0, sticky = 'ew')
-        self.sncutFrame.columnconfigure(0, minsize = 250, weight = 1)
-
-        # --- Separators ---
-
+        # Separators
         self.sep = []
         for i in range(7):
-            self.sep.append(ttk.Separator(self.root, orient = tk.HORIZONTAL))
-            self.sep[-1].grid(row = i*2+1, column = 0, padx = 2, pady = 2, stick = 'nsew')
+            line = QFrame(frameShape = QFrame.HLine, frameShadow = QFrame.Sunken, lineWidth = 1)
+            line.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+            self.sep.append(line)
 
-        # --- Start Button ---
-        self.startButton.grid(row = 14, column = 0, padx = 2, pady = (4,2), stick = 'nsew')
+    def layoutGui(self):       
+
+        # Input Field
+
+        # Setup Input Widgets
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.infileLabel, 0, 0, 1, 4)
+        frameGrid.addWidget(self.infileEntry, 1, 0)
+        frameGrid.addWidget(self.infileBrowseButton, 1, 1)
+        frameGrid.addWidget(self.infileCreateButton, 1, 2)
+        frameGrid.addWidget(self.infileHelpButton, 1, 3)
+        self.infileFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.infileFrame)
+
+        # Setup Create Widgets
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.textArea, 0, 0, 1, 5)
+        frameGrid.addWidget(self.selectSpectraButton, 1, 0)
+        frameGrid.addWidget(QFrame(frameShape = QFrame.VLine, frameShadow = QFrame.Sunken, lineWidth = 1), 1, 1)
+        frameGrid.addWidget(self.dataTypeList, 1, 2)
+        frameGrid.addWidget(self.applyType, 1, 3)
+        frameGrid.setColumnStretch(4, 1)
+        self.createFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.createFrame)
+
+        self.grid.addWidget(self.sep[0])
+
+        # Output Field
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.outfileLabel, 0, 0, 1, 3)
+        frameGrid.addWidget(self.outfileEntry, 1, 0)
+        frameGrid.addWidget(self.outfileBrowseButton, 1, 1)
+        frameGrid.addWidget(self.outfileHelpButton, 1, 2)
+        self.outfileFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.outfileFrame)
+
+        self.grid.addWidget(self.sep[1])
+
+        # Reject Field
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.rejectLabel, 0, 0, 1, 3)
+        frameGrid.addWidget(self.rejectEntry, 1, 0)
+        frameGrid.addWidget(self.rejectBrowseButton, 1, 1)
+        frameGrid.addWidget(self.rejectHelpButton, 1, 2)
+        self.rejectFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.rejectFrame)
+
+        self.grid.addWidget(self.sep[2])
+
+        # Full Path Field
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.fullPathLabel, 0, 0, 1, 3)
+        frameGrid.addWidget(self.fullPathYes, 1, 0, alignment = Qt.AlignRight)
+        frameGrid.addWidget(self.fullPathNo, 1, 1)
+        frameGrid.addWidget(self.fullPathHelpButton, 1, 2)
+        self.fullPathFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.fullPathFrame)
+
+        self.grid.addWidget(self.sep[3])
+
+        # Spectra Path Field
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.spectraPathLabel, 0, 0, 1, 2)
+        frameGrid.addWidget(self.spectraPathEntry, 1, 0)
+        frameGrid.addWidget(self.spectraPathBrowseButton, 1, 1)
+        frameGrid.addWidget(self.spectraPathHelpButton, 1, 2)
+        self.spectraPathFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.spectraPathFrame)
+
+        self.grid.addWidget(self.sep[4])
+
+        # Eyecheck Field
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.eyecheckLabel, 0, 0, 1, 3)
+        frameGrid.addWidget(self.eyecheckYes, 1, 0, alignment = Qt.AlignRight)
+        frameGrid.addWidget(self.eyecheckNo, 1, 1)
+        frameGrid.addWidget(self.eyecheckHelpButton, 1, 2)
+        self.eyecheckFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.eyecheckFrame)
+
+        self.grid.addWidget(self.sep[5])
+
+        # S/N Cut Field
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.sncutLabel, 0, 0, 1, 2)
+        frameGrid.addWidget(self.sncutEntry, 1, 0)
+        frameGrid.addWidget(self.sncutHelpButton, 1, 2)
+        self.sncutFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.sncutFrame)
+
+        self.grid.addWidget(self.sep[6])
+
+        # Start Button
+        self.grid.addWidget(self.startButton)
+
+    def configureGui(self):
+
+        # Input Field
+
+        # Configure Input Widgets
+        self.infileEntry.setText(self.options['infile'])
+        self.infileEntry.setMinimumWidth(300)
+        self.infileBrowseButton.clicked.connect(lambda: self.browse(self.infileEntry))
+        self.infileBrowseButton.setToolTip('Browse for an existing input file')
+        self.infileCreateButton.clicked.connect(self.createButtonClicked)
+        self.infileCreateButton.setToolTip('Create a new input file')
+        self.infileHelpButton.setMaximumWidth(self.infileHelpButton.sizeHint().height())
+        self.infileHelpButton.clicked.connect(lambda: MessageBox(self, self.infileHelpText, 'PyHammer Help'))
+        self.infileHelpButton.setToolTip('Help')
+
+        # Configure Create Widgets
+        self.textArea.setMinimumSize(600,300)
+        self.textArea.setLineWrapMode(QTextEdit.NoWrap)
+        font = self.textArea.currentFont()
+        font.setPointSize(10)
+        font.setFamily('courier')
+        self.textArea.setFont(font)
+        self.selectSpectraButton.clicked.connect(self.selectSpectraButtonClicked)
+        self.selectSpectraButton.setToolTip('Select a set of spectrum files\nto add to the input file')
+        self.dataTypeList.addItems(['SDSSdr12', 'SDSSdr7', 'fits', 'txt', 'csv'])
+        self.applyType.clicked.connect(self.applyTypeClicked)
+        self.applyType.setToolTip('<b>Optional:</b> Append the selected data\ntype to every file in the list to give a\nhint to PyHammer about the file type')
+        self.createFrame.hide()
+
+        # Output Field
+        self.outfileEntry.setText(self.options['outfile'])
+        self.outfileBrowseButton.clicked.connect(lambda: self.browse(self.outfileEntry))
+        self.outfileBrowseButton.setToolTip('Browse for an existing output file or define a new one')
+        self.outfileHelpButton.setMaximumWidth(self.outfileHelpButton.sizeHint().height())
+        self.outfileHelpButton.clicked.connect(lambda: MessageBox(self, self.outfileHelpText, 'PyHammer Help'))
+        self.outfileHelpButton.setToolTip('Help')
+
+        # Reject Field
+        self.rejectEntry.setText(self.options['rejectfile'])
+        self.rejectBrowseButton.clicked.connect(lambda: self.browse(self.rejectEntry))
+        self.rejectBrowseButton.setToolTip('Browse for an existing reject file or define a new one')
+        self.rejectHelpButton.setMaximumWidth(self.rejectHelpButton.sizeHint().height())
+        self.rejectHelpButton.clicked.connect(lambda: MessageBox(self, self.rejectfileHelpText, 'PyHammer Help'))
+        self.rejectHelpButton.setToolTip('Help')
+
+        # Full Path Field
+        if self.options['fullPath'] is None or not self.options['fullPath']:
+            self.fullPathNo.setChecked(True)
+        else:
+            self.fullPathYes.setChecked(True)
+        self.fullPathYes.clicked.connect(self.updateGui)
+        self.fullPathNo.clicked.connect(self.updateGui)
+        self.fullPathHelpButton.setMaximumWidth(self.fullPathHelpButton.sizeHint().height())
+        self.fullPathHelpButton.clicked.connect(lambda: MessageBox(self, self.fullPathHelpText, 'PyHammer Help'))
+        self.fullPathHelpButton.setToolTip('Help')
+
+        # Spectra Path Field
+        self.spectraPathEntry.setText(self.options['spectraPath'])
+        self.spectraPathBrowseButton.clicked.connect(lambda: self.browse(self.spectraPathEntry, 'directory'))
+        self.spectraPathBrowseButton.setToolTip('Browse for the directory containing the spectra files')
+        self.spectraPathHelpButton.setMaximumWidth(self.spectraPathHelpButton.sizeHint().height())
+        self.spectraPathHelpButton.clicked.connect(lambda: MessageBox(self, self.spectraPathHelpText, 'PyHammer Help'))
+        self.spectraPathHelpButton.setToolTip('Help')
+
+        # Eyecheck Field
+        if self.options['eyecheck'] is None or not self.options['eyecheck']:
+            self.eyecheckNo.setChecked(True)
+        else:
+            self.eyecheckYes.setChecked(True)
+        self.eyecheckYes.clicked.connect(self.updateGui)
+        self.eyecheckNo.clicked.connect(self.updateGui)
+        self.eyecheckHelpButton.setMaximumWidth(self.eyecheckHelpButton.sizeHint().height())
+        self.eyecheckHelpButton.clicked.connect(lambda: MessageBox(self, self.eyecheckHelpText, 'PyHammer Help'))
+        self.eyecheckHelpButton.setToolTip('Help')
+
+        # S/N Cut Field
+        self.sncutEntry.setText(self.options['sncut'])
+        self.sncutHelpButton.setMaximumWidth(self.sncutHelpButton.sizeHint().height())
+        self.sncutHelpButton.clicked.connect(lambda: MessageBox(self, self.sncutHelpText, 'PyHammer Help'))
+        self.sncutHelpButton.setToolTip('Help')
+
+        # Start Button
+        self.startButton.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+        self.startButton.clicked.connect(self.goToMain)
+
+        # Top Level Grid
+        self.grid.setSpacing(4)
+        self.grid.setMargin(2)
+
+        # Set the main window properties
+        self.widget.setLayout(self.grid)
+        self.setCentralWidget(self.widget)
+        self.move(200,200)
+        self.setWindowTitle('PyHammer Settings')
+        self.setWindowIcon(self.icon)
 
     def updateGui(self):
 
-        if self.fullPath.get() == 0:
-            self.spectraPathFrame.grid(row = 8, column = 0, sticky = 'ew')
-            self.sep[4].grid(row = 9, column = 0, padx = 2, pady = 2, stick = 'nsew')
-            eyecheckRow = 10
-        else:
-            self.spectraPathFrame.grid_forget()
-            self.sep[4].grid_forget()
-            eyecheckRow = 8
+        if self.fullPathYes.isChecked():
+            self.spectraPathFrame.hide()
+            self.sep[4].hide()
+        elif self.fullPathNo.isChecked():
+            self.spectraPathFrame.show()
+            self.sep[4].show()
 
-        self.eyecheckFrame.grid(row = eyecheckRow, column = 0, sticky = 'ew')
-        self.sep[5].grid(row = eyecheckRow + 1, column = 0, padx = 2, pady = 2, stick = 'nsew')
-        sncutRow = eyecheckRow + 2
-        
-        if self.eyecheck.get() == 0:
-            self.sncutFrame.grid(row = sncutRow, column = 0, sticky = 'ew')
-            self.sep[6].grid(row = sncutRow + 1, column = 0, padx = 2, pady = 2, stick = 'nsew')
-            startRow = sncutRow + 2
-        else:
-            self.sncutFrame.grid_forget()
-            self.sep[6].grid_forget()
-            startRow = eyecheckRow + 2
-
-        self.startButton.grid(row = startRow, column = 0, padx = 2, pady = (4,2), stick = 'nsew')
-
-
-    def createInputFile(self):
-        self.createPressed = not self.createPressed # Invert boolean
-
-        self.infileEntry.configure(state = ('disabled' if self.createPressed else 'normal'))
-        self.infileBrowseButton.configure(state = ('disabled' if self.createPressed else 'normal'))
-
-        # Add create frame to gui if create button is "selected"
-        if self.createPressed:
-            self.createFrame.grid(row = 2, column = 0, columnspan = 4, padx = 2, pady = (2,5), sticky = 'nsew')
-            self.infileLabel.configure(text = ('Create your input file in the text field below. '
-                                              'Use the buttons to help populate your input file.'))
-            self.fullPath.set(True)
-            self.updateGui()
-        else:
-            self.createFrame.grid_forget()
-            self.infileLabel.configure(text = 'Provide an existing input file or choose to create a new input file')
-
-    def createInputFromDirectory(self):
-        files = filedialog.askopenfilename(title = 'Select spectra file(s)', multiple = True, parent = self.root)
-        for i, f in enumerate(files):
-            self.createWindow.insert(tk.END, f+'\n'*(i+1 < len(files)))
-
-    def applyType(self):
-        datatype = self.dataType.get()
-        if datatype == '': return
-        lineCount = int(self.createWindow.index('end-1c').split('.')[0])
-        for line in range(1, lineCount+1):
-            curLine = self.createWindow.get('{}.0'.format(line), '{}.end'.format(line))
-            if curLine == '': continue
-            comma = curLine.find(',')
-            if comma >= 0:
-                self.createWindow.delete('{}.{}'.format(line,comma),'{}.end'.format(line))
-            self.createWindow.insert('{}.end'.format(line), ', '+datatype)
+        if self.eyecheckYes.isChecked():
+            self.sncutFrame.hide()
+            self.sep[6].hide()
+        elif self.eyecheckNo.isChecked():
+            self.sncutFrame.show()
+            self.sep[6].show()
+           
+        self.setFixedSize(self.grid.minimumSize())
 
     def browse(self, entry, target = 'file'):
         if target == 'file':
             if entry is self.infileEntry:
-                file = filedialog.askopenfilename(title = 'Select an input file', parent = self.root)
-                if file != '':
-                    self.infile.set(file)
+                dlg = QFileDialog(directory = __file__, windowTitle = 'Select an input file')
+                dlg.setFileMode(QFileDialog.ExistingFile)
+                if dlg.exec_():
+                    entry.setText(dlg.selectedFiles()[0])
             elif entry is self.outfileEntry:
-                file = filedialog.asksaveasfilename(title = 'Select or create an output file', parent = self.root)
-                if file != '':
-                    self.outfile.set(file)
-            elif entry is self.rejectfileEntry:
-                file = filedialog.asksaveasfilename(title = 'Select a reject file', parent = self.root)
-                if file != '':
-                    self.rejectfile.set(file)
+                dlg = QFileDialog(directory = __file__, windowTitle = 'Select or create an output file')
+                dlg.setFileMode(QFileDialog.AnyFile)
+                if dlg.exec_():
+                    entry.setText(dlg.selectedFiles()[0])
+            elif entry is self.rejectEntry:
+                dlg = QFileDialog(directory = __file__, windowTitle = 'Select or create a reject file')
+                dlg.setFileMode(QFileDialog.AnyFile)
+                if dlg.exec_():
+                    entry.setText(dlg.selectedFiles()[0])
         if target == 'directory':
             if entry is self.spectraPathEntry:
-                directory = filedialog.askdirectory(title = 'Select a directory', mustexist = True, parent = self.root)
-                if directory != '':
-                    self.spectraPath.set(directory)
+                dlg = QFileDialog(directory = __file__, windowTitle = 'Select a directory')
+                dlg.setFileMode(QFileDialog.Directory)
+                dlg.setOption(QFileDialog.ShowDirsOnly, True)
+                if dlg.exec_():
+                    entry.setText(dlg.selectedFiles()[0])
+
+    def createButtonClicked(self):
+        self.createPressed = not self.createPressed # Invert boolean
+
+        self.infileEntry.setEnabled(not self.createPressed)
+        self.infileBrowseButton.setEnabled(not self.createPressed)
+
+        if self.createPressed:
+            self.createFrame.show()
+            self.infileLabel.setText('Create your input file in the text field below. '
+                                     'Use the buttons to help populate your input file.')
+            self.fullPathYes.setChecked(True)
+            self.updateGui()
+        else:
+            self.createFrame.hide()
+            self.infileLabel.setText('Provide an existing input file or choose to create a new input file')
+            self.updateGui()
+
+    def selectSpectraButtonClicked(self):
+        dlg = QFileDialog(directory = __file__, windowTitle = 'Select your spectra files')
+        dlg.setFileMode(QFileDialog.ExistingFiles)
+        if dlg.exec_():
+            [self.textArea.append(file) for file in dlg.selectedFiles()]
+
+    def applyTypeClicked(self):
+        # Pull out currently selected data type to apply and current
+        # text in text area
+        dataType = self.dataTypeList.currentText()
+        originalText = self.textArea.toPlainText()
+
+        # Go through the text line by line, remove any current types
+        # that already exist, and apply the new type.
+        newText = []
+        for line in originalText.split('\n'):
+            if line == '': continue
+            comma = line.find(',')
+            if comma >= 0: line = line[:comma]
+            newText.append(line + ', ' + dataType)
+
+        # Put the new text into the text area
+        self.textArea.setPlainText('\n'.join(newText))
 
     def goToMain(self):
         """
-        Accepts as options all the input parameters from the
-        gui so they can be used to update the options dict.
-        First a check is done to make sure the user's input
-        is valid. If it is, his will then progress to calling
-        the main function with the options being passed to it.
+        This will go through all the inputs of the GUI and
+        first perform a check to make sure the user's input
+        is valid. If it all inputs are valid, this will then
+        progress to calling the main function with the options
+        from the GUI being passed to it. If any of the input
+        is invalid, a message will be displayed indicating
+        the problems that need fixing.
         """
         message = ''    # The output message in case errors are found
 
-        # --- Input File ---
+        # Check each input field for errors
+
+        # Input File
         if not self.createPressed:
-            if self.infile.get() == '':
+            if self.infileEntry.text() == '':
                 message += '- A spectra list filename was not provided.\n'
             else:
-                if not os.path.isfile(self.infile.get()):
+                if not os.path.isfile(self.infileEntry.text()):
                     message += '- The input file cannot be found.\n'
         else:
-            if self.createWindow.get('0.0',tk.END) == '\n':
+            if self.textArea.toPlainText() == '':
                 message += '- The text field for creating an input file is empty.\n'
-            # Make sure each line ends with data type
-            lineCount = int(self.createWindow.index('end-1c').split('.')[0])
-            for line in range(1, lineCount+1):
-                curLine = self.createWindow.get('{}.0'.format(line), '{}.end'.format(line)).lower().strip()
-                if curLine == '' or curLine == '\n': continue
-                if not any([curLine.endswith(','+s) or curLine.endswith(' '+s) for s in ['fits', 'sdssdr12', 'sdssdr7', 'csv', 'txt']]):
-                    message += '- Not all lines in the input file have a correctly supplied data type.'
-                    break
 
-        # --- Output File ---
-        if self.outfile.get() == '':
+        # Output File
+        if self.outfileEntry.text() == '':
             message += '- An output filename was not provided.\n'
         else:
-            outfileExt = self.outfile.get()[-4:]
+            outfileExt = self.outfileEntry.text()[-4:]
             if outfileExt[0] == '.' and outfileExt[1:] != 'csv':
                 message += '- The output file must be a csv file.\n'
 
-        # --- Reject File ---
-        if self.rejectfile.get() == '':
+        # Reject File
+        if self.rejectEntry.text() == '':
             message += '- A reject filename was not provided.\n'
         else:
-            rejectExt  = self.rejectfile.get()[-4:]
+            rejectExt  = self.rejectEntry.text()[-4:]
             if rejectExt[0] == '.' and rejectExt[1:] != 'csv':
                 message += '- The reject file must be a csv file.\n'
 
-        # --- Spectra Path ---
-        if self.fullPath.get() == 0:
-            if self.spectraPath.get() == '':
+        # Spectra Path
+        if self.fullPathNo.isChecked():
+            if self.spectraPathEntry.text() == '':
                 message += '- A path for the spectra was not provided.\n'
             else:
-                if not os.path.isdir(self.spectraPath.get()):
+                if not os.path.isdir(self.spectraPathEntry.text()):
                     message += '- The spectra path is not a valid directory.\n'
 
-        # --- Eyecheck ---
-        if self.eyecheck.get() == 1 and not os.path.isfile(self.outfile.get()):
+        # Eyecheck
+        if self.eyecheckYes.isChecked() and not os.path.isfile(self.outfileEntry.text()):
             message += '- You cannot skip to eyecheck without an existing output file.\n'
-            
-        # --- S/N Cut ---
-        if self.eyecheck.get() == 0 and self.sncut.get() != '':
+           
+        # S/N Cut
+        if self.eyecheckNo.isChecked() and self.sncutEntry.text() != '':
             try:
-                if float(self.sncut.get()) < 0:
-                    message += '- The entered S/N cut must be greater than zero.\n'
+                if float(self.sncutEntry.text()) < 0:
+                    message += '- The entered S/N cut must be positive.\n'
             except ValueError as e:
                 message += '- The entered S/N cut is not a valid number.\n'
 
-        # Print out the message, if there is one, and return
+        # If a message was formed to notify the user, print that message and return
         if message != '':
             message = 'The following issues were found with your input.\n' \
                       'Please correct them and try again.\n\n' + message
-            InfoWindow(message, parent = self.root, title = 'PyHammer Error')
+            MessageBox(self, message, title = 'PyHammer Settings Error')
             return
-            
+           
         # If we've made it to this point, the user's inputs are valid. Store them
         # in the options dict and move to the main part of the code.
         if not self.createPressed:
-            self.options['infile'] = self.infile.get()
+            self.options['infile'] = self.infileEntry.text()
         else:
-            # Create a temporary input file based on what's in the createWindow text field
+            # Create a temporary input file based on what's in the create
+            # input file text field
             fname = 'temp_input_'+str(int(time()))+'.txt'
             with open(fname, 'w') as f:
-                line = self.createWindow.get('0.0', tk.END)
+                line = self.textArea.toPlainText()
                 if line != '\n':
                     f.write(line)
             self.options['infile'] = fname
-        self.options['outfile'] = self.outfile.get() + '.csv'*(self.outfile.get()[-4:] != '.csv')
-        self.options['rejectfile'] = self.rejectfile.get() + '.csv'*(self.rejectfile.get()[-4:] != '.csv')
-        self.options['fullPath'] = (self.fullPath.get() == 1)
-        self.options['spectraPath'] = self.spectraPath.get() * (not self.options['fullPath'])
+        self.options['outfile'] = self.outfileEntry.text() + '.csv'*(self.outfileEntry.text()[-4:] != '.csv')
+        self.options['rejectfile'] = self.rejectEntry.text() + '.csv'*(self.rejectEntry.text()[-4:] != '.csv')
+        self.options['fullPath'] = self.fullPathYes.isChecked()
+        self.options['spectraPath'] = self.spectraPathEntry.text() * (not self.options['fullPath'])
         # Append a slash to the end of the spectra path if there isn't one
         if (self.options['spectraPath'] != '' and self.options['spectraPath'][-1] not in ['\\', '/']):
                 self.options['spectraPath'] += '/'
-        self.options['eyecheck'] = (self.eyecheck.get() == 1)
-        if (self.options['eyecheck'] or self.sncut.get() == ''):
+        self.options['eyecheck'] = self.eyecheckYes.isChecked()
+        if (self.options['eyecheck'] or self.sncutEntry.text() == ''):
             self.options['sncut'] = None
         else:
-            self.options['sncut'] = float(self.sncut.get())
+            self.options['sncut'] = float(self.sncutEntry.text())
+       
+        self.close()
         
-        self.root.destroy()
-
         main(self.options)
 
-def startCmd(options):
-    """
-    startCmd(options)
+###
+# Get PyHammer settings through command line
+#
 
+def pyhammerSettingsCmd(options):
+    """
     Description:
         This provides command line inputs for the user
         to enter options. It will only ask questions
@@ -676,7 +781,7 @@ def startCmd(options):
         options: A dict containing the options the
             user can specify. These may already
             have default values if they were
-            provided on the command line.
+            provided when the program was launched.
     """
 
     ##
@@ -765,6 +870,10 @@ def startCmd(options):
     # Now that all the options have been set, let's get started
     main(options)
 
+###
+# PyHammer Entry Point
+#
+
 if (__name__ == "__main__"):
 
     thisDir = os.path.split(__file__)[0]
@@ -785,16 +894,15 @@ if (__name__ == "__main__"):
                'spectraPath': None, 'eyecheck': None, 'sncut': None,
                'useGUI': None}
     
-    ##
-    # Check input conditions
-    #
+    # *** Check input conditions ***
 
     opts, args = getopt.getopt(sys.argv[1:], 'hi:o:r:fp:es:cg',
                                ['help', 'infile=', 'outfile=', 'rejectfile=',
                                 'full', 'path=', 'eyecheck', 'sncut',
                                 'cmd', 'gui'])
 
-    # First check if help is requested and options
+    # Loop through the flags and options the
+    # user passed in when calling PyHammer
     for opt, arg in opts:
 
         # Help option is chosen
@@ -850,6 +958,8 @@ if (__name__ == "__main__"):
                    'python pyhammer.py -g -f -s 3 -i C:/Path/To/File/inputFile.txt -o'
                    'C:/Path/To/File/outputFile.csv -r C:/Path/To/File/rejectFile.csv\n').expandtabs(4),
                   flush = True)
+            
+            # Quit out without doing anything more
             sys.exit(0)
 
         # User provided input file listing spectra
@@ -913,17 +1023,19 @@ if (__name__ == "__main__"):
             else:
                 options['useGUI'] = True
 
+    # If no interface is chose, use the GUI by default
+    if options['useGUI'] is None: options['useGUI'] = True
+
     if options['useGUI'] == True:
-        StartGUI(options)
+        app = QApplication([])
+        PyHammerSettingsGui(options)
+        app.exec_()
     elif options['useGUI'] == False:
-        startCmd(options)
-    else:
-        # If no interface is chosen, use the GUI by default
-        options['useGUI'] = True
-        StartGUI(options)
+        pyhammerSettingsCmd(options)
 
 else:
     
     sys.exit("Do not import pyhammer. Run this script with the run command "
              "in the python environment, or by invoking with the python command "
              "on the command line. Use the -h flag for more information.")
+

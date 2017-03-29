@@ -1,278 +1,382 @@
-import os
-import matplotlib
-if os.name == 'posix':
-    import sys
-    import importlib
-    ver = sys.version_info
-    findMdl = (importlib.find_loader if ver.minor < 4 else importlib.util.find_spec)
-    if findMdl('PyQt5') is not None:
-        matplotlib.use('Qt5Agg')
-    elif findMdl('PyQt4') is not None:
-        matplotlib.use('Qt4Agg')
-    else:
-        raise Exception('No suitable matplotlib backend was found.')
-import tkinter as tk
-from tkinter import ttk
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import __version__ as pltVersion
-from matplotlib.patches import Rectangle
-from astropy.io import fits
-import warnings
-import time
-import csv
-from spectrum import *
-import pdb
+from pyhamimports import *
 from gui_utils import *
+from spectrum import *
 
-class Eyecheck(object):
+class Eyecheck(QMainWindow):
 
     def __init__(self, specObj, options):
-        
-        # *** Store input variables ***
-        
-        self.specObj = specObj  # The Spectrum object created in the pyhammer script
-        self.options = options  # The list of options input by the user in the pyhammer script
 
-        # *** Define useful information ***
-        
+        super().__init__()
+
+        # Store Input Variables
+
+        self.specObj = specObj      # The Spectrum object created in the pyhammer script
+        self.options = options      # The list of options input by the user in the pyhammer script
+
+        # Create and show the GUI
+        self.defineUsefulVars()     # Setup some basic variables to be used later
+        self.readOutfile()          # Read the output file created
+        self.createGui()            # Define and layout the GUI elements
+        self.selectInitialSpectrum()# Determine which spectrum to display first
+        if self.specIndex == -1:    # If no initial spectrum is chosen
+            self._exit()            # Call the GUI close method
+            return                  # Return back to the main pyhammer routine
+        self.loadUserSpectrum()     # Otherwise, oad the appropriate spectrum to be displayed
+        self.updatePlot()           # Update the plot showing the template and spectrum
+
+        self.show()                 # Show the final GUI window to the user
+
+    ###
+    # Initialization Methods
+    #
+
+    def defineUsefulVars(self):
+
+        # Define some basic spectra related information
         self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
         self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
         self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
 
-        # *** Read the infile ***
-        
-        self.inData = []
-        with open(self.options['infile'], 'r') as file:
-            for line in file:
-                line = line.strip()
-                if line.find(',') > 0: line = line.replace(',',' ')
-                self.inData.append(' '.join(line.split()).rsplit(' ',1))
-                self.inData[-1][0] = os.path.basename(self.inData[-1][0])
-        self.inData = np.asarray(self.inData)
+        # Define an index to point to the current spectra in the list
+        # of spectra in the output file. We will start by assuming we're
+        # looking at the first spectra in the list. The selectInitialSpectrum
+        # method will update this as necessary.
+        self.specIndex = 0
 
-        # *** Read the outfile ***
-
-        with open(self.options['outfile'], 'r') as file:
-            reader = csv.reader(file)
-            self.outData = np.asarray(list(reader)[1:]) # Ignore the header line
-        
-        # *** Define user's spectrum ***
-        
-        self.specIndex = 0      # The index in the inData where we should start from
-        # Loop through the outData and see if some classification has occured already
-        for i in range(len(self.outData)):
-            # If classification by the user has already occured for the
-            # current spectrum, then move to the next one.
-            if self.outData[self.specIndex,4] != 'nan' or self.outData[self.specIndex,5] != 'nan':
-                self.specIndex += 1
-            else:
-                # Break out if we can get to a spectrum that hasn't been
-                # classified by the user yet
-                break
-        # If the outfile already has eyecheck results, ask if they want
-        # to start where they left off
-        if self.specIndex != 0:
-            # If every outfile spectra already has an eyecheck result
-            # they've classified everything and ask them if they want
-            # to start over instead.
-            if self.specIndex == i+1:
-                modal = ModalWindow('Every spectrum in the output file already has\nan eyecheck result. Do you want to start over?')
-                if modal.choice == 'yes':
-                    self.specIndex = 0
-                else:
-                    return
-            else:
-                modal = ModalWindow('The output file already has eyecheck results. The\n'
-                                    'eyecheck will start with the next unclassified\n'
-                                    'spectrum. Do you want to start over instead?')
-                if modal.choice == 'yes':
-                    self.specIndex = 0
-        # Now use the Spectrum object to read in the user's appropriate starting spectrum
-        fname = self.outData[self.specIndex,0]
-        ftype = np.extract(self.inData[:,0] == os.path.basename(fname), self.inData[:,1])[0]
-        self.specObj.readFile(self.options['spectraPath']+fname, ftype) # Ignore returned values
-        self.specObj.normalizeFlux()
-        
-        # *** Define GUI variables ***
-        
-        self.root = tk.Tk()             # Create the root GUI window
-        # Define String and Int variables to keep track of widget states
-        self.spectrumEntry = tk.StringVar(value = os.path.basename(self.outData[self.specIndex,0]))
-        self.specState  = tk.IntVar(value = self.specType.index(self.outData[self.specIndex,2][0]))
-        self.subState   = tk.IntVar(value = int(self.outData[self.specIndex,2][1]))
-        self.metalState = tk.IntVar(value = self.metalType.index(self.outData[self.specIndex,3]))
-        self.subButtons = []            # We keep track of these radio buttons so
-        self.metalButtons = []          # they can be enabled and disabled if need be
-        self.smoothState = tk.BooleanVar(value = False)
-        self.lockSmooth = tk.BooleanVar(value = False)
-        self.showTemplateError = tk.BooleanVar(value = True)
-        self.removeSdssSpikeState = tk.BooleanVar(value = False)
-
-        # *** Define figure variables ***
-        
-        plt.ion()                       # Turn on plot interactivity
-        plt.style.use('ggplot')         # Makes the plot look nice
+        # Define plot related variables
+        plt.style.use('ggplot')
         self.full_xlim = None           # +--
         self.full_ylim = None           # | Store these to keep track
         self.zoomed_xlim = None         # | of zoom states on the plot
         self.zoomed_ylim = None         # |
         self.zoomed = False             # +--
-        self.updatePlot()               # Create the plot
+
+        # Define the help strings to display when the user chooses a help
+        # option from the menu bar
+        self.helpStr = (
+            'Welcome to the main GUI for spectral typing your spectra.\n\n'
+            'Each spectra in your spectra list file will be loaded in '
+            'sequence and shown on top of the template it was matched '
+            'to. From here, fine tune the spectral type by comparing '
+            'your spectrum to the templates and choose "Next" when '
+            "you've landed on the correct choice. Continue through each "
+            'spectrum until finished.')
+        
+        self.buttonStr = (
+            'Upon opening the Eyecheck program, the first spectrum in your '
+            'list will be loaded and displayed on top of the template determined '
+            'by the spectral type guesser.\n\n'
+            'Use the "Earlier" and "Later" buttons to change the spectrum '
+            'templates. Note that not all templates exist for all spectral '
+            'types. This program specifically disallows choosing K8 and K9 '
+            'spectral types as well.\n\n'
+            'The "Higher" and "Lower" buttons change the metallicity. Again, '
+            'not all metallicities exist as templates.\n\n'
+            'The "Odd" button allows you to mark a spectrum as something other '
+            'than a standard classification, such as a white dwarf or galaxy.\n\n'
+            'The "Bad" button simply marks the spectrum as BAD in the output '
+            'file, indicating it is not able to be classified.\n\n'
+            'You can cycle between your spectra using the "Back" and "Next" buttons. '
+            'Note that hitting "Next" will save the currently selected state as '
+            'the classification for that spectra.')
+
+        self.keyStr = (
+            'The following keys are mapped to specific actions.\n\n'
+            '<Left>\t\tEarlier spectral type button\n'
+            '<Right>\tLater spectral type button\n'
+            '<Up>\t\tHigher metallicity button\n'
+            '<Down>\tLower metallicity button\n'
+            '<Enter>\tAccept spectral classification\n'
+            '<Ctrl-K>\tMove to previous spectrum\n'
+            '<Ctrl-O>\tClassify spectrum as odd\n'
+            '<Ctrl-B>\tClassify spectrum as bad\n'
+            '<Ctrl-E>\tToggle the template error\n'
+            '<Ctrl-S>\tSmooth/Unsmooth the spectrum\n'
+            '<Ctrl-L>\tLock the smooth state between spectra\n'
+            '<Ctrl-R>\tToggle removing the stiching spike in SDSS spectra\n'
+            '<Ctrl-T>\tToggle displaying the residual plot\n'
+            '<Ctrl-Q>\tQuit PyHammer\n'
+            '<Ctrl-P>')
+
+        self.tipStr = (
+            'The following are a set of tips for useful features of the '
+            'program.\n\n'
+            'Any zoom applied to the plot is held constant between switching '
+            'templates. This makes it easy to compare templates around specific '
+            'features or spectral lines. Hit the home button on the plot '
+            'to return to the original zoom level.\n\n'
+            'The entry field on the GUI will display the currently plotted '
+            'spectrum. You can choose to enter one of the spectra in your list'
+            'and hit the "Go" button to automatically jump to that spectrum.\n\n'
+            'The smooth menu option will allow you to smooth or unsmooth '
+            'your spectra in the event that it is noisy. This simply applies '
+            'a boxcar convolution across your spectrum, leaving the edges unsmoothed.\n\n'
+            'By default, every new, loaded spectrum will be unsmoothed and '
+            'the smooth button state reset. You can choose to keep the smooth '
+            'button state between loading spectrum by selecting the menu option '
+            '"Lock Smooth State".\n\n'
+            'In SDSS spectra, there is a spike that occurs between 5569 and 5588'
+            'angstroms caused by stitching together the results from both detectors.'
+            'You can choose to artificially remove this spike for easier viewing by'
+            'selecting the "Remove SDSS Stitch Spike" from the Options menu.\n\n'
+            'Some keys may need to be hit rapidly.')
+
+        self.aboutStr = (
+            'This project was developed by a select group of graduate students '
+            'at the Department of Astronomy at Boston University. The project '
+            'was lead by Aurora Kesseli with development help and advice provided '
+            'by Andrew West, Mark Veyette, Brandon Harrison, and Dan Feldman. '
+            'Contributions were further provided by Dylan Morgan and Chris Theissan.\n\n'
+            'See the acompanying paper Kesseli et al. (2017) or the PyHammer github\n'
+            'site for further details.')
+
         # Other variables
         self.pPressNum = 0
         self.pPressTime = 0
 
-        # *** Initialize the GUI
+    def readOutfile(self):
+        with open(self.options['outfile'], 'r') as file:
+            reader = csv.reader(file)
+            self.outData = np.asarray(list(reader)[1:]) # Ignore the header line
+
+    def selectInitialSpectrum(self):
+        # Loop through the outData and see if some classification has occured already
+        for data in self.outData:
+            # If classification by the user has already occured for the
+            # current spectrum, then move our index to the next one.
+            if data[5] != 'nan' or data[6] != 'nan':
+                self.specIndex += 1
+            else:
+                # Break out if we can get to a spectrum that hasn't been
+                # classified by the user yet
+                break
         
-        self.setupGUI()                 # Call the method for setting up the GUI layout        
-        self.root.mainloop()            # Run the GUI
+        # If the outfile already has eyecheck results, indicated by the fact
+        # that the specIndex isn't pointing to the first spectrum in the list,
+        # ask if they want to start where they left off.
+        if self.specIndex != 0:
+            # If every outfile spectra already has an eyecheck result
+            # they've classified everything and ask them if they want
+            # to start over instead.
+            if self.specIndex == len(self.outData):
+                msg = MessageBox(self, ('Every spectrum in the output file already has\n'
+                                        'an eyecheck result. Do you want to start over?'),
+                                 buttons = QMessageBox.Yes|QMessageBox.No)
+                if msg.reply == QMessageBox.Yes:
+                    self.specIndex = 0
+                else:
+                    print('User chose not to restart')
+                    self.specIndex = -1 # Indicates we don't want to classify anything
+                    return
+            else:
+                msg = MessageBox(self, ('The output file already has eyecheck results. The\n'
+                                        'eyecheck will start with the next unclassified\n'
+                                        'spectrum. Do you want to start over instead?'),
+                                 buttons = QMessageBox.Yes|QMessageBox.No)
+                if msg.reply == QMessageBox.Yes:
+                    self.specIndex = 0
+
+    def createGui(self):
+
+        # Define the basic, top-level GUI components
+        self.widget = QWidget()       # The central widget in the main window
+        self.grid = QGridLayout()     # The layout manager of the central widget
+        self.icon = QIcon(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
+
+        # The menu bar
+        self.createMenuBar()
+            
+        # *** Setup the main GUI components ***
+
+        # The spectrum choosing components
+        label = QLabel('Spectrum', alignment = Qt.AlignCenter)
+        label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self.grid.addWidget(label, 0, 0, 1, 3)
+
+        self.spectrumList = QComboBox(self.widget)
+        self.spectrumList.addItems([os.path.split(d[0])[-1] for d in self.outData])
+        self.spectrumList.currentIndexChanged.connect(self.spectrumChosen)
+        self.grid.addWidget(self.spectrumList, 1, 0, 1, 3)
+
+        # The collection of sliders
+        self.specTypeSlider = self.createSlider('Stellar\nType', self.specType, self.specTypeChanged)
+        self.subTypeSlider = self.createSlider('Stellar\nSubtype', self.subType, self.specSubtypeChanged)
+        self.metalSlider = self.createSlider('Metallicity\n[Fe/H]', self.metalType, self.metallicityChanged)
+
+        # The collection of buttons
+        self.createButtons('Change Spectral Type', ['Earlier', 'Later'], [self.earlierCallback, self.laterCallback])
+        self.createButtons('Change Metallicity [Fe/H]', ['Lower', 'Higher'], [self.lowerMetalCallback, self.higherMetalCallback])
+        self.createButtons('Spectrum Choices', ['Odd', 'Bad', 'Previous', 'Next'], [self.oddCallback, self.badCallback, self.previousCallback, self.nextCallback])
+
+        # The matplotlib plot
+        self.figure = plt.figure(figsize = (12,6))
+        self.canvas = FigureCanvas(self.figure)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+
+        vgrid = QVBoxLayout(spacing = 0)
+        vgrid.addWidget(self.toolbar)
+        vgrid.addWidget(self.canvas, 1)
+        self.grid.addLayout(vgrid, 0, 3, 8, 1)
+
+        # Keyboard Shortcuts
+        QShortcut(QKeySequence(Qt.CTRL + Qt.Key_O), self).activated.connect(self.oddCallback)
+        QShortcut(QKeySequence(Qt.CTRL + Qt.Key_B), self).activated.connect(self.badCallback)
+        QShortcut(QKeySequence(Qt.Key_Return), self).activated.connect(self.nextCallback)
+        QShortcut(QKeySequence(Qt.CTRL + Qt.Key_K), self).activated.connect(self.previousCallback)
+        QShortcut(QKeySequence(Qt.Key_Left), self).activated.connect(self.earlierCallback)
+        QShortcut(QKeySequence(Qt.Key_Right), self).activated.connect(self.laterCallback)
+        QShortcut(QKeySequence(Qt.Key_Down), self).activated.connect(self.lowerMetalCallback)
+        QShortcut(QKeySequence(Qt.Key_Up), self).activated.connect(self.higherMetalCallback)
+        QShortcut(QKeySequence(Qt.CTRL + Qt.Key_P), self).activated.connect(self.callback_hammer_time)
+
+        # *** Setup the Grid ***
+        self.grid.setRowStretch(7, 1)
+        self.grid.setColumnStretch(3, 1)
+        self.grid.setMargin(2)
+        self.grid.setSpacing(5)
         
+        # *** Set the main window properties ***
+        self.widget.setLayout(self.grid)
+        self.setCentralWidget(self.widget)
+        self.move(200,200)
+        self.setWindowTitle('PyHammer Eyecheck')
+        self.setWindowIcon(self.icon)
+
+    def createMenuBar(self):
+
+        # *** Define Options Menu ***
+        
+        optionsMenu = self.menuBar().addMenu('Options')
+        optionsMenu.setTearOffEnabled(True)
+
+        # Show Template Error Menu Item
+        self.showTemplateError = QAction('Show Template Error', optionsMenu, checkable = True, shortcut = 'Ctrl+E')
+        self.showTemplateError.setChecked(True)
+        self.showTemplateError.toggled.connect(self.updatePlot)
+        optionsMenu.addAction(self.showTemplateError)
+
+        # Smooth Spectrum Menu Item
+        self.smoothSpectrum = QAction('Smooth Spectrum', optionsMenu, checkable = True, shortcut = 'Ctrl+S')
+        self.smoothSpectrum.toggled.connect(self.updatePlot)
+        optionsMenu.addAction(self.smoothSpectrum)
+
+        # Lock Smooth State Menu Item
+        self.lockSmoothState = QAction('Lock Smooth State', optionsMenu, checkable = True, shortcut = 'Ctrl+L')
+        optionsMenu.addAction(self.lockSmoothState)
+
+        # Remove SDSS Stitch Spike Menu Item
+        self.removeStitchSpike = QAction('Remove SDSS Stitch Spike', optionsMenu, checkable = True, shortcut = 'Ctrl+R')
+        self.removeStitchSpike.toggled.connect(self.updatePlot)
+        optionsMenu.addAction(self.removeStitchSpike)
+
+        # Show Residial Plot Menu Item
+        self.showResidualPlot = QAction('Show Residual Plot', optionsMenu, checkable = True, shortcut = 'Ctrl+T')
+        self.showResidualPlot.triggered.connect(self.updatePlot)
+        optionsMenu.addAction(self.showResidualPlot)
+
+        optionsMenu.addSeparator()
+
+        # Quit Menu Item
+        quitMenuItem = QAction('Quit', optionsMenu, shortcut = 'Ctrl+Q')
+        quitMenuItem.triggered.connect(self.close)
+        optionsMenu.addAction(quitMenuItem)
+        
+        
+        # *** Define Help Menu ***
+        
+        helpMenu = self.menuBar().addMenu('Help')
+
+        # Help Menu Item
+        showHelpWindow = QAction('Eyecheck Help', helpMenu)
+        showHelpWindow.triggered.connect(lambda: MessageBox(self, self.helpStr, title = 'Help'))
+        helpMenu.addAction(showHelpWindow)
+
+        # Buttons Menu Item
+        showButtonsWindow = QAction('Buttons', helpMenu)
+        showButtonsWindow.triggered.connect(lambda: MessageBox(self, self.buttonStr, title = 'Buttons'))
+        helpMenu.addAction(showButtonsWindow)
+        
+        # Keyboard Shortcuts Menu Item
+        showKeyboardShortcutWindow = QAction('Keyboard Shortcuts', helpMenu)
+        showKeyboardShortcutWindow.triggered.connect(lambda: MessageBox(self, self.keyStr, title = 'Keyboard Shortcuts'))
+        helpMenu.addAction(showKeyboardShortcutWindow)
+
+        # Tips Menu Item
+        showTipsWindow = QAction('Tips', helpMenu)
+        showTipsWindow.triggered.connect(lambda: MessageBox(self, self.tipStr, title = 'Tips'))
+        helpMenu.addAction(showTipsWindow)
+
+        # Separator
+        helpMenu.addSeparator()
+
+        # About Menu Item
+        showAboutWindow = QAction('About', helpMenu)
+        showAboutWindow.triggered.connect(lambda: MessageBox(self, self.aboutStr, title = 'About'))
+        helpMenu.addAction(showAboutWindow)
+
+    def createSlider(self, title, labels, callback):
+        # Define or update the column of the top-level grid to
+        # put this slider component into
+        if not hasattr(self, 'column'):
+            self.column = 0
+        else:
+            self.column += 1
+
+        # Create the frame and put it in the top layer grid
+        frame = QFrame(frameShape = QFrame.StyledPanel, frameShadow = QFrame.Sunken, lineWidth = 0)
+        sliderGrid = QGridLayout()
+        frame.setLayout(sliderGrid)
+        self.grid.addWidget(frame, 2, self.column)
+
+        # Create the label at the top of the frame
+        label = QLabel(title, alignment = Qt.AlignCenter)
+        sliderGrid.addWidget(label, 0, 0, 1, 2)
+
+        # Add the text labels to the right of the slider
+        for i,text in enumerate(labels):
+            label = QLabel(text, alignment = Qt.AlignRight|Qt.AlignVCenter)
+            sliderGrid.addWidget(label, i+1, 0)
+
+        # Add the slider
+        slider = QSlider(Qt.Vertical, minimum = 0, maximum = len(labels)-1, tickInterval = 1, pageStep = 1, invertedAppearance = True)
+        slider.sliderMoved.connect(callback)
+        sliderGrid.addWidget(slider, 1, 1, len(labels), 1)
+
+        # Return the slider so we can access its state later
+        return slider
+
+    def createButtons(self, title, buttonTexts, callbacks):
+        # Define or update the row of the top-level grid to
+        # put this button frame into
+        if not hasattr(self, 'row'):
+            self.row = 3
+        else:
+            self.row += 1
+
+        # Create the frame and put it in the top layer grid
+        frame = QFrame(frameShape = QFrame.StyledPanel, frameShadow = QFrame.Sunken, lineWidth = 0)
+        buttonGrid = QGridLayout(margin = 2, spacing = 2)
+        frame.setLayout(buttonGrid)
+        self.grid.addWidget(frame, self.row, 0, 1, 3)
+
+        # Add the label which acts as the title of the button frame
+        label = QLabel(title, alignment = Qt.AlignCenter)
+        buttonGrid.addWidget(label, 0, 0, 1, 2)
+
+        # Add the buttons. This is done by putting the buttons in rows
+        # with two buttons per row until the loop has run out of buttons.
+        # Each button is assigned its callback method. The button variable
+        # itself is not saved as it is not needed.
+        for i,(text,cb) in enumerate(zip(buttonTexts, callbacks)):
+            button = QPushButton(text)
+            button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            button.clicked.connect(cb)
+            buttonGrid.addWidget(button, i//2+1, i%2)
+
     ###
-    # Setup/Close Methods
+    # Plot Creation Method
     #
-
-    def areYouSure(self):
-        """
-        Description:
-            In some cases, if the user wants to quit, we should ask if they're
-            sure they want to quit before moving on to the _exit function.
-        """
-        modal = ModalWindow('Are you sure you want to quit?', parent = self.root, title = 'Quit')
-        self.root.wait_window(modal.modalWindow)
-        if modal.choice == 'yes':
-            self._exit()
-    
-    def _exit(self):
-        """
-        Description:
-            This method is called anytime the user wants to quit the program.
-            It will be called if the "X" out of the GUI window, if they choose
-            quit from the menu, or if they finish classifying and say they're
-            done. This function will first write the self.outData variable
-            contents to their outfile, then clean up the GUI and matplotlib
-            window.
-        """
-        # Write the outData to the output file
-        with open(self.options['outfile'], 'w') as outfile:
-            outfile.write('#Filename,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
-            for i, spectra in enumerate(self.outData):
-                for j, col in enumerate(spectra):
-                    outfile.write(col)
-                    if j < 5: outfile.write(',')
-                if i < len(self.outData)-1: outfile.write('\n')
-        # Close down the GUI and plot window
-        self.root.destroy()
-        plt.close('all')
-
-    def setupGUI(self):
-        """
-        Description:
-            This handles setting up all the widgets on the main GUI window and
-            defining the initial state of the GUI. 
-        """
-        
-        # *** Set root window properties ***
-        
-        self.root.title('PyHammer Eyecheck')
-        if os.name == 'nt': self.root.iconbitmap(os.path.join(os.path.split(__file__)[0],'resources','sun.ico'))
-        self.root.resizable(False, False)
-        self.root.geometry('+100+100')
-        # Set the close protocol to call this class' personal exit function
-        self.root.protocol('WM_DELETE_WINDOW', self.areYouSure)
-
-        # *** Define menubar ***
-        
-        menubar = tk.Menu() # Create the overall menubar
-
-        # Define the options menu
-        optionsMenu = tk.Menu(menubar, tearoff = 1)
-        optionsMenu.add_checkbutton(label = 'Show Template Error', variable = self.showTemplateError, command = self.updatePlot)
-        optionsMenu.add_checkbutton(label = 'Smooth Spectrum', variable = self.smoothState, command = self.callback_smooth)
-        optionsMenu.add_checkbutton(label = 'Lock Smooth State', variable = self.lockSmooth)
-        optionsMenu.add_checkbutton(label = 'Remove SDSS Stitch Spike', variable = self.removeSdssSpikeState, command = self.updatePlot)
-        optionsMenu.add_separator()
-        optionsMenu.add_command(label = 'Quit', command = self.areYouSure)
-
-        # Define the about menu
-        helpMenu = tk.Menu(menubar, tearoff = 0)
-        helpMenu.add_command(label = 'Help', command = self.callback_help)
-        helpMenu.add_command(label = 'About', command = self.callback_about)
-
-        # Put all menus together
-        menubar.add_cascade(label = 'Options', menu = optionsMenu)
-        menubar.add_cascade(label = 'Help', menu = helpMenu)
-        self.root.config(menu = menubar)
-        
-        # *** Define labels ***
-        
-        for i, name in enumerate(['Spectrum', 'Type', 'Subtype', '[Fe/H]', 'Switch Type', 'Switch [Fe/H]', 'Spectrum Choices']):
-            ttk.Label(self.root, text = name).grid(row = i, column = 0, columnspan = 1+(i>3),
-                                                   stick = 'e', pady = (10*(i==4),10*(i==0)))
-
-        # *** Define entry box ***
-
-        # This defines the entry box and relevant widgets for indicating the spectrum
-        ttk.Entry(self.root, textvariable = self.spectrumEntry).grid(row = 0, column = 1, columnspan = 9, pady = (0,10), sticky = 'nesw')
-        but = ttk.Button(self.root, text = 'Go', width = 3, command = self.jumpToSpectrum)
-        but.grid(row = 0, column = 10, pady = (0,10))
-        ToolTip(but, 'Enter a new spectrum file name in the entry box\nand hit Go to skip directly to that spectrum.')
-
-        # *** Define radio buttons ***
-        
-        # First the radio buttons for the spectral type
-        for ind, spec in enumerate(self.specType):
-            temp = ttk.Radiobutton(self.root, text = spec, variable = self.specState, value = ind,
-                                   command = lambda: self.callback_specRadioChange(True))
-            temp.grid(row = 1, column = ind+1, sticky = 'nesw')
-            
-        # Now the sub spectral type radio buttons
-        for ind, sub in enumerate(self.subType):
-            self.subButtons.append(ttk.Radiobutton(self.root, text = sub, variable = self.subState, value = ind,
-                                                   command = lambda: self.callback_subRadioChange(True)))
-            self.subButtons[-1].grid(row = 2, column = ind+1, sticky = 'nesw')
-            
-        # Finally the radio buttons for the metallicities
-        for ind, metal in enumerate(self.metalType):
-            self.metalButtons.append(ttk.Radiobutton(self.root, text = metal, variable = self.metalState, value = ind,
-                                                     command = lambda: self.callback_metalRadioChange(True)))
-            self.metalButtons[-1].grid(row = 3, column = ind+1, sticky = 'nesw')
-            
-        # *** Define buttons ***
-        
-        # These will be the buttons for interacting with the data (e.g., smooth it, next, back)
-        ttk.Button(self.root, text = 'Earlier', command = self.callback_earlier).grid(row = 4, column = 2, columnspan = 4, sticky = 'nesw', pady = (10,0))
-        ttk.Button(self.root, text = 'Later', command = self.callback_later).grid(row = 4, column = 6, columnspan = 4, sticky = 'nesw', pady = (10,0))
-        ttk.Button(self.root, text = 'Lower', command = self.callback_lower).grid(row = 5, column = 2, columnspan = 4, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Higher', command = self.callback_higher).grid(row = 5, column = 6, columnspan = 4, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Odd', underline = 0, command = self.callback_odd).grid(row = 6, column = 2, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Bad', underline = 0, command = self.callback_bad).grid(row = 6, column = 4, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Back', underline = 3, command = self.callback_back).grid(row = 6, column = 6, columnspan = 2, sticky = 'nesw')
-        ttk.Button(self.root, text = 'Next', command = self.callback_next).grid(row = 6, column = 8, columnspan = 2, sticky = 'nesw')
-
-        # *** Set key bindings ***
-        
-        self.root.bind('<Control-o>', lambda event: self.callback_odd())
-        self.root.bind('<Control-b>', lambda event: self.callback_bad())
-        self.root.bind('<Control-s>', lambda event: self.callback_smooth(toggle = True))
-        self.root.bind('<Control-e>', lambda event: self.showTemplateError.set(not self.showTemplateError.get()))
-        self.root.bind('<Control-e>', lambda event: self.updatePlot(), add = '+')
-        self.root.bind('<Control-l>', lambda event: self.lockSmooth.set(not self.lockSmooth.get()))
-        self.root.bind('<Control-r>', lambda event: self.removeSdssSpikeState.set(not self.removeSdssSpikeState.get()))
-        self.root.bind('<Control-r>', lambda event: self.updatePlot(), add = '+')
-        self.root.bind('<Return>', lambda event: self.callback_next())
-        self.root.bind('<Control-k>', lambda event: self.callback_back())
-        self.root.bind('<Left>', lambda event: self.callback_earlier())
-        self.root.bind('<Right>', lambda event: self.callback_later())
-        self.root.bind('<Down>', lambda event: self.callback_lower())
-        self.root.bind('<Up>', lambda event: self.callback_higher())
-        self.root.bind('<Control-p>', lambda event: self.callback_hammer_time())
-
-        # Force the GUI to appear as a top level window, on top of all other windows
-        self.root.lift()
-        self.root.call('wm', 'attributes', '.', '-topmost', True)
-        self.root.after_idle(self.root.call, 'wm', 'attributes', '.', '-topmost', False)
 
     def updatePlot(self):
         """
@@ -295,17 +399,21 @@ class Eyecheck(object):
                 self.zoomed = True
                 self.zoomed_xlim = plt.gca().get_xlim()
                 self.zoomed_ylim = plt.gca().get_ylim()
-        
+
 
         # *** Define Initial Figure ***
-        
-        fig = plt.figure('Pyhammer Spectrum Matching', figsize = (12,6))
-        plt.cla()   # Clear the plot
-        if plt.get_current_fig_manager().toolbar._active != 'ZOOM':
+
+        self.figure
+        plt.cla()
+        #ax = self.figure.add_subplot(111)
+        self.cursor = Cursor(plt.gca(), color = '#C8D2DC', lw = 0.5)
+        if self.toolbar._active != 'ZOOM':
             # Make it so the zoom button is selected by default
-            plt.get_current_fig_manager().toolbar.zoom()
+            self.toolbar.zoom()
+
 
         # *** Plot the template ***
+
 
         # Determine which, if any, template file to load
         templateFile = self.getTemplateFile()
@@ -329,7 +437,7 @@ class Eyecheck(object):
 
             # Plot template error bars and spectrum line
             plt.plot(lam, flux, '-k', label = 'Template')
-            if self.showTemplateError.get():    # Only plot template error if option is selected to do so
+            if self.showTemplateError.isChecked(): # Only plot template error if option is selected to do so
                 plt.fill_between(lam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template RMS')
             # Determine and format the template name for the title, from the filename
             templateName = os.path.basename(os.path.splitext(templateFile)[0])
@@ -340,25 +448,26 @@ class Eyecheck(object):
         else:
             # No template exists, plot nothing
             templateName = 'Not\;Available'
-            
+
+
         # *** Plot the user's data ***
 
+
         # Get the flux and fix it as the user requested
-        if self.smoothState.get() == False:
-            flux = self.specObj.flux
-        else:
+        if self.smoothSpectrum.isChecked():
             flux = self.specObj.smoothFlux
+        else:
+            flux = self.specObj.flux
             
-        if self.removeSdssSpikeState.get() == True:
+        if self.removeStitchSpike.isChecked():
             flux = Spectrum.removeSdssStitchSpike(self.specObj.wavelength, flux)
 
         # Plot it all up and define the title name
         plt.plot(self.specObj.wavelength, flux, '-r', alpha = 0.75, label = 'Your Spectrum')
         spectraName = os.path.basename(os.path.splitext(self.outData[self.specIndex,0])[0])
-        
 
         # *** Set Plot Labels ***
-        
+                
         plt.xlabel(r'$\mathrm{Wavelength\;[\AA]}$', fontsize = 16)
         plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
         plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName.replace('_','\_') + '}$', fontsize = 16)
@@ -369,7 +478,7 @@ class Eyecheck(object):
         # In matplotlib versions before 1.5, the fill_between plot command above
         # does not appear in the legend. In those cases, we will fake it out by
         # putting in a fake legend entry to match the fill_between plot.
-        if pltVersion < '1.5' and self.showTemplateError.get() and templateFile is not None:
+        if pltVersion < '1.5' and self.showTemplateError.isChecked() and templateFile is not None:
             labels.append('Template RMS')
             handles.append(Rectangle((0,0),0,0, color = 'b', ec = 'None', alpha = 0.1))
         labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
@@ -378,7 +487,7 @@ class Eyecheck(object):
         # Set legend text colors to match plot line colors
         if templateFile is not None:
             # Don't adjust the template error if it wasn't plotted
-            if self.showTemplateError.get():
+            if self.showTemplateError.isChecked():
                 plt.setp(leg.get_texts()[1], color = 'b', alpha = 0.5)  # Adjust template error, alpha is higher to make more readable
                 plt.setp(leg.get_texts()[2], color = 'r', alpha = 0.75) # Adjust spectrum label
             else:
@@ -389,212 +498,89 @@ class Eyecheck(object):
         # *** Set Plot Spacing ***
         
         plt.subplots_adjust(left = 0.075, right = 0.975, top = 0.9, bottom = 0.15)
-        
+
         # *** Set Plot Limits ***
 
         plt.xlim([3000,11000])                  # Set x axis limits to constant value
-        fig.canvas.toolbar.update()             # Clears out view stack
-        self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
-        self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
-        fig.canvas.toolbar.push_current()       # Push the current full zoom level to the view stack
-        if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
-            plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
-            plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
-            fig.canvas.toolbar.push_current()   # Push the current, zoomed level to the view stack so it shows up first
+##        self.figure.canvas.toolbar.update()                   # Clears out view stack
+##        self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
+##        self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
+##        self.figure.canvas.toolbar.push_current()             # Push the current full zoom level to the view stack
+##        if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
+##            plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
+##            plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
+##            self.figure.canvas.toolbar.push_current()         # Push the current, zoomed level to the view stack so it shows up first
 
         # *** Draw the Plot ***
-    
-        plt.draw()
         
+        self.canvas.draw()
 
-    ##
-    # Menu Item Callbacks
+    ###
+    # Menu Item Callback Methods
     #
+
     
-    def callback_help(self):
-        mainStr = (
-            'Welcome to the main GUI for spectral typing your spectra.\n\n'
-            'Each spectra in your spectra list file will be loaded in '
-            'sequence and shown on top of the template it was matched '
-            'to. From here, fine tune the spectral type by comparing '
-            'your spectrum to the templates and choose "Next" when '
-            "you've landed on the correct choice. Continue through each "
-            'spectrum until finished.')
-        buttonStr = (
-            'Upon opening the Eyecheck program, the first spectrum in your '
-            'list will be loaded and displayed on top of the template determined '
-            'by the spectral type guesser.\n\n'
-            'Use the "Earlier" and "Later" buttons to change the spectrum '
-            'templates. Note that not all templates exist for all spectral '
-            'types. This program specifically disallows choosing K8 and K9 '
-            'spectral types as well.\n\n'
-            'The "Higher" and "Lower" buttons change the metallicity. Again, '
-            'not all metallicities exist as templates.\n\n'
-            'The "Odd" button allows you to mark a spectrum as something other '
-            'than a standard classification, such as a white dwarf or galaxy.\n\n'
-            'The "Bad" button simply marks the spectrum as BAD in the output '
-            'file, indicating it is not able to be classified.\n\n'
-            'You can cycle between your spectra using the "Back" and "Next" buttons. '
-            'Note that hitting "Next" will save the currently selected state as '
-            'the classification for that spectra.')
-        keyStr = (
-            'The following keys are mapped to specific actions.\n\n'
-            '<Left>\tEarlier spectral type button\n'
-            '<Right>\tLater spectral type button\n'
-            '<Up>\tHigher metallicity button\n'
-            '<Down>\tLower metallicity button\n'
-            '<Enter>\tAccept spectral classification\n'
-            '<Ctrl-K>\tMove to previous spectrum\n'
-            '<Ctrl-O>\tClassify spectrum as odd\n'
-            '<Ctrl-B>\tClassify spectrum as bad\n'
-            '<Ctrl-E>\tToggle the template error\n'
-            '<Ctrl-S>\tSmooth/Unsmooth the spectrum\n'
-            '<Ctrl-L>\tLock the smooth state between spectra\n'
-            '<Ctrl-R>\tToggle removing the stiching spike in SDSS spectra\n'
-            '<Ctrl-P>')
-        tipStr = (
-            'The following are a set of tips for useful features of the '
-            'program.\n\n'
-            'Any zoom applied to the plot is held constant between switching '
-            'templates. This makes it easy to compare templates around specific '
-            'features or spectral lines. Hit the home button on the plot '
-            'to return to the original zoom level.\n\n'
-            'The entry field on the GUI will display the currently plotted '
-            'spectrum. You can choose to enter one of the spectra in your list'
-            'and hit the "Go" button to automatically jump to that spectrum.\n\n'
-            'The smooth menu option will allow you to smooth or unsmooth '
-            'your spectra in the event that it is noisy. This simply applies '
-            'a boxcar convolution across your spectrum, leaving the edges unsmoothed.\n\n'
-            'By default, every new, loaded spectrum will be unsmoothed and '
-            'the smooth button state reset. You can choose to keep the smooth '
-            'button state between loading spectrum by selecting the menu option '
-            '"Lock Smooth State".\n\n'
-            'In SDSS spectra, there is a spike that occurs between 5569 and 5588'
-            'angstroms caused by stitching together the results from both detectors.'
-            'You can choose to artificially remove this spike for easier viewing by'
-            'selecting the "Remove SDSS Stitch Spike" from the Options menu.\n\n'
-            'Some keys may need to be hit rapidly.')
-        contactStr = (
-            'Aurora Kesseli\n'
-            'aurorak@bu.edu')
-        InfoWindow(('Main',    mainStr),
-                   ('Buttons', buttonStr),
-                   ('Keys',    keyStr),
-                   ('Tips',    tipStr),
-                   ('Contact', contactStr), parent = self.root, title = 'PyHammer Help', height = 8)
 
-    def callback_about(self):
-        aboutStr = (
-            'This project was developed by a select group of graduate students '
-            'at the Department of Astronomy at Boston University. The project '
-            'was lead by Aurora Kesseli with development help and advice provided '
-            'by Andrew West, Mark Veyette, Brandon Harrison, and Dan Feldman. '
-            'Contributions were further provided by Dylan Morgan and Chris Theissan.\n\n'
-            'See the acompanying paper Kesseli et al. (2016) for further details.')
-        InfoWindow(aboutStr, parent = self.root, title = 'PyHammer About')
+    
 
-    ##
-    # Button and Key Press Callbacks
+    ###
+    # Main GUI Component Callback Methods
     #
-    
-    def callback_odd(self):
-        # Open an OptionWindow object and wait for a user response
-        choice = OptionWindow(['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'], parent = self.root, title = 'PyHammer', instruction = 'Pick an odd type')
-        self.root.wait_window(choice.optionWindow)
-        if choice.name is not None:
-            # Store the user's response in the outData
-            self.outData[self.specIndex,4] = choice.name
-            self.outData[self.specIndex,5] = 'nan'
-            # Move to the next spectra
-            self.moveToNextSpectrum()
-        
-    def callback_bad(self):
-        # Store BAD as the user's choices
-        self.outData[self.specIndex,4] = 'BAD'
-        self.outData[self.specIndex,5] = 'BAD'
-        # Move to the next spectra
-        self.moveToNextSpectrum()
-        
-    def callback_smooth(self, toggle = False):
-        if toggle:
-            self.smoothState.set(not self.smoothState.get())
-        # Update the plot now
+
+    def spectrumChosen(self, val):
+        self.specIndex = val
+        self.loadUserSpectrum()
         self.updatePlot()
-        
-    def callback_next(self):
-        # Store the choice for the current spectra
-        self.outData[self.specIndex,4] = self.specType[self.specState.get()] + str(self.subState.get())
-        self.outData[self.specIndex,5] = self.metalType[self.metalState.get()]
+
+    def specTypeChanged(self, val):
+        print('New Stellar Type', val)
+
+    def specSubtypeChanged(self, val):
+        print('New Stellar Subtype', val)
+
+    def metallicityChanged(self, val):
+        print('New Metallicity', val)
+
+    def earlierCallback(self):
+        print('Earlier Button Clicked')
+
+    def laterCallback(self):
+        print('Later Button Clicked')
+
+    def lowerMetalCallback(self):
+        print('Lower Metal Button Clicked')
+
+    def higherMetalCallback(self):
+        print('Higher Metal Button Clicked')
+
+    def oddCallback(self):
+        option = OptionWindow(self, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'], instruction = 'Pick an odd type')
+        if option.choice is not None:
+            # Store the user's respose in the outData
+            self.outData[self.specIndex,5] = option.choice
+            self.outData[self.specIndex,6] = 'nan'
+            # Move to the next spectrum
+            self.moveToNextSpectrum()
+
+    def badCallback(self):
+        # Store BAD as the user's choices
+        self.outData[self.specIndex,5] = 'BAD'
+        self.outData[self.specIndex,6] = 'BAD'
         # Move to the next spectra
         self.moveToNextSpectrum()
-        
-    def callback_back(self):
+
+    def previousCallback(self):
         self.moveToPreviousSpectrum()
-    
-    def callback_earlier(self):
-        curSub  = self.subState.get()
-        curSpec = self.specState.get()
-        # If user hasn't selected "O" spectral type and they're
-        # currently selected zero sub type, we need to loop around
-        # to the previous spectral type
-        if curSpec != 0 and curSub == 0:
-            # Set the sub spectral type, skipping over K8 and K9
-            # since they don't exist.
-            self.subState.set(7 if curSpec == 6 else 9)
-            # Decrease the spectral type
-            self.specState.set(curSpec - 1)
-        else:
-            # Just decrease sub spectral type
-            self.subState.set(curSub - 1)
 
-        # Call the spectral and sub spectral type radio
-        # button change callbacks as if the user changed
-        # the buttons themselves
-        self.callback_specRadioChange(True)
-        self.callback_subRadioChange(False)
-
-    def callback_later(self):
-        curSub  = self.subState.get()
-        curSpec = self.specState.get()
-        # If the user hasn't selected "L" spectral type and
-        # they're currently selecting "9" spectral sub type
-        # (or 7 if spec type is "K"), we need to loop around
-        # to the next spectral type
-        if curSpec != 7 and (curSub == 9 or (curSpec == 5 and curSub == 7)):
-            self.specState.set(curSpec + 1)
-            self.subState.set(0)
-        else:
-            # Just increase the sub spectral type
-            self.subState.set(curSub + 1)
-
-        # Call the spectral and sub spectral type radio
-        # button change callbacks as if the user changed
-        # the buttons themselves.
-        self.callback_specRadioChange(True)
-        self.callback_subRadioChange(False)
-
-    def callback_higher(self):
-        curMetal = self.metalState.get()
-        # If the user isn't at the max metallicity option,
-        # then increase the metallicity
-        if curMetal != 6:
-            self.metalState.set(curMetal + 1)
-        # Call the metallicity radio button change callback
-        # as if the user changed the button themselves.
-        self.callback_metalRadioChange(True)
-
-    def callback_lower(self):
-        curMetal = self.metalState.get()
-        # If the user isn't at the min mellaticity option,
-        # then decrease the metallicity
-        if curMetal != 0:
-            self.metalState.set(curMetal - 1)
-        # Call the metallicity radio button change callback
-        # as if the user changed the button themselves.
-        self.callback_metalRadioChange(True)
+    def nextCallback(self):
+        # Store the choice for the current spectra
+        self.outData[self.specIndex,5] = self.specType[self.specTypeSlider.sliderPosition()] + str(self.subTypeSlider.sliderPosition())
+        self.outData[self.specIndex,6] = self.metalType[self.metalSlider.sliderPosition()]
+        # Move to the next spectra
+        self.moveToNextSpectrum()
 
     def callback_hammer_time(self):
-        timeCalled = time.time()
+        timeCalled = time()
         if self.pPressTime == 0 or timeCalled - self.pPressTime > 1.5:
             # Reset
             self.pPressTime = timeCalled
@@ -608,37 +594,9 @@ class Eyecheck(object):
                        (46,1),(45,12),(46,1),(32,2),(10,1),(32,9),(42,1),(32,7),(91,1),(32,1),(93,1),(95,11),(124,1),(47,2),(80,1),(121,1),(72,1),
                        (97,1),(109,2),(101,1),(114,1),(47,2),(124,1),(32,2),(10,1),(32,14),(42,1),(32,2),(41,1),(32,1),(40,1),(32,11),(39,1),(45,12),
                        (39,1),(32,2),(10,1),(32,17),(39,1),(45,1),(39,1),(32,1),(42,1),(32,25),(10,1),(32,13),(42,1),(32,33),(10,1),(32,19),(42,1),(32,27)]
-            InfoWindow(''.join([chr(c[0])*c[1] for c in chrList]), parent = self.root, height = 9, fontFamily = 'Courier')
-        
-
-    ##
-    # Radiobutton Selection Change Callbacks
-    #
-
-    def callback_specRadioChange(self, callUpdatePlot):
-        # If the spectral type radio button has changed,
-        # check to see if the user switched to a "K" type.
-        # If they have, turn off the option to pick K8 and K9
-        # Since those don't exist. Otherwise, just turn those
-        # sub spectral type buttons on.
-        if self.specState.get() == 5:
-            self.subButtons[-1].configure(state = 'disabled')
-            self.subButtons[-2].configure(state = 'disabled')
-            if self.subState.get() == 8 or self.subState.get() == 9:
-                self.subState.set(7)
-        else:
-            self.subButtons[-1].configure(state = 'normal')
-            self.subButtons[-2].configure(state = 'normal')
-            
-        if callUpdatePlot: self.updatePlot()
-
-    def callback_subRadioChange(self, callUpdatePlot):
-        if callUpdatePlot: self.updatePlot()
-
-    def callback_metalRadioChange(self, callUpdatePlot):
-        if callUpdatePlot: self.updatePlot()
-
-    ##
+            MessageBox(self, ''.join([chr(c[0])*c[1] for c in chrList]), fontFamily = 'courier')
+    
+    ###
     # Utility Methods
     #
 
@@ -649,109 +607,81 @@ class Eyecheck(object):
             does is determines if the user is at the end of the list of
             spectrum, and, if so, asks if they're done. If they aren't at
             the end, it moves to the next spectrum (by incrementing self.specIndex)
-            and calling self.getUserSpectrum.
+            and calling self.loadUserSpectrum.
         """
         if self.specIndex+1 >= len(self.outData):
-            self.root.bell()
-            modal = ModalWindow("You've classified all the spectra. Are you finished?", parent = self.root)
-            self.root.wait_window(modal.modalWindow)
-            if modal.choice == 'yes':
+            QApplication.beep() # Use the system beep to notify the user
+            msg =  MessageBox(self, "You've classified all the spectra. Are you finished?",
+                              buttons = QMessageBox.Yes|QMessageBox.No)
+            if msg.reply == QMessageBox.Yes:
                 self._exit()
         else:
             self.specIndex += 1
-            self.getUserSpectrum()
+            self.loadUserSpectrum()
+            self.updatePlot()
 
     def moveToPreviousSpectrum(self):
         """
         Description:
             This method handles moving to the previous spectrum. It will simply
             decrement the self.specIndex variable if they're not already on
-            the first index and call self.getUserSpectrum.
+            the first index and call self.loadUserSpectrum.
         """
         if self.specIndex > 0:
             self.specIndex -= 1
-            self.getUserSpectrum()
+            self.loadUserSpectrum()
+            self.updatePlot()
 
-    def jumpToSpectrum(self):
-        """
-        Description:
-            This method handles moving to a different spectrum in the list which
-            may or may not be before or after the current spectrum. This is handled
-            by looking for a spectrum in the inData list which matches the spectrum
-            in the Entry field in the GUI. If a match is found, that spectrum is
-            loaded, otherwise they're informed that spectrum could not be found.
-        """
-        spectrumFound = False
-        # Get the user's input spectrum name and make sure it has an extension
-        userInput = os.path.basename(self.spectrumEntry.get())
-        if userInput.find('.') == -1:
-            message = 'Make sure to provide a file extension in your name.'
-            InfoWindow(message, parent = self.root, title = 'PyHammer Error')
-            return
-        # Scan through the outData file and try to find a matching spectrum
-        for i, spectrum in enumerate(self.outData):
-            if userInput == os.path.basename(spectrum[0]):
-                self.specIndex = i
-                spectrumFound = True
-                break
-        # If one wasn't found, inform the user of a problem
-        if not spectrumFound:
-            message = ('The spectrum you input could not be matched '
-                       'to any of the spectrum in your output file '
-                       'list. Check your input and try again.')
-            InfoWindow(message, parent = self.root, title = 'PyHammer Error')
-        else:
-            # If a match was found, load that spectrum
-            self.getUserSpectrum()
-
-    def getUserSpectrum(self):
+    def loadUserSpectrum(self):
         """
         Description:
             This handles loading a new spectrum based on the self.specIndex variable
-            and updates the GUI and plot window accordingly.
+            and updates the GUI components accordingly
         """
-        # Read in the next spectrum file indicated by self.specIndex
+        
+        # Read in the spectrum file indicated by self.specIndex
         fname = self.outData[self.specIndex,0]
-        ftype = np.extract(self.inData[:,0] == os.path.basename(fname), self.inData[:,1])[0]
+        ftype = self.outData[self.specIndex,1]
         self.specObj.readFile(self.options['spectraPath']+fname, ftype) # Ignore returned values
         self.specObj.normalizeFlux()
+        
         # Set the spectrum entry field to the new spectrum name
-        self.spectrumEntry.set(os.path.basename(self.outData[self.specIndex,0]))
-        # Set the radio button selections to the new spectrum's guessed classifcation
-        self.specState.set(self.specType.index(self.outData[self.specIndex,2][0]))
-        self.subState.set(int(self.outData[self.specIndex,2][1]))
-        self.metalState.set(self.metalType.index(self.outData[self.specIndex,3]))
+        self.spectrumList.setCurrentIndex(self.specIndex)
+
+        # Set the sliders to the new spectrum's auto-classified choices
+        self.specTypeSlider.setSliderPosition(self.specType.index(self.outData[self.specIndex,3][0]))
+        self.subTypeSlider.setSliderPosition(self.subType.index(self.outData[self.specIndex,3][1]))
+        self.metalSlider.setSliderPosition(self.metalType.index(self.outData[self.specIndex,4]))
+        
         # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
         # between loading templates, not between switching spectra.
         self.full_xlim = None
         self.full_ylim = None
         self.zoomed = False
+        
         # Reset the smooth state to be unsmoothed, unless the user chose to lock the state
-        if not self.lockSmooth.get():
-            self.smoothState.set(False)
-        # Update the plot
-        self.updatePlot()
+        if not self.lockSmoothState.isChecked():
+            self.smoothSpectrum.setChecked(False)
 
     def getTemplateFile(self, specState = None, subState = None, metalState = None):
         """
         Description:
             This will determine the filename for the template which matches the
             current template selection. Either that selection will come from
-            whichever radio buttons are selected, or else from input to this
-            function. This will search for filenames matching a specific format.
-            The first attempt will be to look for a filename of the format
-            "SS_+M.M_Dwarf.fits", where the SS is the spectral type and subtype
-            and +/-M.M is the [Fe/H] metallicity. The next next format it will
-            try (if the first doesn't exist) is "SS_+M.M.fits". After that it
-            will try "SS.fits".
+            current slider positions, or else from input to this function. This
+            will search for filenames matching a specific format. The first attempt
+            will be to look for a filename of the format "SS_+M.M_Dwarf.fits",
+            where the SS is the spectral type and subtype and +/-M.M is the [Fe/H]
+            metallicity. The next next format it will try (if the first doesn't
+            exist) is "SS_+M.M.fits". After that it will try "SS.fits".
         """
         # If values weren't passed in for certain states, assume we should
-        # use what is chosen on the GUI
-        if specState is None: specState = self.specState.get()
-        if subState is None: subState = self.subState.get()
-        if metalState is None: metalState = self.metalState.get()
+        # use what is chosen on the GUI sliders
+        if specState is None: specState = self.specTypeSlider.sliderPosition()
+        if subState is None: subState = self.subTypeSlider.sliderPosition()
+        if metalState is None: metalState = self.metalSlider.sliderPosition()
 
-        # Try using the full name
+        # Try using the full name, i.e., SS_+M.M_Dwarf.fits
         filename = self.specType[specState] + str(subState) + '_' + self.metalType[metalState] + '_Dwarf'
 
         fullPath = os.path.join(self.templateDir, filename + '.fits')
@@ -759,7 +689,7 @@ class Eyecheck(object):
         if os.path.isfile(fullPath):
             return fullPath
 
-        # Try using only the spectra and metallicity in the name
+        # Try using only the spectra and metallicity in the name, i.e., SS_+M.M.fits
         filename = filename[:7]
 
         fullPath = os.path.join(self.templateDir, filename + '.fits')
@@ -767,7 +697,7 @@ class Eyecheck(object):
         if os.path.isfile(fullPath):
             return fullPath
         
-        # Try to use just the spectral type
+        # Try to use just the spectral type, i.e., SS.fits
         filename = filename[:2]
 
         fullPath = os.path.join(self.templateDir, filename + '.fits')
@@ -777,3 +707,44 @@ class Eyecheck(object):
 
         # Return None if file could not be found
         return None
+
+    def closeEvent(self, event):
+        """
+        Description:
+            This method is the window's closeEvent method and is here to
+            override the QMainWindow closeEvent method. Effectively, if the
+            user want's to quit the program and they trigger the close
+            event, this will catch that event and ask them if they're sure
+            they want to close first. If they respond with yes, this will
+            run the _exit function which saves the data the user has produced
+            and then calls the parent close method to handle the actual
+            close process. If they respond no, we just ignore the close
+            event and continue running the GUI.
+        """
+        # Ask the user if they're sure they actually want to quit
+        msg = MessageBox(self, 'Are you sure you want to quit?', title = 'Quit',
+                         buttons = QMessageBox.Yes|QMessageBox.No)
+        if msg.reply == QMessageBox.Yes:
+            self._exit()
+        else:
+            event.ignore()
+
+    def _exit(self):
+        """
+        Description:
+            This method is called anytime the user wants to quit the program.
+            It will be called if they "X" out of the GUI window, if they choose
+            quit from the menu, or if they finish classifying and say they're
+            done. This function will first write the self.outData variable
+            contents to their outfile, then close the GUI.
+        """
+        # Write the outData to the output file
+        with open(self.options['outfile'], 'w') as outfile:
+            outfile.write('#Filename,File Type,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
+            for i, spectra in enumerate(self.outData):
+                for j, col in enumerate(spectra):
+                    outfile.write(col)
+                    if j < 6: outfile.write(',')
+                if i < len(self.outData)-1: outfile.write('\n')
+        
+        super().close()
