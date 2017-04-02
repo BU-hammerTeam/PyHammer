@@ -9,7 +9,6 @@ class Eyecheck(QMainWindow):
         super().__init__()
 
         # Store Input Variables
-
         self.specObj = specObj      # The Spectrum object created in the pyhammer script
         self.options = options      # The list of options input by the user in the pyhammer script
 
@@ -19,7 +18,7 @@ class Eyecheck(QMainWindow):
         self.createGui()            # Define and layout the GUI elements
         self.selectInitialSpectrum()# Determine which spectrum to display first
         if self.specIndex == -1:    # If no initial spectrum is chosen
-            self._exit()            # Call the GUI close method
+            qApp.quit()             # Quit the QApplication
             return                  # Return back to the main pyhammer routine
         self.loadUserSpectrum()     # Otherwise, oad the appropriate spectrum to be displayed
         self.updatePlot()           # Update the plot showing the template and spectrum
@@ -66,7 +65,7 @@ class Eyecheck(QMainWindow):
         self.buttonStr = (
             'Upon opening the Eyecheck program, the first spectrum in your '
             'list will be loaded and displayed on top of the template determined '
-            'by the spectral type guesser.\n\n'
+            'by the auto-classification algorithm.\n\n'
             'Use the "Earlier" and "Later" buttons to change the spectrum '
             'templates. Note that not all templates exist for all spectral '
             'types. This program specifically disallows choosing K8 and K9 '
@@ -102,13 +101,14 @@ class Eyecheck(QMainWindow):
         self.tipStr = (
             'The following are a set of tips for useful features of the '
             'program.\n\n'
+            'The drop down list in the upper left of the Eyecheck window '
+            'displays all the spectra in your list. Select a different spectra '
+            'from this drop down to automatically jump to a different spectra. '
+            'This will save the choice for the current spectrum.\n\n'
             'Any zoom applied to the plot is held constant between switching '
             'templates. This makes it easy to compare templates around specific '
             'features or spectral lines. Hit the home button on the plot '
             'to return to the original zoom level.\n\n'
-            'The entry field on the GUI will display the currently plotted '
-            'spectrum. You can choose to enter one of the spectra in your list'
-            'and hit the "Go" button to automatically jump to that spectrum.\n\n'
             'The smooth menu option will allow you to smooth or unsmooth '
             'your spectra in the event that it is noisy. This simply applies '
             'a boxcar convolution across your spectrum, leaving the edges unsmoothed.\n\n'
@@ -116,8 +116,8 @@ class Eyecheck(QMainWindow):
             'the smooth button state reset. You can choose to keep the smooth '
             'button state between loading spectrum by selecting the menu option '
             '"Lock Smooth State".\n\n'
-            'In SDSS spectra, there is a spike that occurs between 5569 and 5588'
-            'angstroms caused by stitching together the results from both detectors.'
+            'In SDSS spectra, there is a spike that occurs between 5569 and 5588 '
+            'Angstroms caused by stitching together the results from both detectors.'
             'You can choose to artificially remove this spike for easier viewing by'
             'selecting the "Remove SDSS Stitch Spike" from the Options menu.\n\n'
             'Some keys may need to be hit rapidly.')
@@ -128,7 +128,7 @@ class Eyecheck(QMainWindow):
             'was lead by Aurora Kesseli with development help and advice provided '
             'by Andrew West, Mark Veyette, Brandon Harrison, and Dan Feldman. '
             'Contributions were further provided by Dylan Morgan and Chris Theissan.\n\n'
-            'See the acompanying paper Kesseli et al. (2017) or the PyHammer github\n'
+            'See the accompanying paper Kesseli et al. (2017) or the PyHammer github\n'
             'site for further details.')
 
         # Other variables
@@ -166,7 +166,6 @@ class Eyecheck(QMainWindow):
                 if msg.reply == QMessageBox.Yes:
                     self.specIndex = 0
                 else:
-                    print('User chose not to restart')
                     self.specIndex = -1 # Indicates we don't want to classify anything
                     return
             else:
@@ -199,15 +198,24 @@ class Eyecheck(QMainWindow):
         self.spectrumList.currentIndexChanged.connect(self.spectrumChosen)
         self.grid.addWidget(self.spectrumList, 1, 0, 1, 3)
 
-        # The collection of sliders
-        self.specTypeSlider = self.createSlider('Stellar\nType', self.specType, self.specTypeChanged)
-        self.subTypeSlider = self.createSlider('Stellar\nSubtype', self.subType, self.specSubtypeChanged)
-        self.metalSlider = self.createSlider('Metallicity\n[Fe/H]', self.metalType, self.metallicityChanged)
+        # The collection of sliders and their accompanying labels
+        self.specTypeLabel, self.specTypeSlider = self.createSlider('Stellar\nType', self.specType, self.specTypeChanged)
+        self.subTypeLabel, self.subTypeSlider = self.createSlider('Stellar\nSubtype', self.subType, self.specSubtypeChanged)
+        self.metalLabel, self.metalSlider = self.createSlider('Metallicity\n[Fe/H]', self.metalType, self.metallicityChanged)
 
         # The collection of buttons
-        self.createButtons('Change Spectral Type', ['Earlier', 'Later'], [self.earlierCallback, self.laterCallback])
-        self.createButtons('Change Metallicity [Fe/H]', ['Lower', 'Higher'], [self.lowerMetalCallback, self.higherMetalCallback])
-        self.createButtons('Spectrum Choices', ['Odd', 'Bad', 'Previous', 'Next'], [self.oddCallback, self.badCallback, self.previousCallback, self.nextCallback])
+        self.createButtons('Change Spectral Type', ['Earlier', 'Later'],
+                           ['Move to an eariler spectrum template', 'Move to a later spectrum template'],
+                           [self.earlierCallback, self.laterCallback])
+        self.createButtons('Change Metallicity [Fe/H]', ['Lower', 'Higher'],
+                           ['Move to a lower metallicity template', 'Move to a higher metallicity template'],
+                           [self.lowerMetalCallback, self.higherMetalCallback])
+        self.createButtons('Spectrum Choices', ['Odd', 'Bad', 'Previous', 'Next'],
+                           ['Classify your spectrum as a non-standard spectral type',
+                            'Classify your spectrum as bad',
+                            'Move to the previous spectrum',
+                            'Classify your spectrum as the current selection and move to the next spectrum'],
+                           [self.oddCallback, self.badCallback, self.previousCallback, self.nextCallback])
 
         # The matplotlib plot
         self.figure = plt.figure(figsize = (12,6))
@@ -244,6 +252,8 @@ class Eyecheck(QMainWindow):
         self.setWindowIcon(self.icon)
 
     def createMenuBar(self):
+
+        self.menuBar().setNativeMenuBar(False)
 
         # *** Define Options Menu ***
         
@@ -333,20 +343,24 @@ class Eyecheck(QMainWindow):
         label = QLabel(title, alignment = Qt.AlignCenter)
         sliderGrid.addWidget(label, 0, 0, 1, 2)
 
-        # Add the text labels to the right of the slider
-        for i,text in enumerate(labels):
-            label = QLabel(text, alignment = Qt.AlignRight|Qt.AlignVCenter)
-            sliderGrid.addWidget(label, i+1, 0)
-
         # Add the slider
-        slider = QSlider(Qt.Vertical, minimum = 0, maximum = len(labels)-1, tickInterval = 1, pageStep = 1, invertedAppearance = True)
-        slider.sliderMoved.connect(callback)
+        slider = Slider(Qt.Vertical, minimum = 0, maximum = len(labels)-1, tickInterval = 1, pageStep = 1, invertedAppearance = True)
+        slider.valueChanged.connect(callback)
+        slider.setTickPosition(QSlider.TicksLeft)
+        slider.setTracking(False)
         sliderGrid.addWidget(slider, 1, 1, len(labels), 1)
 
-        # Return the slider so we can access its state later
-        return slider
+        # Add the text labels to the left of the slider
+        tickLabels = []
+        for i,text in enumerate(labels):
+            label = SliderLabel(text, slider, i)
+            tickLabels.append(label)
+            sliderGrid.addWidget(label, i+1, 0)
 
-    def createButtons(self, title, buttonTexts, callbacks):
+        # Return the labels and slider so we can access them later
+        return tickLabels, slider
+
+    def createButtons(self, title, buttonTexts, tooltips, callbacks):
         # Define or update the row of the top-level grid to
         # put this button frame into
         if not hasattr(self, 'row'):
@@ -368,9 +382,10 @@ class Eyecheck(QMainWindow):
         # with two buttons per row until the loop has run out of buttons.
         # Each button is assigned its callback method. The button variable
         # itself is not saved as it is not needed.
-        for i,(text,cb) in enumerate(zip(buttonTexts, callbacks)):
+        for i,(text,tt,cb) in enumerate(zip(buttonTexts, tooltips, callbacks)):
             button = QPushButton(text)
             button.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            button.setToolTip(tt)
             button.clicked.connect(cb)
             buttonGrid.addWidget(button, i//2+1, i%2)
 
@@ -403,10 +418,9 @@ class Eyecheck(QMainWindow):
 
         # *** Define Initial Figure ***
 
-        self.figure
         plt.cla()
-        #ax = self.figure.add_subplot(111)
-        self.cursor = Cursor(plt.gca(), color = '#C8D2DC', lw = 0.5)
+        ax = self.figure.add_subplot(111)
+        #self.cursor = Cursor(ax, color = '#C8D2DC', lw = 0.5)
         if self.toolbar._active != 'ZOOM':
             # Make it so the zoom button is selected by default
             self.toolbar.zoom()
@@ -436,9 +450,9 @@ class Eyecheck(QMainWindow):
                 flux = Spectrum.normalize(lam, self.specObj.normWavelength, flux)
 
             # Plot template error bars and spectrum line
-            plt.plot(lam, flux, '-k', label = 'Template')
+            ax.plot(lam, flux, '-k', label = 'Template')
             if self.showTemplateError.isChecked(): # Only plot template error if option is selected to do so
-                plt.fill_between(lam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template RMS')
+                ax.fill_between(lam, flux+std, flux-std, color = 'b', edgecolor = 'None', alpha = 0.1, label = 'Template RMS')
             # Determine and format the template name for the title, from the filename
             templateName = os.path.basename(os.path.splitext(templateFile)[0])
             if '_' in templateName:
@@ -463,18 +477,18 @@ class Eyecheck(QMainWindow):
             flux = Spectrum.removeSdssStitchSpike(self.specObj.wavelength, flux)
 
         # Plot it all up and define the title name
-        plt.plot(self.specObj.wavelength, flux, '-r', alpha = 0.75, label = 'Your Spectrum')
+        ax.plot(self.specObj.wavelength, flux, '-r', alpha = 0.75, label = 'Your Spectrum')
         spectraName = os.path.basename(os.path.splitext(self.outData[self.specIndex,0])[0])
 
         # *** Set Plot Labels ***
                 
-        plt.xlabel(r'$\mathrm{Wavelength\;[\AA]}$', fontsize = 16)
-        plt.ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
-        plt.title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName.replace('_','\_') + '}$', fontsize = 16)
+        ax.set_xlabel(r'$\mathrm{Wavelength\;[\AA]}$', fontsize = 16)
+        ax.set_ylabel(r'$\mathrm{Normalized\;Flux}$', fontsize = 16)
+        ax.set_title(r'$\mathrm{Template:\;' + templateName + '}$\n$\mathrm{Spectrum:\;' + spectraName.replace('_','\_') + '}$', fontsize = 16)
 
         # *** Set Legend Settings ***
 
-        handles, labels = plt.gca().get_legend_handles_labels()
+        handles, labels = ax.get_legend_handles_labels()
         # In matplotlib versions before 1.5, the fill_between plot command above
         # does not appear in the legend. In those cases, we will fake it out by
         # putting in a fake legend entry to match the fill_between plot.
@@ -482,7 +496,7 @@ class Eyecheck(QMainWindow):
             labels.append('Template RMS')
             handles.append(Rectangle((0,0),0,0, color = 'b', ec = 'None', alpha = 0.1))
         labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))
-        leg = plt.legend(handles, labels, loc = 0)
+        leg = ax.legend(handles, labels, loc = 0)
         leg.get_frame().set_alpha(0)
         # Set legend text colors to match plot line colors
         if templateFile is not None:
@@ -501,15 +515,15 @@ class Eyecheck(QMainWindow):
 
         # *** Set Plot Limits ***
 
-        plt.xlim([3000,11000])                  # Set x axis limits to constant value
-##        self.figure.canvas.toolbar.update()                   # Clears out view stack
-##        self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
-##        self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
-##        self.figure.canvas.toolbar.push_current()             # Push the current full zoom level to the view stack
-##        if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
-##            plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
-##            plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
-##            self.figure.canvas.toolbar.push_current()         # Push the current, zoomed level to the view stack so it shows up first
+        ax.set_xlim([3000,11000])                  # Set x axis limits to constant value
+        self.figure.canvas.toolbar.update()                   # Clears out view stack
+        self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
+        self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
+        self.figure.canvas.toolbar.push_current()             # Push the current full zoom level to the view stack
+        if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
+            plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
+            plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
+            self.figure.canvas.toolbar.push_current()         # Push the current, zoomed level to the view stack so it shows up first
 
         # *** Draw the Plot ***
         
@@ -528,30 +542,73 @@ class Eyecheck(QMainWindow):
     #
 
     def spectrumChosen(self, val):
-        self.specIndex = val
-        self.loadUserSpectrum()
-        self.updatePlot()
+        # New spectrum is chosen from the drop down list
+        self.specIndex = val    # Update the current spectrum index
+        self.loadUserSpectrum() # Load the new spectrum
+        self.updatePlot()       # Update the plot with the new spectrum
 
     def specTypeChanged(self, val):
-        print('New Stellar Type', val)
+        self.checkSliderStates()
+        self.updatePlot()
 
     def specSubtypeChanged(self, val):
-        print('New Stellar Subtype', val)
+        self.checkSliderStates()
+        self.updatePlot()
 
     def metallicityChanged(self, val):
-        print('New Metallicity', val)
+        self.updatePlot()
 
     def earlierCallback(self):
-        print('Earlier Button Clicked')
+        curSpec = self.specTypeSlider.sliderPosition()
+        curSub  = self.subTypeSlider.sliderPosition()
+        # If user hasn't selected "O" spectral type and they're
+        # currently selected zero sub type, we need to loop around
+        # to the previous spectral type
+        if curSpec != 0 and curSub == 0:
+            # Set the sub spectral type, skipping over K8 and K9
+            # since they don't exist.
+            self.subTypeSlider.setSliderPosition(7 if curSpec == 6 else 9)
+            # Decrease the spectral type
+            self.specTypeSlider.setSliderPosition(curSpec - 1)
+        else:
+            # Just decrease sub spectral type
+            self.subTypeSlider.setSliderPosition(curSub - 1)
+
+        # Now check our current slider states to make sure
+        # they're valid and then update the plot.
+        self.checkSliderStates()
+        self.updatePlot()
 
     def laterCallback(self):
-        print('Later Button Clicked')
+        curSpec = self.specTypeSlider.sliderPosition()
+        curSub  = self.subTypeSlider.sliderPosition()
+        # If the user hasn't selected "L" spectral type and
+        # they're currently selecting "9" spectral sub type
+        # (or 7 if spec type is "K"), we need to loop around
+        # to the next spectral type
+        if curSpec != 7 and (curSub == 9 or (curSpec == 5 and curSub == 7)):
+            self.specTypeSlider.setSliderPosition(curSpec + 1)
+            self.subTypeSlider.setSliderPosition(0)
+        else:
+            # Just increase the sub spectral type
+            self.subTypeSlider.setSliderPosition(curSub + 1)
+
+        # Now check our current slider states to make sure
+        # they're valid and then update the plot.
+        self.checkSliderStates()
+        self.updatePlot()
 
     def lowerMetalCallback(self):
-        print('Lower Metal Button Clicked')
+        curMetal = self.metalSlider.sliderPosition()
+        if curMetal != 0:
+            self.metalSlider.setSliderPosition(curMetal - 1)
+            self.updatePlot()
 
     def higherMetalCallback(self):
-        print('Higher Metal Button Clicked')
+        curMetal = self.metalSlider.sliderPosition()
+        if curMetal != 6:
+            self.metalSlider.setSliderPosition(curMetal + 1)
+            self.updatePlot()
 
     def oddCallback(self):
         option = OptionWindow(self, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'], instruction = 'Pick an odd type')
@@ -600,6 +657,20 @@ class Eyecheck(QMainWindow):
     # Utility Methods
     #
 
+    def checkSliderStates(self):
+        # Check to see if the spectral slider is on the K type.
+        # If it is, turn off the option to pick K8 and K9
+        # since those don't exist. Otherwise, just turn those
+        # sub spectral type labels on.
+        if self.specTypeSlider.sliderPosition() == 5:
+            self.subTypeLabel[-1].setDisabled(True)
+            self.subTypeLabel[-2].setDisabled(True)
+            if self.subTypeSlider.sliderPosition() in [8,9]:
+                self.subTypeSlider.setSliderPosition(7)
+        else:
+            self.subTypeLabel[-1].setEnabled(True)
+            self.subTypeLabel[-2].setEnabled(True)
+
     def moveToNextSpectrum(self):
         """
         Description:
@@ -614,7 +685,7 @@ class Eyecheck(QMainWindow):
             msg =  MessageBox(self, "You've classified all the spectra. Are you finished?",
                               buttons = QMessageBox.Yes|QMessageBox.No)
             if msg.reply == QMessageBox.Yes:
-                self._exit()
+                self._cleanUpAndClose()
         else:
             self.specIndex += 1
             self.loadUserSpectrum()
@@ -716,29 +787,40 @@ class Eyecheck(QMainWindow):
             user want's to quit the program and they trigger the close
             event, this will catch that event and ask them if they're sure
             they want to close first. If they respond with yes, this will
-            run the _exit function which saves the data the user has produced
-            and then calls the parent close method to handle the actual
-            close process. If they respond no, we just ignore the close
-            event and continue running the GUI.
+            run the _writeOutDataToFile function which saves the data the
+            user has produced and then calls the parent close method to handle
+            the actual close process. If they respond no, it just ignores the
+            close event and continues running the GUI.
         """
         # Ask the user if they're sure they actually want to quit
-        msg = MessageBox(self, 'Are you sure you want to quit?', title = 'Quit',
+        msg = MessageBox(self, 'Are you sure you want to exit PyHammer?', title = 'Quit',
                          buttons = QMessageBox.Yes|QMessageBox.No)
         if msg.reply == QMessageBox.Yes:
-            self._exit()
+            self._writeOutDataToFile()
+            event.accept()
         else:
             event.ignore()
 
-    def _exit(self):
+    def _cleanUpAndClose(self):
         """
         Description:
-            This method is called anytime the user wants to quit the program.
-            It will be called if they "X" out of the GUI window, if they choose
-            quit from the menu, or if they finish classifying and say they're
-            done. This function will first write the self.outData variable
-            contents to their outfile, then close the GUI.
+            This method is one of the available close methods of the GUI. It
+            simply performs the process of outputing the spectra data to
+            the output file and quitting. Note that the process of quitting
+            involved is to force quit the entire QApplication, not just this
+            QMainWindow object. This is because of the fact that we don't want
+            to trigger the closeEvent method of the QMainWindow object.
         """
-        # Write the outData to the output file
+        self._writeOutDataToFile()
+        qApp.quit()
+
+    def _writeOutDataToFile(self):
+        """
+        Description:
+            Writes all the output data to the output file. This method is used
+            Before any quit procedures so save the data recorded by the user
+            before closing the GUI.
+        """
         with open(self.options['outfile'], 'w') as outfile:
             outfile.write('#Filename,File Type,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
             for i, spectra in enumerate(self.outData):
@@ -747,4 +829,3 @@ class Eyecheck(QMainWindow):
                     if j < 6: outfile.write(',')
                 if i < len(self.outData)-1: outfile.write('\n')
         
-        super().close()

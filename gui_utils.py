@@ -92,3 +92,52 @@ class OptionWindow(QDialog):
 
     def closeEvent(self, event):
         super().close()
+
+
+class Slider(QSlider):
+    """
+    Description:
+        This is a child class of the PyQt QSlider class. The purpose
+        of this class is to override the default functionality of the
+        mouse press event for the slider. On some systems, when the user
+        clicks on a random location on the slider, the slider bar will
+        move one notch in the direction of the mouse click. This method
+        instead will make the slider bar move to where the mouse was
+        clicked. Other than that, this class functions exactly the same
+        as the PyQt QSlider
+    """
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            if self.orientation() == Qt.Vertical:
+                self.setValue(QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.y(), self.height(), upsideDown = not self.invertedAppearance()))
+            else:
+                self.setValue(QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width(), upsideDown = not self.invertedAppearance()))
+        super().mousePressEvent(event)
+
+
+class SliderLabel(QLabel):
+    """
+    Description:
+        This is a child class of the QLabel which is meant to be paired
+        with a slider. Each label is assigned the slider it labels and
+        the position on the slider this label represents. It has the
+        functionality that when the label is clicked, the slider is
+        updated to move to where the label is.
+
+    Input:
+        text: The text that makes up the label
+        slider: The slider object this label is attached to
+        sliderVal: The numerical value of the slider this label is
+            associated with.
+    """
+
+    def __init__(self, text, slider, sliderVal):
+        super().__init__(text, alignment = Qt.AlignRight|Qt.AlignVCenter)
+        self.slider = slider
+        self.sliderVal = sliderVal
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.slider.setValue(self.sliderVal)
+        super().mousePressEvent(event)

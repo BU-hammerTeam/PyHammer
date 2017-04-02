@@ -163,6 +163,7 @@ def main(options):
                 notifyUser(options['useGUI'], 'All spectra were bad. Exiting PyHammer.')
                 # Clean up any temporary input files created
                 if os.path.basename(options['infile'])[:11] == 'temp_input_':
+
                     os.remove(options['infile'])
                 return
     
@@ -497,7 +498,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.infileBrowseButton.setToolTip('Browse for an existing input file')
         self.infileCreateButton.clicked.connect(self.createButtonClicked)
         self.infileCreateButton.setToolTip('Create a new input file')
-        self.infileHelpButton.setMaximumWidth(self.infileHelpButton.sizeHint().height())
+        self.infileHelpButton.setMaximumWidth(25)
         self.infileHelpButton.clicked.connect(lambda: MessageBox(self, self.infileHelpText, 'PyHammer Help'))
         self.infileHelpButton.setToolTip('Help')
 
@@ -519,7 +520,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.outfileEntry.setText(self.options['outfile'])
         self.outfileBrowseButton.clicked.connect(lambda: self.browse(self.outfileEntry))
         self.outfileBrowseButton.setToolTip('Browse for an existing output file or define a new one')
-        self.outfileHelpButton.setMaximumWidth(self.outfileHelpButton.sizeHint().height())
+        self.outfileHelpButton.setMaximumWidth(25)
         self.outfileHelpButton.clicked.connect(lambda: MessageBox(self, self.outfileHelpText, 'PyHammer Help'))
         self.outfileHelpButton.setToolTip('Help')
 
@@ -527,7 +528,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.rejectEntry.setText(self.options['rejectfile'])
         self.rejectBrowseButton.clicked.connect(lambda: self.browse(self.rejectEntry))
         self.rejectBrowseButton.setToolTip('Browse for an existing reject file or define a new one')
-        self.rejectHelpButton.setMaximumWidth(self.rejectHelpButton.sizeHint().height())
+        self.rejectHelpButton.setMaximumWidth(20)
         self.rejectHelpButton.clicked.connect(lambda: MessageBox(self, self.rejectfileHelpText, 'PyHammer Help'))
         self.rejectHelpButton.setToolTip('Help')
 
@@ -538,7 +539,7 @@ class PyHammerSettingsGui(QMainWindow):
             self.fullPathYes.setChecked(True)
         self.fullPathYes.clicked.connect(self.updateGui)
         self.fullPathNo.clicked.connect(self.updateGui)
-        self.fullPathHelpButton.setMaximumWidth(self.fullPathHelpButton.sizeHint().height())
+        self.fullPathHelpButton.setMaximumWidth(25)
         self.fullPathHelpButton.clicked.connect(lambda: MessageBox(self, self.fullPathHelpText, 'PyHammer Help'))
         self.fullPathHelpButton.setToolTip('Help')
 
@@ -546,7 +547,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.spectraPathEntry.setText(self.options['spectraPath'])
         self.spectraPathBrowseButton.clicked.connect(lambda: self.browse(self.spectraPathEntry, 'directory'))
         self.spectraPathBrowseButton.setToolTip('Browse for the directory containing the spectra files')
-        self.spectraPathHelpButton.setMaximumWidth(self.spectraPathHelpButton.sizeHint().height())
+        self.spectraPathHelpButton.setMaximumWidth(25)
         self.spectraPathHelpButton.clicked.connect(lambda: MessageBox(self, self.spectraPathHelpText, 'PyHammer Help'))
         self.spectraPathHelpButton.setToolTip('Help')
 
@@ -557,7 +558,7 @@ class PyHammerSettingsGui(QMainWindow):
             self.eyecheckYes.setChecked(True)
         self.eyecheckYes.clicked.connect(self.updateGui)
         self.eyecheckNo.clicked.connect(self.updateGui)
-        self.eyecheckHelpButton.setMaximumWidth(self.eyecheckHelpButton.sizeHint().height())
+        self.eyecheckHelpButton.setMaximumWidth(25)
         self.eyecheckHelpButton.clicked.connect(lambda: MessageBox(self, self.eyecheckHelpText, 'PyHammer Help'))
         self.eyecheckHelpButton.setToolTip('Help')
 
