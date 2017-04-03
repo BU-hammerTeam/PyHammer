@@ -94,7 +94,6 @@ class Eyecheck(QMainWindow):
             '<Ctrl-S>\tSmooth/Unsmooth the spectrum\n'
             '<Ctrl-L>\tLock the smooth state between spectra\n'
             '<Ctrl-R>\tToggle removing the stiching spike in SDSS spectra\n'
-            '<Ctrl-T>\tToggle displaying the residual plot\n'
             '<Ctrl-Q>\tQuit PyHammer\n'
             '<Ctrl-P>')
 
@@ -120,6 +119,11 @@ class Eyecheck(QMainWindow):
             'Angstroms caused by stitching together the results from both detectors.'
             'You can choose to artificially remove this spike for easier viewing by'
             'selecting the "Remove SDSS Stitch Spike" from the Options menu.\n\n'
+            'In the lower left corner of the figure, there is displayed text of the '
+            'form "Distance Metrix = ...". This is a measure of how close a match '
+            'the current template is to the spectrum. A lower distane indicates a '
+            "closer match. Use this to help classify, but don't trust it to be "
+            'foolproof.\n\n'
             'Some keys may need to be hit rapidly.')
 
         self.aboutStr = (
@@ -221,6 +225,7 @@ class Eyecheck(QMainWindow):
         self.figure = plt.figure(figsize = (12,6))
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
+        self.distMeas = plt.figtext(0.01,0.01,'') # A reference to some text on the figure
 
         vgrid = QVBoxLayout(spacing = 0)
         vgrid.addWidget(self.toolbar)
@@ -279,11 +284,6 @@ class Eyecheck(QMainWindow):
         self.removeStitchSpike = QAction('Remove SDSS Stitch Spike', optionsMenu, checkable = True, shortcut = 'Ctrl+R')
         self.removeStitchSpike.toggled.connect(self.updatePlot)
         optionsMenu.addAction(self.removeStitchSpike)
-
-        # Show Residial Plot Menu Item
-        self.showResidualPlot = QAction('Show Residual Plot', optionsMenu, checkable = True, shortcut = 'Ctrl+T')
-        self.showResidualPlot.triggered.connect(self.updatePlot)
-        optionsMenu.addAction(self.showResidualPlot)
 
         optionsMenu.addSeparator()
 
@@ -420,7 +420,7 @@ class Eyecheck(QMainWindow):
 
         plt.cla()
         ax = self.figure.add_subplot(111)
-        #self.cursor = Cursor(ax, color = '#C8D2DC', lw = 0.5)
+        #self.cursor = Cursor(ax, color = '#C8D2DC', lw = 0.5) # THIS BREAKS THE PLOT!
         if self.toolbar._active != 'ZOOM':
             # Make it so the zoom button is selected by default
             self.toolbar.zoom()
@@ -439,7 +439,7 @@ class Eyecheck(QMainWindow):
                 # that is a known bug and causes no problems with loading fits data.
                 warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
                 hdulist = fits.open(templateFile)
-            lam = np.power(10,hdulist[1].data['loglam'][::10])
+            lam = np.power(10,hdulist[1].data['loglam'][::10]) # Downsample the templates to save on time
             flux = hdulist[1].data['flux'][::10]
             std = hdulist[1].data['std'][::10]
 
@@ -448,7 +448,7 @@ class Eyecheck(QMainWindow):
             # it is normalized to a different value that the template needs to be normalized to
             if self.specObj.normWavelength != 8000:
                 flux = Spectrum.normalize(lam, self.specObj.normWavelength, flux)
-
+            
             # Plot template error bars and spectrum line
             ax.plot(lam, flux, '-k', label = 'Template')
             if self.showTemplateError.isChecked(): # Only plot template error if option is selected to do so
@@ -515,19 +515,29 @@ class Eyecheck(QMainWindow):
 
         # *** Set Plot Limits ***
 
-        ax.set_xlim([3000,11000])                  # Set x axis limits to constant value
-        self.figure.canvas.toolbar.update()                   # Clears out view stack
+        ax.set_xlim([3000,11000])               # Set x axis limits to constant value
+        self.toolbar.update()                   # Clears out view stack
         self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
         self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
-        self.figure.canvas.toolbar.push_current()             # Push the current full zoom level to the view stack
+        self.toolbar.push_current()             # Push the current full zoom level to the view stack
         if self.zoomed:                         # If the previous plot was zoomed in, we should zoom this too
             plt.xlim(self.zoomed_xlim)          # Set to the previous plot's zoom level
             plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
-            self.figure.canvas.toolbar.push_current()         # Push the current, zoomed level to the view stack so it shows up first
+            self.toolbar.push_current()         # Push the current, zoomed level to the view stack so it shows up first
+
+        # *** Calc and draw the Distance Measure text ***
+
+        if templateFile is not None:
+            m = min(len(self.specObj.wavelength), len(hdulist[1].data['loglam']))
+            dist = round(np.sqrt(np.nansum([(t-s)**2 for t,s in zip(hdulist[1].data['flux'][:m],self.specObj.flux[:m])])),2)
+        else:
+            dist = None
+        self.distMeas.set_text('Distance Measure = ' + str(dist))
 
         # *** Draw the Plot ***
-        
+
         self.canvas.draw()
+        
 
     ###
     # Menu Item Callback Methods

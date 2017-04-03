@@ -58,7 +58,7 @@ else:
 from matplotlib import __version__ as pltVersion
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from matplotlib.widgets import Cursor, MultiCursor
+#from matplotlib.widgets import Cursor, MultiCursor
 
 # Used for debugging purposes
 import pdb
