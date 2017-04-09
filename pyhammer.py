@@ -528,7 +528,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.rejectEntry.setText(self.options['rejectfile'])
         self.rejectBrowseButton.clicked.connect(lambda: self.browse(self.rejectEntry))
         self.rejectBrowseButton.setToolTip('Browse for an existing reject file or define a new one')
-        self.rejectHelpButton.setMaximumWidth(20)
+        self.rejectHelpButton.setMaximumWidth(25)
         self.rejectHelpButton.clicked.connect(lambda: MessageBox(self, self.rejectfileHelpText, 'PyHammer Help'))
         self.rejectHelpButton.setToolTip('Help')
 
@@ -564,7 +564,7 @@ class PyHammerSettingsGui(QMainWindow):
 
         # S/N Cut Field
         self.sncutEntry.setText(self.options['sncut'])
-        self.sncutHelpButton.setMaximumWidth(self.sncutHelpButton.sizeHint().height())
+        self.sncutHelpButton.setMaximumWidth(25)
         self.sncutHelpButton.clicked.connect(lambda: MessageBox(self, self.sncutHelpText, 'PyHammer Help'))
         self.sncutHelpButton.setToolTip('Help')
 
@@ -574,7 +574,7 @@ class PyHammerSettingsGui(QMainWindow):
 
         # Top Level Grid
         self.grid.setSpacing(4)
-        self.grid.setMargin(2)
+        self.grid.setContentsMargins(2,2,2,2)
 
         # Set the main window properties
         self.widget.setLayout(self.grid)

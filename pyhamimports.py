@@ -38,13 +38,15 @@ import csv
 # Check which PyQt version the user may have
 # installed and import the appropriate content
 if findModule('PyQt5') is not None:
+    qtver = 5
     from PyQt5.QtCore import *
     from PyQt5.QtGui import *
-    from PyQt5.QWidgets import *
+    from PyQt5.QtWidgets import *
     matplotlib.use('Qt5Agg')
     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
     from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 elif findModule('PyQt4') is not None:
+    qtver = 4
     from PyQt4.QtCore import *
     from PyQt4.QtGui import *
     matplotlib.use('Qt4Agg')

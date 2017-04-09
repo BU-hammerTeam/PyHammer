@@ -246,7 +246,7 @@ class Eyecheck(QMainWindow):
         # *** Setup the Grid ***
         self.grid.setRowStretch(7, 1)
         self.grid.setColumnStretch(3, 1)
-        self.grid.setMargin(2)
+        self.grid.setContentsMargins(2,2,2,2)
         self.grid.setSpacing(5)
         
         # *** Set the main window properties ***
