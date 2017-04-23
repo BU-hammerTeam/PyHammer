@@ -579,7 +579,6 @@ class PyHammerSettingsGui(QMainWindow):
         # Set the main window properties
         self.widget.setLayout(self.grid)
         self.setCentralWidget(self.widget)
-        self.move(200,200)
         self.setWindowTitle('PyHammer Settings')
         self.setWindowIcon(self.icon)
 
