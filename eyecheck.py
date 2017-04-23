@@ -30,6 +30,11 @@ class Eyecheck(QMainWindow):
     #
 
     def defineUsefulVars(self):
+        """
+        Description:
+            This method simply defines some useful variables as part of the
+            class that can be used in various places.
+        """
 
         # Define some basic spectra related information
         self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
@@ -140,11 +145,32 @@ class Eyecheck(QMainWindow):
         self.pPressTime = 0
 
     def readOutfile(self):
+        """
+        Description:
+            Opens up the output file contained in the passed in options
+            dict, reads it, and stores the data in a variable for later
+            use. This stored output data will be updated as the user
+            interacts with the program and written to the output file
+            when they close the program.
+        """
         with open(self.options['outfile'], 'r') as file:
             reader = csv.reader(file)
             self.outData = np.asarray(list(reader)[1:]) # Ignore the header line
 
     def selectInitialSpectrum(self):
+        """
+        Description:
+            Before displaying the main GUI, this method will go through
+            the outfile data and figure out which spectrum from the list
+            to display first. If the user has never classified any data
+            before for this particular file, it will just display the first
+            file in the list. If they've already got results, it will choose
+            the first spectra without results and ask the user if they
+            want to start where they left off. If all the spectra already
+            have user classification results, it will ask if they want to
+            start over.
+        """
+        
         # Loop through the outData and see if some classification has occured already
         for data in self.outData:
             # If classification by the user has already occured for the
@@ -181,6 +207,12 @@ class Eyecheck(QMainWindow):
                     self.specIndex = 0
 
     def createGui(self):
+        """
+        Description:
+            Method to create all the GUI components. This method uses a few
+            helper methods, partiularly for creating the slider sections and
+            button sections.
+        """
 
         # Define the basic, top-level GUI components
         self.widget = QWidget()       # The central widget in the main window
@@ -221,7 +253,7 @@ class Eyecheck(QMainWindow):
                             'Classify your spectrum as the current selection and move to the next spectrum'],
                            [self.oddCallback, self.badCallback, self.previousCallback, self.nextCallback])
 
-        # The matplotlib plot
+        # Create the matplotlib plot
         self.figure = plt.figure(figsize = (12,6))
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
@@ -232,7 +264,7 @@ class Eyecheck(QMainWindow):
         vgrid.addWidget(self.canvas, 1)
         self.grid.addLayout(vgrid, 0, 3, 8, 1)
 
-        # Keyboard Shortcuts
+        # Map the keyboard shortcuts
         QShortcut(QKeySequence(Qt.CTRL + Qt.Key_O), self).activated.connect(self.oddCallback)
         QShortcut(QKeySequence(Qt.CTRL + Qt.Key_B), self).activated.connect(self.badCallback)
         QShortcut(QKeySequence(Qt.Key_Return), self).activated.connect(self.nextCallback)
@@ -244,20 +276,31 @@ class Eyecheck(QMainWindow):
         QShortcut(QKeySequence(Qt.CTRL + Qt.Key_P), self).activated.connect(self.callback_hammer_time)
 
         # *** Setup the Grid ***
+        
         self.grid.setRowStretch(7, 1)
         self.grid.setColumnStretch(3, 1)
         self.grid.setContentsMargins(2,2,2,2)
         self.grid.setSpacing(5)
         
         # *** Set the main window properties ***
+        
         self.widget.setLayout(self.grid)
         self.setCentralWidget(self.widget)
-        self.move(200,200)
         self.setWindowTitle('PyHammer Eyecheck')
         self.setWindowIcon(self.icon)
 
     def createMenuBar(self):
+        """
+        Description:
+            A helper function of the create GUI method which is used to define
+            the menubar for the GUI.
+        """
 
+        # Use the PyQt menu construct. This is particularly important
+        # for Macs because it will keep the menubar with the GUI window
+        # rather than placing it at the top of the screen, as is usual
+        # for Macs. We don't want this to happen because Macs take control
+        # of the menus if you have it up there and can cause unexpected results.
         self.menuBar().setNativeMenuBar(False)
 
         # *** Define Options Menu ***
@@ -292,7 +335,6 @@ class Eyecheck(QMainWindow):
         quitMenuItem.triggered.connect(self.close)
         optionsMenu.addAction(quitMenuItem)
         
-        
         # *** Define Help Menu ***
         
         helpMenu = self.menuBar().addMenu('Help')
@@ -326,6 +368,31 @@ class Eyecheck(QMainWindow):
         helpMenu.addAction(showAboutWindow)
 
     def createSlider(self, title, labels, callback):
+        """
+        Description:
+            A helper method of the create GUI method. This method creates
+            a frame and puts a label at the top, a vertical slider, and
+            a collection of labels next to the slider. Note that both the
+            slider and labels use customized objects from the gui_utils
+            class which were written on top of the respective QWidgets and
+            provide additional functionality. See those respective classes
+            for details.
+
+        Input:
+            title: The label to put at the top of the frame as the title
+                for the section.
+            labels: The labels to use for the slider. The slider itself
+                will be given a set of discrete options to match the number
+                of labels provided.
+            callback: The callback to use when the slider is set to a new
+                value.
+
+        Return:
+            Returns the slider and collection of label objects. These are
+            returned so the GUI can interact with the labels and slider
+            later on.
+        """
+        
         # Define or update the column of the top-level grid to
         # put this slider component into
         if not hasattr(self, 'column'):
@@ -361,6 +428,22 @@ class Eyecheck(QMainWindow):
         return tickLabels, slider
 
     def createButtons(self, title, buttonTexts, tooltips, callbacks):
+        """
+        Description:
+            Creates the frames with a title at the top and groups of
+            buttons. The tooltips and callbacks are applied to the
+            buttons. This method is designed to allow any number of
+            buttons to be passed in and it will arrange it in a 2xN
+            fashion.
+
+        Input:
+            title: A label to place at the top of the frame which
+                prodives a title for the group of buttons.
+            buttonTexts: A list of the set of texts to for each button.
+            tooltips: A list of tooltips to assign to each button.
+            callbacks: The list of callbacks to attribute to each button.
+        """
+        
         # Define or update the row of the top-level grid to
         # put this button frame into
         if not hasattr(self, 'row'):
@@ -397,7 +480,7 @@ class Eyecheck(QMainWindow):
         """
         Description:
             This is the method which handles all the plotting on the matplotlib
-            window. It will plot the template (if it exists), the user's spectrum
+            plot. It will plot the template (if it exists), the user's spectrum
             and do things like control the zoom level on the plot.
         """
         
@@ -543,32 +626,55 @@ class Eyecheck(QMainWindow):
     # Menu Item Callback Methods
     #
 
-    
-
-    
+    # No menu item callbacks exist currently.
 
     ###
     # Main GUI Component Callback Methods
     #
 
     def spectrumChosen(self, val):
-        # New spectrum is chosen from the drop down list
+        """
+        Description:
+            Fires when the user chooses a new spectrum from the
+            dropdown list of all available spectra.
+        """
         self.specIndex = val    # Update the current spectrum index
         self.loadUserSpectrum() # Load the new spectrum
         self.updatePlot()       # Update the plot with the new spectrum
 
     def specTypeChanged(self, val):
+        """
+        Description:
+            Fires when the the spectrum type slider has been changed
+            either by the user or programmatically by the GUI
+        """
         self.checkSliderStates()
         self.updatePlot()
 
     def specSubtypeChanged(self, val):
+        """
+        Description:
+            Fires when the the spectrum subtype slider has been changed
+            either by the user or programmatically by the GUI
+        """
         self.checkSliderStates()
         self.updatePlot()
 
     def metallicityChanged(self, val):
+        """
+        Description:
+            Fires when the the metallicity type slider has been changed
+            either by the user or programmatically by the GUI
+        """
         self.updatePlot()
 
     def earlierCallback(self):
+        """
+        Description:
+            Fires when the earlier button is pressed (or the associated
+            keyboard shortcut is used). Moves the template to an earlier
+            spectral type and updates the plot.
+        """
         curSpec = self.specTypeSlider.sliderPosition()
         curSub  = self.subTypeSlider.sliderPosition()
         # If user hasn't selected "O" spectral type and they're
@@ -577,12 +683,12 @@ class Eyecheck(QMainWindow):
         if curSpec != 0 and curSub == 0:
             # Set the sub spectral type, skipping over K8 and K9
             # since they don't exist.
-            self.subTypeSlider.setSliderPosition(7 if curSpec == 6 else 9)
+            self.updateSlider(self.subTypeSlider, 7 if curSpec == 6 else 9)
             # Decrease the spectral type
-            self.specTypeSlider.setSliderPosition(curSpec - 1)
+            self.updateSlider(self.specTypeSlider, curSpec - 1)
         else:
             # Just decrease sub spectral type
-            self.subTypeSlider.setSliderPosition(curSub - 1)
+            self.updateSlider(self.subTypeSlider, curSub - 1)
 
         # Now check our current slider states to make sure
         # they're valid and then update the plot.
@@ -590,6 +696,12 @@ class Eyecheck(QMainWindow):
         self.updatePlot()
 
     def laterCallback(self):
+        """
+        Description:
+            Fires when the later button is pressed (or the associated
+            keyboard shortcut is used). Moves the template to a later
+            spectral type and updates the plot.
+        """
         curSpec = self.specTypeSlider.sliderPosition()
         curSub  = self.subTypeSlider.sliderPosition()
         # If the user hasn't selected "L" spectral type and
@@ -597,11 +709,11 @@ class Eyecheck(QMainWindow):
         # (or 7 if spec type is "K"), we need to loop around
         # to the next spectral type
         if curSpec != 7 and (curSub == 9 or (curSpec == 5 and curSub == 7)):
-            self.specTypeSlider.setSliderPosition(curSpec + 1)
-            self.subTypeSlider.setSliderPosition(0)
+            self.updateSlider(self.specTypeSlider, curSpec + 1)
+            self.updateSlider(self.subTypeSlider, 0)
         else:
             # Just increase the sub spectral type
-            self.subTypeSlider.setSliderPosition(curSub + 1)
+            self.updateSlider(self.subTypeSlider, curSub + 1)
 
         # Now check our current slider states to make sure
         # they're valid and then update the plot.
@@ -609,18 +721,37 @@ class Eyecheck(QMainWindow):
         self.updatePlot()
 
     def lowerMetalCallback(self):
+        """
+        Description:
+            Fires when the later metallicity button is pressed (or the
+            associated keyboard shortcut is used). Moves the template to
+            a lower metallicity (if possible) and updates the plot.
+        """
         curMetal = self.metalSlider.sliderPosition()
         if curMetal != 0:
-            self.metalSlider.setSliderPosition(curMetal - 1)
+            self.updateSlider(self.metalSlider, curMetal - 1)
             self.updatePlot()
 
     def higherMetalCallback(self):
+        """
+        Description:
+            Fires when the higher metallicity button is pressed (or the
+            associated keyboard shortcut is used). Moves the template to
+            a higher metallicity (if possible) and updates the plot.
+        """
         curMetal = self.metalSlider.sliderPosition()
         if curMetal != 6:
-            self.metalSlider.setSliderPosition(curMetal + 1)
+            self.updateSlider(self.metalSlider, curMetal + 1)
             self.updatePlot()
 
     def oddCallback(self):
+        """
+        Description:
+            Fires when the odd button is pressed (or the associated
+            keyboard shortcut is used). Brings up the Odd GUI by using
+            a class from the gui_utils to allow the user to select a non-
+            standard spectrum choice.
+        """
         option = OptionWindow(self, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'], instruction = 'Pick an odd type')
         if option.choice is not None:
             # Store the user's respose in the outData
@@ -630,6 +761,12 @@ class Eyecheck(QMainWindow):
             self.moveToNextSpectrum()
 
     def badCallback(self):
+        """
+        Description:
+            Fires when the bad button is pressed (or the associated
+            keyboard shortcut is used). Simply sets the spectrum choice
+            as "BAD" and moves on to the next spectrum.
+        """
         # Store BAD as the user's choices
         self.outData[self.specIndex,5] = 'BAD'
         self.outData[self.specIndex,6] = 'BAD'
@@ -637,9 +774,21 @@ class Eyecheck(QMainWindow):
         self.moveToNextSpectrum()
 
     def previousCallback(self):
+        """
+        Description:
+            Fires when the previous button is pressed (or the associated
+            keyboard shortcut is used). Moves back to the previous user's
+            spectrum.
+        """
         self.moveToPreviousSpectrum()
 
     def nextCallback(self):
+        """
+        Description:
+            Fires when the next button is pressed (or the associated
+            keyboard shortcut is used). Stores the current spectrum's
+            choice and moves forward to the next user's spectrum.
+        """
         # Store the choice for the current spectra
         self.outData[self.specIndex,5] = self.specType[self.specTypeSlider.sliderPosition()] + str(self.subTypeSlider.sliderPosition())
         self.outData[self.specIndex,6] = self.metalType[self.metalSlider.sliderPosition()]
@@ -668,6 +817,13 @@ class Eyecheck(QMainWindow):
     #
 
     def checkSliderStates(self):
+        """
+        Description:
+            This method is used whenever the spectrum type sliders
+            are updated. It will ensure that the user cannot choose
+            certain spectrum types because they are invalid.
+        """
+        
         # Check to see if the spectral slider is on the K type.
         # If it is, turn off the option to pick K8 and K9
         # since those don't exist. Otherwise, just turn those
@@ -676,7 +832,7 @@ class Eyecheck(QMainWindow):
             self.subTypeLabel[-1].setDisabled(True)
             self.subTypeLabel[-2].setDisabled(True)
             if self.subTypeSlider.sliderPosition() in [8,9]:
-                self.subTypeSlider.setSliderPosition(7)
+                self.updateSlider(self.subTypeSlider, 7)
         else:
             self.subTypeLabel[-1].setEnabled(True)
             self.subTypeLabel[-2].setEnabled(True)
@@ -730,9 +886,9 @@ class Eyecheck(QMainWindow):
         self.spectrumList.setCurrentIndex(self.specIndex)
 
         # Set the sliders to the new spectrum's auto-classified choices
-        self.specTypeSlider.setSliderPosition(self.specType.index(self.outData[self.specIndex,3][0]))
-        self.subTypeSlider.setSliderPosition(self.subType.index(self.outData[self.specIndex,3][1]))
-        self.metalSlider.setSliderPosition(self.metalType.index(self.outData[self.specIndex,4]))
+        self.updateSlider( self.specTypeSlider, self.specType.index(self.outData[self.specIndex,3][0]) )
+        self.updateSlider( self.subTypeSlider,  self.subType.index(self.outData[self.specIndex,3][1])  )
+        self.updateSlider( self.metalSlider,    self.metalType.index(self.outData[self.specIndex,4])   )
         
         # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
         # between loading templates, not between switching spectra.
@@ -789,6 +945,12 @@ class Eyecheck(QMainWindow):
         # Return None if file could not be found
         return None
 
+    def updateSlider(self, slider, value):
+        slider.blockSignals(True)
+        slider.setValue(value)
+        slider.setSliderPosition(value)
+        slider.blockSignals(False)
+
     def closeEvent(self, event):
         """
         Description:
@@ -828,7 +990,7 @@ class Eyecheck(QMainWindow):
         """
         Description:
             Writes all the output data to the output file. This method is used
-            Before any quit procedures so save the data recorded by the user
+            before any quit procedures so save the data recorded by the user
             before closing the GUI.
         """
         with open(self.options['outfile'], 'w') as outfile:
