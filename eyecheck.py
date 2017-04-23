@@ -124,11 +124,11 @@ class Eyecheck(QMainWindow):
             'Angstroms caused by stitching together the results from both detectors.'
             'You can choose to artificially remove this spike for easier viewing by'
             'selecting the "Remove SDSS Stitch Spike" from the Options menu.\n\n'
-            'In the lower left corner of the figure, there is displayed text of the '
-            'form "Distance Metrix = ...". This is a measure of how close a match '
-            'the current template is to the spectrum. A lower distane indicates a '
-            "closer match. Use this to help classify, but don't trust it to be "
-            'foolproof.\n\n'
+            'At the bottom of the sidebar next to the figure is the template match '
+            'metric. This is a measure of how close a match the current template is '
+            'to the spectrum. A lower value indicates a closer match. Conceptually, '
+            'this is simply the Euclidean distance between the template and the spectrum '
+            "Use this to help classify, but don't trust it to be foolproof.\n\n"
             'Some keys may need to be hit rapidly.')
 
         self.aboutStr = (
@@ -253,11 +253,13 @@ class Eyecheck(QMainWindow):
                             'Classify your spectrum as the current selection and move to the next spectrum'],
                            [self.oddCallback, self.badCallback, self.previousCallback, self.nextCallback])
 
+        # The distance metric frame
+        self.distMetric = self.createDistanceMetric()
+
         # Create the matplotlib plot
         self.figure = plt.figure(figsize = (12,6))
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
-        self.distMeas = plt.figtext(0.01,0.01,'') # A reference to some text on the figure
 
         vgrid = QVBoxLayout(spacing = 0)
         vgrid.addWidget(self.toolbar)
@@ -472,6 +474,27 @@ class Eyecheck(QMainWindow):
             button.clicked.connect(cb)
             buttonGrid.addWidget(button, i//2+1, i%2)
 
+    def createDistanceMetric(self):
+
+        # Create the frame
+        frame = QFrame(frameShape = QFrame.StyledPanel, frameShadow = QFrame.Sunken, lineWidth = 0)
+        frame.setToolTip('This metric indicates how well the current\n'
+                         'template matches the spectrum. The lower\n'
+                         'the value, the better the match.')
+        distGrid = QVBoxLayout(margin = 2, spacing = 2)
+        frame.setLayout(distGrid)
+        self.grid.addWidget(frame, self.row + 1, 0, 1, 3)
+
+        # Create the distance metric label
+        label = QLabel('Template Match Metric', alignment = Qt.AlignCenter)
+        distGrid.addWidget(label)
+
+        # Create the distance metric value label
+        label = QLabel('0.0', alignment = Qt.AlignCenter)
+        distGrid.addWidget(label)
+
+        return label
+
     ###
     # Plot Creation Method
     #
@@ -608,14 +631,15 @@ class Eyecheck(QMainWindow):
             plt.ylim(self.zoomed_ylim)          # Set to the previous plot's zoom level
             self.toolbar.push_current()         # Push the current, zoomed level to the view stack so it shows up first
 
-        # *** Calc and draw the Distance Measure text ***
+        # *** Calc and update the template match metric text ***
 
         if templateFile is not None:
             m = min(len(self.specObj.wavelength), len(hdulist[1].data['loglam']))
             dist = round(np.sqrt(np.nansum([(t-s)**2 for t,s in zip(hdulist[1].data['flux'][:m],self.specObj.flux[:m])])),2)
+            dist = '{:.2f}'.format(dist)
         else:
-            dist = None
-        self.distMeas.set_text('Distance Measure = ' + str(dist))
+            dist = 'None'
+        self.distMetric.setText(dist)
 
         # *** Draw the Plot ***
 
