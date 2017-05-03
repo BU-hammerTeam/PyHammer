@@ -1,7 +1,7 @@
 # PyHammer
 
 [![GitHub release](https://img.shields.io/github/release/BU-hammerTeam/PyHammer.svg)](https://github.com/BU-hammerTeam/PyHammer/releases/latest)
-[![GitHub commits](https://img.shields.io/github/commits-since/BU-hammerTeam/PyHammer/v1.0.2.svg)](https://github.com/BU-hammerTeam/PyHammer/commits/master)
+[![GitHub commits](https://img.shields.io/github/commits-since/BU-hammerTeam/PyHammer/v1.1.0.svg)](https://github.com/BU-hammerTeam/PyHammer/commits/master)
 [![GitHub issues](https://img.shields.io/github/issues/BU-hammerTeam/PyHammer.svg)](https://github.com/BU-hammerTeam/PyHammer/issues)
 [![license](https://img.shields.io/github/license/BU-hammerTeam/PyHammer.svg)](https://github.com/BU-hammerTeam/PyHammer/blob/master/license.txt)
 [![Python Supported](https://img.shields.io/badge/Python%20Supported-3-brightgreen.svg)](conda)
