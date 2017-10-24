@@ -17,10 +17,10 @@ See the [PyHammer Wiki](https://github.com/BU-hammerTeam/PyHammer/wiki) for more
 
 ### Publications
 
-We will have a peer-reviewed, published paper out soon, but in the mean time see our [arXiv version][arXiv_version].
+PyHammer is detailed in our recently accepted Astrophysical Journal Supplements [paper][apjs].
 
 [thehammer]: http://myweb.facstaff.wwu.edu/~coveyk/thehammer.html
 [covey+07]: http://adsabs.harvard.edu/abs/2007AJ....134.2398C
 [hammerGitHub]: https://github.com/jradavenport/TheHammer
 [pyhammerwiki]: https://github.com/BU-hammerTeam/PyHammer/wiki
-[arXiv_version]: https://arxiv.org/abs/1702.06957
+[apjs]: http://iopscience.iop.org/article/10.3847/1538-4365/aa656d/pdf
