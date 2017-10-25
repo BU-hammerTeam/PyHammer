@@ -68,7 +68,7 @@ class Spectrum(object):
 
         # Define the spectral lines to be measured in the spectrum and
         # used to be matched to the templates.
-        self.indexDict = {}
+        self.indexDict = OrderedDict()
         # List the indices for each important absorption feature: numlo, numhi, denomlo, denomhi 
         # or for multi region features: num1lo, num1hi, num1weight, num2lo, num2hi, num2weight, denomlo, denomhi
         # NOTE: These are all in vacuum and Angstroms!
@@ -435,7 +435,7 @@ class Spectrum(object):
         """
         
         # Make a dictionary for the measured indices
-        measuredLinesDict = {}
+        measuredLinesDict = OrderedDict()
         
         # Loop through the self.indexDict and measure the lines of the spectra
         for key, value in self.indexDict.items():
@@ -510,10 +510,10 @@ class Spectrum(object):
     def guessSpecType(self):
     
         # Measure lines
-        linesDict = self.measureLines()
+        self._lines = self.measureLines()
         
         # Recast values to simple 2D array
-        lines = np.array(list(linesDict.values()))[np.argsort(list(linesDict.keys()))]
+        lines = np.array(list(self._lines.values()))[np.argsort(list(self._lines.keys()))]
         
         # Weight by uncertainty in object lines and template lines
         weights = 1 / (np.sqrt(self._tempLineVars) + np.sqrt(lines[:,1]))
