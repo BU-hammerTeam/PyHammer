@@ -107,7 +107,22 @@ def main(options):
             # Call guessSpecType function for the initial guess
             # this function measures the lines then makes a guess of all parameters
             spec.guessSpecType()
-
+            
+            #if the user wants the calculated spectral indices, write them to a file
+            if options['lineOutfile'] is not None:
+                if i == 0: 
+                    lineOutfile = open('spectralIndices.csv', 'w')
+                    lineOutfile.write('#Filename, CaK, CaK_var, Cadel, Cadel_var, CaI4217, CaI4217_var, Gband, Gband_var, Hgam, Hgam_var, FeI4383, FeI4383_var, FeI4404, FeI4404_var, Hbeta, Hbeta_var, MgI, MgI_var, NaD, NaD_var, CaI6162, CaI6162_var, Halpha, Halpha_var, CaH2, CaH2_var, CaH3, CaH3_var, TiO5, TiO5_var, VO7434, VO7434_var, VO7445, VO7445_var, VO-B, VO-B_var, VO7912, VO7912_var, Rb-B, Rb-B_var, NaI, NaI_var, TiO8, TiO8_var, TiO8440, TiO8440_var, Cs-A, Cs-A_var, CaII8498, CaII8498_var, CrH-A, CrH-A_var, CaII8662, CaII8662_var, FeI8689, FeI8689_var, FeH, FeH_var\n')
+                for key, value in spec.lines.items(): 
+                    if key == 'CaK': 
+                        lineOutfile.write(fname + ',' + str(value[0]) + ',' + str(value[1])+',')
+                    elif key == 'FeH':
+                        lineOutfile.write(str(value[0]) + ',' + str(value[1])+'\n')
+                    elif key == 'region1' or  key == 'region2' or key == 'region3' or  key == 'region4' or  key == 'region5':
+                        continue
+                    else:
+                        lineOutfile.write(str(value[0]) + ',' + str(value[1])+',')
+                 
             # --- 4 ---
             # Call findRadialVelocity function using the initial guess
             shift = spec.findRadialVelocity()
@@ -145,6 +160,7 @@ def main(options):
                           ',nan,nan\n')                                     # The to-be-determined user classifications
         
         # We're done so let's close all the files.
+        lineOutfile.close()
         infile.close()
         outfile.close()
         rejectfile.close()
