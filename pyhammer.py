@@ -118,7 +118,7 @@ def main(options):
                         lineOutfile.write(fname + ',' + str(value[0]) + ',' + str(value[1])+',')
                     elif key == 'FeH':
                         lineOutfile.write(str(value[0]) + ',' + str(value[1])+'\n')
-                    elif key == 'region1' or  key == 'region2' or key == 'region3' or  key == 'region4' or  key == 'region5':
+                    elif key in ['region1', 'region2', 'region3', 'region4', 'region5']:
                         continue
                     else:
                         lineOutfile.write(str(value[0]) + ',' + str(value[1])+',')
@@ -159,11 +159,13 @@ def main(options):
                           '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
                           ',nan,nan\n')                                     # The to-be-determined user classifications
         
-        # We're done so let's close all the files.
-        lineOutfile.close()
+        # We're done so let's close all the files
         infile.close()
         outfile.close()
         rejectfile.close()
+        #only close lineOutfile if it was created
+        if options['lineOutfile'] is not None:
+            lineOutfile.close()
 
         # Check that we processed every spectrum in the infile. If not, print out
         # the reject method.
@@ -908,7 +910,7 @@ if (__name__ == "__main__"):
     options = {'infile': None, 'outfile': 'PyHammerResults.csv',
                'rejectfile': 'RejectSpectra.csv', 'fullPath': None,
                'spectraPath': None, 'eyecheck': None, 'sncut': None,
-               'useGUI': None}
+               'useGUI': None, 'lineOutfile':None}
     
     # *** Check input conditions ***
 
