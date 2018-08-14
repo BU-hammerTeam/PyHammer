@@ -101,12 +101,22 @@ def main(options):
             
             # --- 2 ---
             # Normalize the input spectrum to the same place where the templates are normalized (8000A)
-            spec.normalizeFlux()
+            try:
+                spec.normalizeFlux()
+            except:
+                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not normalize\n\n'
+                continue
 
             # --- 3 ---
             # Call guessSpecType function for the initial guess
             # this function measures the lines then makes a guess of all parameters
-            spec.guessSpecType()
+            try:
+                spec.guessSpecType()
+            except Exception as e:
+                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not guess spectral type. Error Message: {}\n\n'.format(e)
+                continue
             
             #if the user wants the calculated spectral indices, write them to a file
             if options['lineOutfile'] is not None:
@@ -125,18 +135,33 @@ def main(options):
                  
             # --- 4 ---
             # Call findRadialVelocity function using the initial guess
-            shift = spec.findRadialVelocity()
+            try:
+                shift = spec.findRadialVelocity()
+            except Exception as e:
+                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not find radial velocity. Error Message: {}\n\n'.format(e)
+                continue
 
             # --- 5 ---
             # Call shiftToRest that shifts the spectrum to rest wavelengths,
             # then interp back onto the grid
-            spec.shiftToRest(shift)
-            spec.interpOntoGrid()
+            try:
+                spec.shiftToRest(shift)
+                spec.interpOntoGrid()
+            except Exception as e:
+                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not shift to rest. Error Message: {}\n\n'.format(e)
+                continue
 
             # --- 6 ---
             # Repeat guessSpecType function to get a better guess of the spectral 
             # type and metallicity 
-            spec.guessSpecType()
+            try:
+                spec.guessSpecType()
+            except Exception as e:
+                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not guess spectral type. Error Message: {}\n\n'.format(e)
+                continue
 
             # End of the automatic guessing. We should have:
             #  1. Spectrum object with observed wavelength, flux, var,
@@ -163,7 +188,7 @@ def main(options):
         infile.close()
         outfile.close()
         rejectfile.close()
-        #only close lineOutfile if it was created
+        # Only close lineOutfile if it was created
         if options['lineOutfile'] is not None:
             lineOutfile.close()
 
