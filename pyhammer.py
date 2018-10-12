@@ -122,7 +122,7 @@ def main(options):
             if options['lineOutfile'] is True:
                 if i == 0: 
                     lineOutfile = open('spectralIndices.csv', 'w')
-                    lineOutfile.write('#Filename, CaK, CaK_var, Cadel, Cadel_var, CaI4217, CaI4217_var, Gband, Gband_var, Hgam, Hgam_var, FeI4383, FeI4383_var, FeI4404, FeI4404_var, Hbeta, Hbeta_var, MgI, MgI_var, NaD, NaD_var, CaI6162, CaI6162_var, Halpha, Halpha_var, CaH2, CaH2_var, CaH3, CaH3_var, TiO5, TiO5_var, VO7434, VO7434_var, VO7445, VO7445_var, VO-B, VO-B_var, VO7912, VO7912_var, Rb-B, Rb-B_var, NaI, NaI_var, TiO8, TiO8_var, TiO8440, TiO8440_var, Cs-A, Cs-A_var, CaII8498, CaII8498_var, CrH-A, CrH-A_var, CaII8662, CaII8662_var, FeI8689, FeI8689_var, FeH, FeH_var\n')
+                    lineOutfile.write('#Filename,CaK,CaK_var,Cadel,Cadel_var,CaI4217,CaI4217_var,Gband,Gband_var,Hgam,Hgam_var,FeI4383,FeI4383_var,FeI4404,FeI4404_var,Hbeta,Hbeta_var,MgI,MgI_var,NaD,NaD_var,CaI6162,CaI6162_var,Halpha,Halpha_var,CaH2,CaH2_var,CaH3,CaH3_var,TiO5,TiO5_var,VO7434,VO7434_var,VO7445,VO7445_var,VO-B,VO-B_var,VO7912,VO7912_var,Rb-B,Rb-B_var,NaI,NaI_var,TiO8,TiO8_var,TiO8440,TiO8440_var,Cs-A,Cs-A_var,CaII8498,CaII8498_var,CrH-A,CrH-A_var,CaII8662,CaII8662_var,FeI8689,FeI8689_var,FeH,FeH_var\n')
                 for key, value in spec.lines.items(): 
                     if key == 'CaK': 
                         lineOutfile.write(fname + ',' + str(value[0]) + ',' + str(value[1])+',')
