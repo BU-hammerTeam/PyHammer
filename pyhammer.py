@@ -118,8 +118,8 @@ def main(options):
                 rejectMessage += 'FILE: ' + fname + '\nREASON: Could not guess spectral type. Error Message: {}\n\n'.format(e)
                 continue
             
-            #if the user wants the calculated spectral indices, write them to a file
-            if options['lineOutfile'] is not None:
+            # If the user wants the calculated spectral indices, write them to a file
+            if options['lineOutfile'] is True:
                 if i == 0: 
                     lineOutfile = open('spectralIndices.csv', 'w')
                     lineOutfile.write('#Filename, CaK, CaK_var, Cadel, Cadel_var, CaI4217, CaI4217_var, Gband, Gband_var, Hgam, Hgam_var, FeI4383, FeI4383_var, FeI4404, FeI4404_var, Hbeta, Hbeta_var, MgI, MgI_var, NaD, NaD_var, CaI6162, CaI6162_var, Halpha, Halpha_var, CaH2, CaH2_var, CaH3, CaH3_var, TiO5, TiO5_var, VO7434, VO7434_var, VO7445, VO7445_var, VO-B, VO-B_var, VO7912, VO7912_var, Rb-B, Rb-B_var, NaI, NaI_var, TiO8, TiO8_var, TiO8440, TiO8440_var, Cs-A, Cs-A_var, CaII8498, CaII8498_var, CrH-A, CrH-A_var, CaII8662, CaII8662_var, FeI8689, FeI8689_var, FeH, FeH_var\n')
@@ -353,6 +353,13 @@ class PyHammerSettingsGui(QMainWindow):
             'want to provide a cutoff, leave this field blank. This '
             'option does not apply if you choose to skip to the eyecheck.')
 
+        self.lineHelpText = (
+            'If you would like the spectral lines used in classifying '
+            'the spectra to be printed out to a .CSV file, select yes '
+            'for this option. Otherwise select no. Note that this file '
+            'is only output if the classification algorithm is run and '
+            'you choose to NOT skip directly to the eye check.')
+
     def createGui(self):
 
         # Define the basic, top-level GUI components
@@ -425,12 +432,22 @@ class PyHammerSettingsGui(QMainWindow):
         self.sncutEntry = QLineEdit(placeholderText = 'S/N cutoff...')
         self.sncutHelpButton = QPushButton('?')
 
+        # Spectral Line Output File Field
+        self.lineFrame = QFrame()
+        self.lineLabel = QLabel('Do you print the spectral classification lines to a file?', alignment = Qt.AlignCenter)
+        self.lineChoice = QButtonGroup()
+        self.lineYes = QRadioButton('Yes', checked = True)
+        self.lineNo = QRadioButton('No', checked = False)
+        self.lineChoice.addButton(self.fullPathYes, 0)
+        self.lineChoice.addButton(self.fullPathNo, 1)
+        self.lineHelpButton = QPushButton('?')
+
         # Start Button
         self.startButton = QPushButton('Start PyHammer')
 
         # Separators
         self.sep = []
-        for i in range(7):
+        for i in range(8):
             line = QFrame(frameShape = QFrame.HLine, frameShadow = QFrame.Sunken, lineWidth = 1)
             line.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
             self.sep.append(line)
@@ -527,6 +544,17 @@ class PyHammerSettingsGui(QMainWindow):
 
         self.grid.addWidget(self.sep[6])
 
+        # Spectral Line Output File Field
+        frameGrid = QGridLayout(spacing = 2, margin = 0)
+        frameGrid.addWidget(self.lineLabel, 0, 0, 1, 3)
+        frameGrid.addWidget(self.lineYes, 1, 0, alignment = Qt.AlignRight)
+        frameGrid.addWidget(self.lineNo, 1, 1)
+        frameGrid.addWidget(self.lineHelpButton, 1, 2)
+        self.lineFrame.setLayout(frameGrid)
+        self.grid.addWidget(self.lineFrame)
+
+        self.grid.addWidget(self.sep[7])
+
         # Start Button
         self.grid.addWidget(self.startButton)
 
@@ -610,6 +638,15 @@ class PyHammerSettingsGui(QMainWindow):
         self.sncutHelpButton.setMaximumWidth(25)
         self.sncutHelpButton.clicked.connect(lambda: MessageBox(self, self.sncutHelpText, 'PyHammer Help'))
         self.sncutHelpButton.setToolTip('Help')
+
+        # Spectral Line Output File Field
+        if self.options['lineOutfile'] is None or not self.options['lineOutfile']:
+            self.lineNo.setChecked(True)
+        else:
+            self.lineYes.setChecked(True)
+        self.lineHelpButton.setMaximumWidth(25)
+        self.lineHelpButton.clicked.connect(lambda: MessageBox(self, self.lineHelpText, 'PyHammer Help'))
+        self.lineHelpButton.setToolTip('Help')
 
         # Start Button
         self.startButton.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
@@ -794,6 +831,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.options['rejectfile'] = self.rejectEntry.text() + '.csv'*(self.rejectEntry.text()[-4:] != '.csv')
         self.options['fullPath'] = self.fullPathYes.isChecked()
         self.options['spectraPath'] = self.spectraPathEntry.text() * (not self.options['fullPath'])
+        self.options['lineOutfile'] = self.lineYes.isChecked()
         # Append a slash to the end of the spectra path if there isn't one
         if (self.options['spectraPath'] != '' and self.options['spectraPath'][-1] not in ['\\', '/']):
                 self.options['spectraPath'] += '/'
@@ -910,6 +948,11 @@ def pyhammerSettingsCmd(options):
                 except Error as e:
                     print(str(e), flush = True)
 
+    # Asks the user if they want to have the spectral lines written to a file.
+    if (options['lineOutfile'] is None):
+        ans = input('Do you want to have the spectral lines used for classification written to a file? (y/n): ')
+        options['lineOutfile'] = (ans.lower() == 'y')
+
     # Now that all the options have been set, let's get started
     main(options)
 
@@ -935,14 +978,14 @@ if (__name__ == "__main__"):
     options = {'infile': None, 'outfile': 'PyHammerResults.csv',
                'rejectfile': 'RejectSpectra.csv', 'fullPath': None,
                'spectraPath': None, 'eyecheck': None, 'sncut': None,
-               'useGUI': None, 'lineOutfile':None}
+               'useGUI': None, 'lineOutfile': None}
     
     # *** Check input conditions ***
 
-    opts, args = getopt.getopt(sys.argv[1:], 'hi:o:r:fp:es:cg',
+    opts, args = getopt.getopt(sys.argv[1:], 'hi:o:r:fp:es:cgl',
                                ['help', 'infile=', 'outfile=', 'rejectfile=',
                                 'full', 'path=', 'eyecheck', 'sncut',
-                                'cmd', 'gui'])
+                                'cmd', 'gui', 'lineFile'])
 
     # Loop through the flags and options the
     # user passed in when calling PyHammer
@@ -997,8 +1040,13 @@ if (__name__ == "__main__"):
                    'The S/N necessary before a spectra will be classified.\n'
                    '\t\t\t\t\tA signal to noise of ~3-5 per pixel is recommended.\n'
 
+                   '-l, --lineFile\t\t'
+                   'Flag indicating if the spectral line output file\n'
+                   '\t\t\t\t\tshould be produced. Can only be produced if the user\n'
+                   '\t\t\t\t\tdoes NOT skip to the eyecheck.\n'
+
                    '\nExample:\n'
-                   'python pyhammer.py -g -f -s 3 -i C:/Path/To/File/inputFile.txt -o'
+                   'python pyhammer.py -g -l -f -s 3 -i C:/Path/To/File/inputFile.txt -o '
                    'C:/Path/To/File/outputFile.csv -r C:/Path/To/File/rejectFile.csv\n').expandtabs(4),
                   flush = True)
             
@@ -1065,6 +1113,9 @@ if (__name__ == "__main__"):
                 sys.exit('Cannot supply -c and -g at the same time. Use -h for more info.')
             else:
                 options['useGUI'] = True
+
+        if (opt == '-l' or opt == '--lineFile'):
+            options['lineOutfile'] = True
 
     # If no interface is chose, use the GUI by default
     if options['useGUI'] is None: options['useGUI'] = True
