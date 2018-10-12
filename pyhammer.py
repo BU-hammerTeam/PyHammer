@@ -92,8 +92,8 @@ def main(options):
 
             # --- 1 ---
             # Calculate the signal to noise of the spectrum to potentially reject
+            snVal = spec.calcSN()
             if options['sncut'] is not None:
-                snVal = spec.calcSN()
                 if snVal < options['sncut']:
                     rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
                     rejectMessage += 'FILE: ' + fname + '\nREASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut']) + '\n\n'
