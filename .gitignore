@@ -1,5 +1,5 @@
 *.pyc
 resources/runbefore
 PyHammerResults*
-RejectSpectra*
 temp_input_*
+*.csv
