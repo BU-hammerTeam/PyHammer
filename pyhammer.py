@@ -56,8 +56,10 @@ def main(options):
         # Open and setup the output files
         outfile = open(options['outfile'], 'w')
         rejectfile = open(options['rejectfile'], 'w')
+        if options['lineOutfile']: lineOutfile = open('spectralIndices.csv', 'w')
         outfile.write('#Filename,File Type,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
         rejectfile.write('#Filename,File Type,Spectra S/N\n')
+        if options['lineOutfile']: lineOutfile.write('#Filename,CaK,CaK_var,Cadel,Cadel_var,CaI4217,CaI4217_var,Gband,Gband_var,Hgam,Hgam_var,FeI4383,FeI4383_var,FeI4404,FeI4404_var,Hbeta,Hbeta_var,MgI,MgI_var,NaD,NaD_var,CaI6162,CaI6162_var,Halpha,Halpha_var,CaH2,CaH2_var,CaH3,CaH3_var,TiO5,TiO5_var,VO7434,VO7434_var,VO7445,VO7445_var,VO-B,VO-B_var,VO7912,VO7912_var,Rb-B,Rb-B_var,NaI,NaI_var,TiO8,TiO8_var,TiO8440,TiO8440_var,Cs-A,Cs-A_var,CaII8498,CaII8498_var,CrH-A,CrH-A_var,CaII8662,CaII8662_var,FeI8689,FeI8689_var,FeH,FeH_var\n')
 
         # Define the string to contain all failure messages. These will be compiled
         # and printed once at the end, if anything is put into it.
@@ -119,10 +121,7 @@ def main(options):
                 continue
             
             # If the user wants the calculated spectral indices, write them to a file
-            if options['lineOutfile'] is True:
-                if i == 0: 
-                    lineOutfile = open('spectralIndices.csv', 'w')
-                    lineOutfile.write('#Filename,CaK,CaK_var,Cadel,Cadel_var,CaI4217,CaI4217_var,Gband,Gband_var,Hgam,Hgam_var,FeI4383,FeI4383_var,FeI4404,FeI4404_var,Hbeta,Hbeta_var,MgI,MgI_var,NaD,NaD_var,CaI6162,CaI6162_var,Halpha,Halpha_var,CaH2,CaH2_var,CaH3,CaH3_var,TiO5,TiO5_var,VO7434,VO7434_var,VO7445,VO7445_var,VO-B,VO-B_var,VO7912,VO7912_var,Rb-B,Rb-B_var,NaI,NaI_var,TiO8,TiO8_var,TiO8440,TiO8440_var,Cs-A,Cs-A_var,CaII8498,CaII8498_var,CrH-A,CrH-A_var,CaII8662,CaII8662_var,FeI8689,FeI8689_var,FeH,FeH_var\n')
+            if options['lineOutfile']:
                 for key, value in spec.lines.items(): 
                     if key == 'CaK': 
                         lineOutfile.write(fname + ',' + str(value[0]) + ',' + str(value[1])+',')
@@ -189,7 +188,7 @@ def main(options):
         outfile.close()
         rejectfile.close()
         # Only close lineOutfile if it was created
-        if options['lineOutfile'] is not None:
+        if options['lineOutfile']:
             lineOutfile.close()
 
         # Check that we processed every spectrum in the infile. If not, print out
@@ -206,7 +205,6 @@ def main(options):
                 notifyUser(options['useGUI'], 'All spectra were bad. Exiting PyHammer.')
                 # Clean up any temporary input files created
                 if os.path.basename(options['infile'])[:11] == 'temp_input_':
-
                     os.remove(options['infile'])
                 return
     
