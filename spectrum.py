@@ -980,15 +980,11 @@ class Spectrum(object):
         # A potential failing of this method is the case where there are a
         # small number of flux values (in the hundreds) but that seems so
         # unlikely, it isn't going to be handled.
-        #flux = self._flux.copy()
-        #mask = np.isnan(flux)
-        #flux[mask] = 0
-        N = max(len(self._flux)/600, 100)  # Smoothing factor, Higher value = more smoothing
+        N = max(int(len(self._flux)/600), 100)  # Smoothing factor, Higher value = more smoothing
         cumsum = nancumsum(np.insert(self._flux,0,0))
         smoothFlux = (cumsum[N:] - cumsum[:-N]) / N
         smoothFlux = np.append(self._flux[:int(np.floor((N-1)/2))], smoothFlux)
         smoothFlux = np.append(smoothFlux, self._flux[-int(np.floor(N/2)):])
-        #smoothFlux[mask] = np.nan
         return smoothFlux
 
     @property
