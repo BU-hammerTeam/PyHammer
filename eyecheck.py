@@ -524,16 +524,17 @@ class Eyecheck(QMainWindow):
 
         # *** Define Initial Figure ***
 
-        plt.cla()
-        ax = self.figure.add_subplot(111)
-        #self.cursor = Cursor(ax, color = '#C8D2DC', lw = 0.5) # THIS BREAKS THE PLOT!
-        if self.toolbar._active != 'ZOOM':
-            # Make it so the zoom button is selected by default
-            self.toolbar.zoom()
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore') # Ignore depreciation warnings
+            plt.cla()
+            ax = self.figure.add_subplot(111)
+            #self.cursor = Cursor(ax, color = '#C8D2DC', lw = 0.5) # THIS BREAKS THE PLOT!
+            if self.toolbar._active != 'ZOOM':
+                # Make it so the zoom button is selected by default
+                self.toolbar.zoom()
 
 
         # *** Plot the template ***
-
 
         # Determine which, if any, template file to load
         templateFile = self.getTemplateFile()

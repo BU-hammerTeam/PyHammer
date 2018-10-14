@@ -34,6 +34,7 @@ import base64
 import bisect
 import pickle
 import csv
+from collections import OrderedDict
 
 # Check which PyQt version the user may have
 # installed and import the appropriate content
