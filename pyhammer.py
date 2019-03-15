@@ -173,7 +173,7 @@ def main(options):
             # --- 7 ---
             
             # Translate the numbered spectral types into letters
-            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spec.guess['specType']]
+            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD'][spec.guess['specType']]
             
             # Write the file
             outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename

@@ -37,7 +37,7 @@ class Eyecheck(QMainWindow):
         """
 
         # Define some basic spectra related information
-        self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L']
+        self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD']
         self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
         self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
