@@ -3,3 +3,4 @@ resources/runbefore
 PyHammerResults*
 temp_input_*
 *.csv
+.DS_Store
