@@ -960,7 +960,8 @@ class Eyecheck(QMainWindow):
             return fullPath
         
         # Try to use just the spectral type, i.e., SS.fits
-        filename = filename[:2]
+        #filename = filename[:2]
+        filename = self.specType[specState] + str(subState)
 
         fullPath = os.path.join(self.templateDir, filename + '.fits')
         
