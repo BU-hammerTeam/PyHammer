@@ -29,24 +29,32 @@ class Spectrum(object):
         # tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
         # lines is a list of 2D arrays with indices and variances for each line
         # index for each spectrum that goes into a template
+        #
         pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
-        # Get averages and stddevs for each line for each template
-        avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
-        stds = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
-        for i, ilines in enumerate(tempLines[4]):
-            weights = 1.0/np.array(ilines)[:,:,1]
-            nonzeroweights = np.sum(weights != 0, 0, dtype='float')
-            nonzeroweights[nonzeroweights <= 1.0] = np.nan
-            weightedsum = np.nansum(np.array(ilines)[:,:,0] * weights, 0)
-            sumofweights = np.nansum(weights, 0)
-            sumofweights[sumofweights == 0.0] = np.nan
-            avgs[i] = weightedsum / sumofweights
-            stds[i] = np.sqrt( np.nansum(weights * (np.array(ilines)[:,:,0] - avgs[i])**2.0, 0)
-                              / ( ((nonzeroweights-1.0)/nonzeroweights)
-                                  * sumofweights ) )
+        ## Get averages and stddevs for each line for each template
+        # avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
+        # stds = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
+        # for i, ilines in enumerate(tempLines[4]):
+        #     weights = 1.0/np.array(ilines)[:,:,1]
+        #     nonzeroweights = np.sum(weights != 0, 0, dtype='float')
+        #     nonzeroweights[nonzeroweights <= 1.0] = np.nan
+        #     weightedsum = np.nansum(np.array(ilines)[:,:,0] * weights, 0)
+        #     sumofweights = np.nansum(weights, 0)
+        #     sumofweights[sumofweights == 0.0] = np.nan
+        #     avgs[i] = weightedsum / sumofweights
+        #     stds[i] = np.sqrt( np.nansum(weights * (np.array(ilines)[:,:,0] - avgs[i])**2.0, 0)
+        #                       / ( ((nonzeroweights-1.0)/nonzeroweights)
+        #                           * sumofweights ) )
+
+        avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0])], dtype='float')
+        stds = np.zeros([len(tempLines[4]), len(tempLines[4][0])], dtype='float')
+
+        for ii in range(len(tempLines[4])):
+            avgs[ii, :] =  tempLines[4][ii][:,0]
+            stds[ii, :] =  np.sqrt(tempLines[4][ii][:,1])
                                   
         self._tempLines = tempLines
         self._tempLineAvgs = avgs
@@ -61,11 +69,9 @@ class Spectrum(object):
             they only need to be defined once and can be used for all
             spectra calculations.
         """
-        
         # Define the wavelngth points to interpolate the spectrum to so it
         # can be compared to the templates. Note log10(e) = 0.43429448190325182
         self.waveGrid = 10**(5*0.43429448190325182/299792.458 * np.arange(0,65000) + 3.55)
-
         # Define the spectral lines to be measured in the spectrum and
         # used to be matched to the templates.
         self.indexDict = OrderedDict()
@@ -107,6 +113,17 @@ class Spectrum(object):
         self.indexDict['region3'] = [ 5700,  5800, 7480, 7580]
         self.indexDict['region4'] = [ 9100,  9200, 7480, 7580]
         self.indexDict['region5'] = [10100, 10200, 7480, 7580] 
+
+        self.indexDict['C2-4382'] = [4350, 4380, 4450, 4600]
+        self.indexDict['C2-4737'] = [4650, 4730, 4750, 4850]
+        self.indexDict['C2-5165'] = [5028, 5165, 5210, 5380] 
+        self.indexDict['C2-5636'] = [5400, 5630, 5650, 5800]
+        self.indexDict['CN-6926'] = [6935, 7035, 6850, 6900]
+        self.indexDict['CN-7872'] = [7850, 8050, 7650, 7820]
+
+        self.indexDict['WD-Halpha'] = [6519, 6609, 6645, 6700]
+        self.indexDict['WD-Hbeta']  = [4823, 4900, 4945, 4980]
+        self.indexDict['WD-Hgamma'] = [4290, 4405, 4430, 4460]
         
 
     ##
@@ -144,7 +161,7 @@ class Spectrum(object):
 
         if isinstance(filetype, str): filetype = filetype.lower()
 
-        if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', None]:
+        if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', 'tempFITS', None]:
             # The user supplied an option not accounted for
             # in this method. Just skip the file.
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
@@ -195,6 +212,14 @@ class Spectrum(object):
             else:
                 filetype = 'csv'
 
+        # Try reading a .fits file with the data in template fmt
+        if (filetype in ['tempFITS', None]):
+            msg = self.__readFileTempFits(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'tempFITS'
         # If the user didn't supply a filetype for us, and we
         # didn't manage to figure out which one it was, simply
         # return with an error message stating so.
@@ -246,6 +271,30 @@ class Spectrum(object):
             self._wavelength = ( spec[0].header['CRVAL1'] + (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(self._flux),1))
             # Create a simple poisson error
             err = abs(self._flux)**0.05 + 1E-16
+            self._var = err**2
+        except Exception as e:
+            errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+            return errorMessage
+
+        return None
+
+    def __readFileTempFits(self, filename):
+        """Tries to read a regular fits file"""
+        # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
+        # Need error vs variance keyword
+        try:
+            with warnings.catch_warnings():
+                # Ignore a very particular warning from some versions of astropy.io.fits
+                # that is a known bug and causes no problems with loading fits data.
+                warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                spec = fits.open(filename) 
+        except IOError as e:
+            errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+            return errorMessage
+        try:
+            self._flux = spec[1].data.field('Flux')
+            self._wavelength = 10.0**spec[1].data.field('LogLam')
+            err = spec[1].data.field('PropErr')
             self._var = err**2
         except Exception as e:
             errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
@@ -506,28 +555,113 @@ class Spectrum(object):
                     measuredLinesDict[key] = [0,np.inf]
  
         return measuredLinesDict
-        
+    def isWD(self):
+        def Gauss(x, mu,sigma, A, m, b):
+            return A* np.exp(-0.5 * ((x - mu)/sigma)**2) + m*x + b
+
+        p0 = np.array([6564.5377, 25.0, .75, -1.0, 1.0])
+        range_index = np.where((self._wavelength >= 6200.0) & (self._wavelength <= 6900.0))[0] 
+        with warnings.catch_warnings(): 
+            #warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ') 
+            warnings.simplefilter("ignore")
+            popt, pcov = curve_fit(Gauss, self._wavelength[range_index], self._flux[range_index], p0=p0)#, maxfev=50000)
+        if popt[1] > 15.0:
+            return True, popt[1]
+        else:
+            return False, np.nan
+
     def guessSpecType(self):
     
         # Measure lines
         self._lines = self.measureLines()
-        
+
         # Recast values to simple 2D array
         lines = np.array(list(self._lines.values()))[np.argsort(list(self._lines.keys()))]
-        
+
         # Weight by uncertainty in object lines and template lines
         weights = 1 / (np.sqrt(self._tempLineVars) + np.sqrt(lines[:,1]))
-        
+
         # Find best fit
         sumOfWeights = np.nansum(weights**2, 1)
         sumOfWeights[sumOfWeights == 0] = np.nan
-        iguess = np.nanargmin(np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights)
-        
-        #Save guess as dict       
-        self._guess = {'specType':   self._tempLines[0][iguess], # Spectral type, 0 for O to 7 for L
-                       'subType':    self._tempLines[1][iguess], # Spectral subtype
-                       'metal':      self._tempLines[2][iguess], # Metallicity
-                       'luminosity': self._tempLines[3][iguess]} # Luminosity class, 3 for giant, 5 for MS        
+        distance = np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights
+        if np.all(np.isnan(distance)):
+            iguess = None
+            #Save guess as dict       
+            self._guess = {'specType':   -1, # Spectral type, 0 for O to 7 for L
+                           'subType':    -1, # Spectral subtype
+                           'metal':      -1, # Metallicity
+                           'luminosity': -1} # Luminosity class, 3 for giant, 5 for MS   
+        else:
+            iguess = np.nanargmin(distance)
+            if np.isin(np.int(self._tempLines[0][iguess]), np.array([0, 1, 2, 3])):
+                try:
+                    isThisAWD, thisSigma = self.isWD()
+                    if isThisAWD:
+                        WD_sigma = np.array([18.3083, 35.6469, 28.7010, 26.8483, 25.3973, 20.2621, 21.1071])#0,1,2,3,4,7,8
+                        WD_sigma_label = np.array([0,1,2,3,4,7,8])
+                        self._guess = {'specType':   9, # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                       'subType':    WD_sigma_label[np.argmin(np.abs(WD_sigma-thisSigma))], # Spectral subtype
+                                       'metal':      0, # Metallicity
+                                       'luminosity': 5} # Luminosity class, 3 for giant, 5 for MS   
+                    else:
+                        self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                      'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                                      'metal':      self._tempLines[2][iguess], # Metallicity
+                                      'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS  
+                except RuntimeError:
+                    stillWD = True
+                    stillWD_step = 1
+                    while stillWD:
+                        iguess_dist = np.partition(distance, stillWD_step)[stillWD_step]
+                        iguess = np.where(distance == iguess_dist)[0][0]
+                        if np.int(self._tempLines[0][iguess]) == 9:
+                            stillWD_step += 1
+                        else:
+                            stillWD = False
+                            stillWD_step += 1
+
+            elif np.int(self._tempLines[0][iguess]) == 9: 
+                try:
+                    isThisAWD, thisSigma = self.isWD()
+                    if isThisAWD:
+                        self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                       'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                                       'metal':      self._tempLines[2][iguess], # Metallicity
+                                       'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS  
+                    else:
+                        stillWD = True
+                        stillWD_step = 1
+                        while stillWD:
+                            iguess_dist = np.partition(distance, stillWD_step)[stillWD_step]
+                            iguess = np.where(distance == iguess_dist)[0][0]
+                            if np.int(self._tempLines[0][iguess]) == 9:
+                                stillWD_step += 1
+                            else:
+                                stillWD = False
+                                stillWD_step += 1
+
+                        self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                       'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                                       'metal':      self._tempLines[2][iguess], # Metallicity
+                                       'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS 
+                except RuntimeError:
+                    stillWD = True
+                    stillWD_step = 1
+                    while stillWD:
+                        iguess_dist = np.partition(distance, stillWD_step)[stillWD_step]
+                        iguess = np.where(distance == iguess_dist)[0][0]
+                        if np.int(self._tempLines[0][iguess]) == 9:
+                            stillWD_step += 1
+                        else:
+                            stillWD = False
+                            stillWD_step += 1                     
+            else: 
+                #Save guess as dict       
+                self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                               'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                               'metal':      self._tempLines[2][iguess], # Metallicity
+                               'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS        
     
     def findRadialVelocity(self):
         """
@@ -603,7 +737,10 @@ class Spectrum(object):
         #Spectral type L
         elif bestGuess['specType'] == 7: 
             tempName = 'L' + str(bestGuess['subType']) + '.fits'
-
+        elif bestGuess['specType'] == 8: 
+            tempName = 'C' + str(bestGuess['subType']) + '.fits'
+        elif bestGuess['specType'] == 9: 
+            tempName = 'WD' + str(bestGuess['subType']) + '.fits'
         # Open the template
         with warnings.catch_warnings():
             # Ignore a very particular warning from some versions of astropy.io.fits
