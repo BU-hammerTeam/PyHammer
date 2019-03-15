@@ -59,7 +59,7 @@ def main(options):
         if options['lineOutfile']: lineOutfile = open('spectralIndices.csv', 'w')
         outfile.write('#Filename,File Type,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
         rejectfile.write('#Filename,File Type,Spectra S/N\n')
-        if options['lineOutfile']: lineOutfile.write('#Filename,CaK,CaK_var,Cadel,Cadel_var,CaI4217,CaI4217_var,Gband,Gband_var,Hgam,Hgam_var,FeI4383,FeI4383_var,FeI4404,FeI4404_var,Hbeta,Hbeta_var,MgI,MgI_var,NaD,NaD_var,CaI6162,CaI6162_var,Halpha,Halpha_var,CaH2,CaH2_var,CaH3,CaH3_var,TiO5,TiO5_var,VO7434,VO7434_var,VO7445,VO7445_var,VO-B,VO-B_var,VO7912,VO7912_var,Rb-B,Rb-B_var,NaI,NaI_var,TiO8,TiO8_var,TiO8440,TiO8440_var,Cs-A,Cs-A_var,CaII8498,CaII8498_var,CrH-A,CrH-A_var,CaII8662,CaII8662_var,FeI8689,FeI8689_var,FeH,FeH_var\n')
+        if options['lineOutfile']: lineOutfile.write('#Filename,CaK,CaK_var,Cadel,Cadel_var,CaI4217,CaI4217_var,Gband,Gband_var,Hgam,Hgam_var,FeI4383,FeI4383_var,FeI4404,FeI4404_var,Hbeta,Hbeta_var,MgI,MgI_var,NaD,NaD_var,CaI6162,CaI6162_var,Halpha,Halpha_var,CaH2,CaH2_var,CaH3,CaH3_var,TiO5,TiO5_var,VO7434,VO7434_var,VO7445,VO7445_var,VO-B,VO-B_var,VO7912,VO7912_var,Rb-B,Rb-B_var,NaI,NaI_var,TiO8,TiO8_var,TiO8440,TiO8440_var,Cs-A,Cs-A_var,CaII8498,CaII8498_var,CrH-A,CrH-A_var,CaII8662,CaII8662_var,FeI8689,FeI8689_var,FeH,FeH_var,C2-4382,C2-4382_var,C2-4737,C2-4737_var,C2-5165,C2-5165_var,C2-5636,C2-5636_var,CN-6926,CN-6926_var,CN-7872,CN-7872_var,WD-Halpha,WD-Halpha_var,WD-Hbeta,WD-Hbeta_var,WD-Hgamma,WD-Hgamma_var,\n')
 
         # Define the string to contain all failure messages. These will be compiled
         # and printed once at the end, if anything is put into it.
@@ -125,7 +125,7 @@ def main(options):
                 for key, value in spec.lines.items(): 
                     if key == 'CaK': 
                         lineOutfile.write(fname + ',' + str(value[0]) + ',' + str(value[1])+',')
-                    elif key == 'FeH':
+                    elif key == 'WD-Hgamma':
                         lineOutfile.write(str(value[0]) + ',' + str(value[1])+'\n')
                     elif key in ['region1', 'region2', 'region3', 'region4', 'region5']:
                         continue
