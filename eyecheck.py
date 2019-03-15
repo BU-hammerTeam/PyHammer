@@ -894,6 +894,11 @@ class Eyecheck(QMainWindow):
             self.loadUserSpectrum()
             self.updatePlot()
 
+    def splitSpecType(self, s):
+        head = s.rstrip('0123456789')
+        tail = s[len(head):]
+        return head, tail
+
     def loadUserSpectrum(self):
         """
         Description:
@@ -911,8 +916,10 @@ class Eyecheck(QMainWindow):
         self.spectrumList.setCurrentIndex(self.specIndex)
 
         # Set the sliders to the new spectrum's auto-classified choices
-        self.updateSlider( self.specTypeSlider, self.specType.index(self.outData[self.specIndex,3][0]) )
-        self.updateSlider( self.subTypeSlider,  self.subType.index(self.outData[self.specIndex,3][1])  )
+        specTypePostSplit,  specSubTypePostSplit = self.splitSpecType(self.outData[self.specIndex,3])
+
+        self.updateSlider( self.specTypeSlider, self.specType.index(specTypePostSplit) )
+        self.updateSlider( self.subTypeSlider,  self.subType.index(specSubTypePostSplit)  )
         self.updateSlider( self.metalSlider,    self.metalType.index(self.outData[self.specIndex,4])   )
         
         # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
