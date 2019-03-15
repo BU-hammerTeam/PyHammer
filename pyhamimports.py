@@ -35,6 +35,7 @@ import bisect
 import pickle
 import csv
 from collections import OrderedDict
+from scipy.optimize import curve_fit
 
 # Check which PyQt version the user may have
 # installed and import the appropriate content
