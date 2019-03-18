@@ -161,7 +161,7 @@ class Spectrum(object):
 
         if isinstance(filetype, str): filetype = filetype.lower()
 
-        if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', 'tempFITS', None]:
+        if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', 'tempfits', None]:
             # The user supplied an option not accounted for
             # in this method. Just skip the file.
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
@@ -213,13 +213,13 @@ class Spectrum(object):
                 filetype = 'csv'
 
         # Try reading a .fits file with the data in template fmt
-        if (filetype in ['tempFITS', None]):
+        if (filetype in ['tempfits', None]):
             msg = self.__readFileTempFits(filename)
             if msg is not None: # I.e., there was a problem
                 if filetype is not None:
                     return msg, None
             else:
-                filetype = 'tempFITS'
+                filetype = 'tempfits'
         # If the user didn't supply a filetype for us, and we
         # didn't manage to figure out which one it was, simply
         # return with an error message stating so.
@@ -279,9 +279,7 @@ class Spectrum(object):
         return None
 
     def __readFileTempFits(self, filename):
-        """Tries to read a regular fits file"""
-        # Need keyword for angstrom vs micron , assume angstrom, keyword for micron 
-        # Need error vs variance keyword
+        """Tries to read a template fits file"""
         try:
             with warnings.catch_warnings():
                 # Ignore a very particular warning from some versions of astropy.io.fits

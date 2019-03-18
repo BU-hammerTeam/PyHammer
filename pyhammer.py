@@ -580,7 +580,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.textArea.setFont(font)
         self.selectSpectraButton.clicked.connect(self.selectSpectraButtonClicked)
         self.selectSpectraButton.setToolTip('Select a set of spectrum files\nto add to the input file')
-        self.dataTypeList.addItems(['SDSSdr12', 'SDSSdr7', 'fits', 'txt', 'csv'])
+        self.dataTypeList.addItems(['SDSSdr12', 'SDSSdr7', 'fits', 'txt', 'csv','tempfits'])
         self.applyType.clicked.connect(self.applyTypeClicked)
         self.applyType.setToolTip('<b>Optional:</b> Append the selected data\ntype to every file in the list to give a\nhint to PyHammer about the file type')
         self.createFrame.hide()
