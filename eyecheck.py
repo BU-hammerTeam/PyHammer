@@ -618,7 +618,7 @@ class Eyecheck(QMainWindow):
 
         # *** Set Plot Spacing ***
         
-        plt.subplots_adjust(left = 0.075, right = 0.975, top = 0.9, bottom = 0.15)
+        plt.subplots_adjust(left = 0.143, right = 0.927, top = 0.816, bottom = 0.194)
 
         # *** Set Plot Limits ***
 
