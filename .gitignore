@@ -4,3 +4,5 @@ PyHammerResults*
 temp_input_*
 *.csv
 .DS_Store
+list_of_ALL_temps.txt
+list_of_ALL_temps_small.txt
