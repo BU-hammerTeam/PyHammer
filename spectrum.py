@@ -597,7 +597,7 @@ class Spectrum(object):
                     isThisAWD, thisSigma = self.isWD()
                     if isThisAWD:
                         WD_sigma = np.array([18.3083, 35.6469, 28.7010, 26.8483, 25.3973, 20.2621, 21.1071])#0,1,2,3,4,7,8
-                        WD_sigma_label = np.array([0,1,2,3,4,7,8])
+                        WD_sigma_label = np.array([1,2,3,4,5,6,7])
                         self._guess = {'specType':   9, # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
                                        'subType':    WD_sigma_label[np.argmin(np.abs(WD_sigma-thisSigma))], # Spectral subtype
                                        'metal':      0, # Metallicity
