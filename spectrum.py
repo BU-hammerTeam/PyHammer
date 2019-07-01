@@ -194,15 +194,6 @@ class Spectrum(object):
             else:
                 filetype = 'sdssdr12'
 
-        # Try reading a plaintext file with the data in columns
-        if (filetype in ['txt', None]):
-            msg = self.__readFileTxt(filename)
-            if msg is not None: # I.e., there was a problem
-                if filetype is not None:
-                    return msg, None
-            else:
-                filetype = 'txt'
-
         # Try reading a .csv file with the data in columns
         if (filetype in ['csv', None]):
             msg = self.__readFileCsv(filename)
@@ -211,6 +202,15 @@ class Spectrum(object):
                     return msg, None
             else:
                 filetype = 'csv'
+
+        # Try reading a plaintext file with the data in columns
+        if (filetype in ['txt', None]):
+            msg = self.__readFileTxt(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'txt'
 
         # Try reading a .fits file with the data in template fmt
         if (filetype in ['tempfits', None]):
@@ -231,7 +231,6 @@ class Spectrum(object):
         # If we've made it to here, then we've loaded up the
         # data from the file properly and we can try to do
         # some further processing
-        
         self.interpOntoGrid()
         
         # Determine wavelength to normalize flux at
