@@ -4,3 +4,4 @@ PyHammerResults*
 temp_input_*
 *.csv
 .DS_Store
+guess_type.txt
