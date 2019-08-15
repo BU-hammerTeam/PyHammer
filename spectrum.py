@@ -19,18 +19,27 @@ class Spectrum(object):
         self._guess = None
         self._normWavelength = 8000
 
+        # The directory containing this file
+        self.thisDir = os.path.split(__file__)[0]
+
+        # Store the SB2 filenames and order for access later
+        SB2ListPath = os.path.join(self.thisDir, 'resources', 'list_of_L_spec.txt')
+        self._SB2_filenameList = np.genfromtxt(SB2ListPath, dtype="U")
+
+        self._isSB2 = False
+
         # Define class instance variables used 
         self.defineCalcTools()
 
-        # The directory containing this file
-        self.thisDir = os.path.split(__file__)[0]
+
         
         # Read in indices measured from templates
         # tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
         # lines is a list of 2D arrays with indices and variances for each line
         # index for each spectrum that goes into a template
         #
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
+        #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_07-02-2019_SB2.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
@@ -160,6 +169,8 @@ class Spectrum(object):
         """
 
         if isinstance(filetype, str): filetype = filetype.lower()
+
+        self.filename = filename
 
         if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', 'tempfits', None]:
             # The user supplied an option not accounted for
@@ -658,7 +669,12 @@ class Spectrum(object):
                 self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
                                'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
                                'metal':      self._tempLines[2][iguess], # Metallicity
-                               'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS        
+                               'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS
+
+        if self.guess['specType'] >= 10:
+            self._isSB2 = True
+        else:
+            self._isSB2 = False
     
     def findRadialVelocity(self):
         """
@@ -704,6 +720,8 @@ class Spectrum(object):
         # I have it only using the spectral type and subtype for the original guess 
         # so I just cross correlate to the most common metallicity template for each spectral class
         path = 'resources/templates/'
+        path_SB2 = 'resources/templates_SB2/'
+
         #Spectral type O 
         if bestGuess['specType'] == 0:
             tempName = 'O' + str(bestGuess['subType']) + '.fits'
@@ -734,16 +752,24 @@ class Spectrum(object):
         #Spectral type L
         elif bestGuess['specType'] == 7: 
             tempName = 'L' + str(bestGuess['subType']) + '.fits'
+        #Spectral type C
         elif bestGuess['specType'] == 8: 
             tempName = 'C' + str(bestGuess['subType']) + '.fits'
+        #Spectral type WD
         elif bestGuess['specType'] == 9: 
             tempName = 'WD' + str(bestGuess['subType']) + '.fits'
+        #Spectral type SB2
+        elif self._isSB2:
+            tempName = self._SB2_filenameList[bestGuess['specType'] - 10]
         # Open the template
         with warnings.catch_warnings():
             # Ignore a very particular warning from some versions of astropy.io.fits
             # that is a known bug and causes no problems with loading fits data.
             warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
-            temp = fits.open(path+tempName)
+            if self._isSB2:
+                temp = fits.open(path_SB2+tempName)
+            else:
+                temp = fits.open(path+tempName)
                                     
         tempFlux = temp[1].data['flux']
         tempWave = 10**temp[1].data['loglam']
