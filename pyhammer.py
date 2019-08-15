@@ -173,15 +173,23 @@ def main(options):
             # --- 7 ---
             
             # Translate the numbered spectral types into letters
-            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD'][spec.guess['specType']]
-            
-            # Write the file
-            outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
-                          ftype + ',' +                                     # The filetype
-                          str(shift) + ',' +                                # The RV shift
-                          letterSpt + str(spec.guess['subType']) + ',' +    # The auto-guessed spectral type
-                          '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
-                          ',nan,nan\n')                                     # The to-be-determined user classifications
+            if spec._isSB2:
+                # Write the file
+                outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
+                              ftype + ',' +                                     # The filetype
+                              str(shift) + ',' +                                # The RV shift
+                              spec._SB2_filenameList[spec.guess['specType'] - 10][:-5] + ',' +    # The auto-guessed spectral type
+                              '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
+                              ',nan,nan\n')                                     # The to-be-determined user classifications
+            else:
+                letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD'][spec.guess['specType']]
+                # Write the file
+                outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
+                              ftype + ',' +                                     # The filetype
+                              str(shift) + ',' +                                # The RV shift
+                              letterSpt + str(spec.guess['subType']) + ',' +    # The auto-guessed spectral type
+                              '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
+                              ',nan,nan\n')                                     # The to-be-determined user classifications
         
         # We're done so let's close all the files
         infile.close()
