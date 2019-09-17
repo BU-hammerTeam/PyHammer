@@ -38,9 +38,11 @@ class Eyecheck(QMainWindow):
 
         # Define some basic spectra related information
         self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD']
-        self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+        self.subTypeWD   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
         self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
         self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
+        self.SB2templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates_SB2')
 
         # Define an index to point to the current spectra in the list
         # of spectra in the output file. We will start by assuming we're
@@ -235,9 +237,21 @@ class Eyecheck(QMainWindow):
         self.grid.addWidget(self.spectrumList, 1, 0, 1, 3)
 
         # The collection of sliders and their accompanying labels
-        self.specTypeLabel, self.specTypeSlider = self.createSlider('Stellar\nType', self.specType, self.specTypeChanged)
-        self.subTypeLabel, self.subTypeSlider = self.createSlider('Stellar\nSubtype', self.subType, self.specSubtypeChanged)
-        self.metalLabel, self.metalSlider = self.createSlider('Metallicity\n[Fe/H]', self.metalType, self.metallicityChanged)
+        self.specTypeLabel, self.specTypeSlider = self.createSlider('Primary\nStellar\nType', self.specType, self.specTypeChanged)
+        self.subTypeLabel, self.subTypeSlider = self.createSlider('Primary\nStellar\nSubtype', self.subType, self.specSubtypeChanged)
+        self.metalLabel, self.metalSlider = self.createSlider('Primary\nMetallicity\n[Fe/H]', self.metalType, self.metallicityChanged)
+
+        # The collection of SB2 sliders and their accompanying labels
+        self.specTypeLabelSB2, self.specTypeSliderSB2 = self.createSB2Slider('Secondary\nStellar\nType', self.specType, self.specTypeChanged, 0)
+        self.subTypeLabelSB2, self.subTypeSliderSB2 = self.createSB2Slider('Secondary\nStellar\nSubtype', self.subType, self.specSubtypeChanged, 1)
+
+        self.SB2button = QCheckBox("SB2")
+        self.SB2button.setChecked(False)
+        for ii in range(len(self.specTypeLabelSB2)):
+            self.specTypeLabelSB2[ii].setDisabled(True)
+            self.subTypeLabelSB2[ii].setDisabled(True)
+        self.SB2button.stateChanged.connect(lambda:self.btnstate(self.SB2button))
+        self.grid.addWidget(self.SB2button, 3, 2)
 
         # The collection of buttons
         self.createButtons('Change Spectral Type', ['Earlier', 'Later'],
@@ -290,6 +304,49 @@ class Eyecheck(QMainWindow):
         self.setCentralWidget(self.widget)
         self.setWindowTitle('PyHammer Eyecheck')
         self.setWindowIcon(self.icon)
+
+
+    def btnstate(self,b):
+        bad_primary = [0, 1, 7, 8, 9]
+        bad_secondary = [0, 1, 2, 7, 8]
+        if b.text() == "SB2":
+            if b.isChecked() == True:
+                for ii in range(len(self.metalLabel)):
+                    self.metalLabel[ii].setDisabled(True)
+
+                for ii in range(len(self.specTypeLabelSB2)):
+                    self.specTypeLabelSB2[ii].setDisabled(False)
+                    self.subTypeLabelSB2[ii].setDisabled(False)
+
+                for ii in bad_primary:
+                    self.specTypeLabel[ii].setDisabled(True)
+
+                for ii in bad_secondary:
+                    self.specTypeLabelSB2[ii].setDisabled(True)
+
+                if self.specTypeSlider.sliderPosition() in [0,1]:
+                    self.updateSlider(self.specTypeSlider, 2)
+                elif self.specTypeSlider.sliderPosition() in [7,8,9]:
+                    self.updateSlider(self.specTypeSlider, 6)
+
+                if self.specTypeSliderSB2.sliderPosition() in [0,1,2]:
+                    self.updateSlider(self.specTypeSliderSB2, 3)
+                elif self.specTypeSliderSB2.sliderPosition() in [7,8]:
+                    self.updateSlider(self.specTypeSliderSB2, 6)
+
+                self.checkSB2combos()
+            else:
+                for ii in range(len(self.metalLabel)):
+                    self.metalLabel[ii].setDisabled(False)
+
+                for ii in range(len(self.specTypeLabelSB2)):
+                    self.specTypeLabelSB2[ii].setDisabled(True)
+                    self.subTypeLabelSB2[ii].setDisabled(True)
+
+                for ii in range(len(self.specTypeLabel)):
+                    self.specTypeLabel[ii].setDisabled(False)
+                    self.subTypeLabel[ii].setDisabled(False)
+
 
     def createMenuBar(self):
         """
@@ -429,6 +486,66 @@ class Eyecheck(QMainWindow):
         # Return the labels and slider so we can access them later
         return tickLabels, slider
 
+    def createSB2Slider(self, title, labels, callback, column):
+        """
+        Description:
+            A helper method of the create GUI method. This method creates
+            a frame and puts a label at the top, a vertical slider, and
+            a collection of labels next to the slider. Note that both the
+            slider and labels use customized objects from the gui_utils
+            class which were written on top of the respective QWidgets and
+            provide additional functionality. See those respective classes
+            for details.
+
+        Input:
+            title: The label to put at the top of the frame as the title
+                for the section.
+            labels: The labels to use for the slider. The slider itself
+                will be given a set of discrete options to match the number
+                of labels provided.
+            callback: The callback to use when the slider is set to a new
+                value.
+
+        Return:
+            Returns the slider and collection of label objects. These are
+            returned so the GUI can interact with the labels and slider
+            later on.
+        """
+        
+        # Define or update the column of the top-level grid to
+        # put this slider component into
+        # if not hasattr(self, 'column'):
+        #     self.column = 0
+        # else:
+        #     self.column += 1
+
+        # Create the frame and put it in the top layer grid
+        frame = QFrame(frameShape = QFrame.StyledPanel, frameShadow = QFrame.Sunken, lineWidth = 0)
+        sliderGrid = QGridLayout()
+        frame.setLayout(sliderGrid)
+        self.grid.addWidget(frame, 3, column)
+
+        # Create the label at the top of the frame
+        label = QLabel(title, alignment = Qt.AlignCenter)
+        sliderGrid.addWidget(label, 0, 0, 1, 2)
+
+        # Add the slider
+        slider = Slider(Qt.Vertical, minimum = 0, maximum = len(labels)-1, tickInterval = 1, pageStep = 1, invertedAppearance = True)
+        slider.valueChanged.connect(callback)
+        slider.setTickPosition(QSlider.TicksLeft)
+        slider.setTracking(False)
+        sliderGrid.addWidget(slider, 1, 1, len(labels), 1)
+
+        # Add the text labels to the left of the slider
+        tickLabels = []
+        for i,text in enumerate(labels):
+            label = SliderLabel(text, slider, i)
+            tickLabels.append(label)
+            sliderGrid.addWidget(label, i+1, 0)
+
+        # Return the labels and slider so we can access them later
+        return tickLabels, slider
+
     def createButtons(self, title, buttonTexts, tooltips, callbacks):
         """
         Description:
@@ -449,7 +566,7 @@ class Eyecheck(QMainWindow):
         # Define or update the row of the top-level grid to
         # put this button frame into
         if not hasattr(self, 'row'):
-            self.row = 3
+            self.row = 4
         else:
             self.row += 1
 
@@ -478,15 +595,18 @@ class Eyecheck(QMainWindow):
 
         # Create the frame
         frame = QFrame(frameShape = QFrame.StyledPanel, frameShadow = QFrame.Sunken, lineWidth = 0)
-        frame.setToolTip('This metric indicates how well the current\n'
+        frame.setToolTip('These metrics indicate how well the current\n'
                          'template matches the spectrum. The lower\n'
-                         'the value, the better the match.')
+                         'the value, the better the match.\n\n'
+                         'The first metric is the residual between the input spectrum and the selected template.\n'
+                         'The second metric is the residual between the input spectrum and the selected template, normalized by error.\n'
+                         'The third metric is the distance between the measured line of the input spectrum and the selected template.\n')
         distGrid = QVBoxLayout(margin = 2, spacing = 2)
         frame.setLayout(distGrid)
         self.grid.addWidget(frame, self.row + 1, 0, 1, 3)
 
         # Create the distance metric label
-        label = QLabel('Template Match Metric', alignment = Qt.AlignCenter)
+        label = QLabel('Metrics: Resid | NormResid | LineDist', alignment = Qt.AlignCenter)
         distGrid.addWidget(label)
 
         # Create the distance metric value label
@@ -563,6 +683,7 @@ class Eyecheck(QMainWindow):
             # Determine and format the template name for the title, from the filename
             templateName = os.path.basename(os.path.splitext(templateFile)[0])
             if '_' in templateName:
+                templateName = templateName.replace('Dwarf','') #hide Dwarf from plot title
                 ii = templateName.find('_')+1 # Index of first underscore, before metallicity
                 templateName = templateName[:ii] + '[Fe/H] = ' + templateName[ii:]
                 templateName = templateName.replace('_',',\;')
@@ -637,10 +758,15 @@ class Eyecheck(QMainWindow):
         if templateFile is not None:
             m = min(len(self.specObj.wavelength), len(hdulist[1].data['loglam']))
             dist = round(np.sqrt(np.nansum([(t-s)**2 for t,s in zip(hdulist[1].data['flux'][:m],self.specObj.flux[:m])])),2)
-            dist = '{:.2f}'.format(dist)
+            distSTR = '{:.5f}'.format(dist)
+            distNorm = round(np.sqrt(np.nansum([((t-s)/err)**2 for t,s,err in zip(hdulist[1].data['flux'][:m],self.specObj.flux[:m],self.specObj.var[:m]**0.5)])),2)
+            distNormSTR = '{:.5f}'.format(distNorm)
         else:
             dist = 'None'
-        self.distMetric.setText(dist)
+        self.distMetric.setText(distSTR+" | "+distNormSTR+" | "+'{:.5f}'.format(self.specObj.distance))
+        self.specDist = dist
+        self.specDistNorm = distNorm
+        self.lineCHiSq = self.specObj.distance
 
         # *** Draw the Plot ***
 
@@ -815,8 +941,11 @@ class Eyecheck(QMainWindow):
             choice and moves forward to the next user's spectrum.
         """
         # Store the choice for the current spectra
-        self.outData[self.specIndex,5] = self.specType[self.specTypeSlider.sliderPosition()] + str(self.subTypeSlider.sliderPosition())
-        self.outData[self.specIndex,6] = self.metalType[self.metalSlider.sliderPosition()]
+        if self.SB2button.isChecked() == True:
+            self.outData[self.specIndex,5] = self.specType[self.specTypeSlider.sliderPosition()] + str(self.subTypeSlider.sliderPosition()) + "+" + self.specType[self.specTypeSliderSB2.sliderPosition()] + str(self.subTypeSliderSB2.sliderPosition())
+        else:
+            self.outData[self.specIndex,5] = self.specType[self.specTypeSlider.sliderPosition()] + str(self.subTypeSlider.sliderPosition())
+            self.outData[self.specIndex,6] = self.metalType[self.metalSlider.sliderPosition()]
         # Move to the next spectra
         self.moveToNextSpectrum()
 
@@ -853,14 +982,126 @@ class Eyecheck(QMainWindow):
         # If it is, turn off the option to pick K8 and K9
         # since those don't exist. Otherwise, just turn those
         # sub spectral type labels on.
-        if self.specTypeSlider.sliderPosition() == 5:
-            self.subTypeLabel[-1].setDisabled(True)
-            self.subTypeLabel[-2].setDisabled(True)
-            if self.subTypeSlider.sliderPosition() in [8,9]:
-                self.updateSlider(self.subTypeSlider, 7)
+        # self.specTypeSlider.blockSignals(True)
+        # self.specTypeSliderSB2.blockSignals(True)
+
+        self.subTypeSlider.blockSignals(True)
+        self.subTypeSliderSB2.blockSignals(True)
+
+        bad_primary = [0, 1, 7, 8, 9]
+        bad_secondary = [0, 1, 2, 7, 8]
+
+        if self.SB2button.isChecked() == True:
+            # for ii in range(len(self.specTypeLabelSB2)):
+            #     self.specTypeLabelSB2[ii].setDisabled(False)
+            #     self.subTypeLabelSB2[ii].setDisabled(False)
+
+            # for ii in bad_primary:
+            #     self.specTypeLabel[ii].setDisabled(True)
+
+            # for ii in bad_secondary:
+            #     self.specTypeLabelSB2[ii].setDisabled(True)
+
+
+            if self.specTypeSlider.sliderPosition() in [0,1]:
+                self.updateSlider(self.specTypeSlider, 2)
+            elif self.specTypeSlider.sliderPosition() in [7,8,9]:
+                self.updateSlider(self.specTypeSlider, 6)
+
+            if self.specTypeSliderSB2.sliderPosition() in [0,1,2]:
+                self.updateSlider(self.specTypeSliderSB2, 3)
+            elif self.specTypeSliderSB2.sliderPosition() in [7,8]:
+                self.updateSlider(self.specTypeSliderSB2, 6)
+        
+            self.checkSB2combos()
         else:
-            self.subTypeLabel[-1].setEnabled(True)
-            self.subTypeLabel[-2].setEnabled(True)
+            # for ii in range(len(self.specTypeLabelSB2)):
+            #     self.specTypeLabelSB2[ii].setDisabled(True)
+            #     self.subTypeLabelSB2[ii].setDisabled(True)
+
+            # for ii in range(len(self.specTypeLabel)):
+            #     self.specTypeLabel[ii].setDisabled(False)
+            #     self.subTypeLabel[ii].setDisabled(False)
+
+
+            if self.specTypeSlider.sliderPosition() == 5:
+                self.subTypeLabel[-1].setDisabled(True)
+                self.subTypeLabel[-2].setDisabled(True)
+                if self.subTypeSlider.sliderPosition() in [8,9]:
+                    self.updateSlider(self.subTypeSlider, 7)
+            else:
+                self.subTypeLabel[-1].setEnabled(True)
+                self.subTypeLabel[-2].setEnabled(True)
+
+        self.specTypeSlider.blockSignals(False)
+        self.specTypeSliderSB2.blockSignals(False)
+
+        self.subTypeSlider.blockSignals(False)
+        self.subTypeSliderSB2.blockSignals(False)
+
+    def limitSliders(self, good_PrimarySubtypes, good_Secondary_Types):
+        this_good_PrimarySubtypes = good_PrimarySubtypes[self.specTypeSlider.sliderPosition()]
+        this_good_Secondary_Types = good_Secondary_Types[self.specTypeSlider.sliderPosition()]
+
+        good_SecondarySubtypes = self.specObj._splitSB2spectypes[np.where((self.specObj._splitSB2spectypes[:,0] == self.specObj.letterSpt[self.specTypeSlider.sliderPosition()]) & 
+                                                                   (self.specObj._splitSB2spectypes[:,2] == self.specObj.letterSpt[self.specTypeSliderSB2.sliderPosition()]) & 
+                                                                   (self.specObj._splitSB2spectypes[:,1] == str(self.subTypeSlider.sliderPosition())))[0], 3].astype(int).tolist()
+        print(good_SecondarySubtypes)
+        print(self.specTypeSlider.sliderPosition())
+        print(self.subTypeSlider.sliderPosition())
+        print(self.specTypeSliderSB2.sliderPosition())
+
+        for ii in range(len(self.subTypeLabel)):
+            self.subTypeLabel[ii].setDisabled(True)
+        for ii in range(len(self.specTypeLabelSB2)):
+            self.specTypeLabelSB2[ii].setDisabled(True)
+        for ii in range(len(self.subTypeLabelSB2)):
+            self.subTypeLabelSB2[ii].setDisabled(True)
+
+        for ii in this_good_PrimarySubtypes:
+            self.subTypeLabel[ii].setDisabled(False)
+        for ii in this_good_Secondary_Types:
+            self.specTypeLabelSB2[ii].setDisabled(False)
+
+        if self.subTypeSlider.sliderPosition() not in this_good_PrimarySubtypes:
+            self.updateSlider(self.subTypeSlider, this_good_PrimarySubtypes[np.argmin(np.abs(np.array(this_good_PrimarySubtypes) - self.subTypeSlider.sliderPosition()))])
+        if self.specTypeSliderSB2.sliderPosition() not in this_good_Secondary_Types:
+            self.updateSlider(self.specTypeSliderSB2, this_good_Secondary_Types[np.argmin(np.abs(np.array(this_good_Secondary_Types) - self.specTypeSliderSB2.sliderPosition()))])
+
+        for ii in good_SecondarySubtypes:
+            self.subTypeLabelSB2[ii].setDisabled(False)
+        if self.subTypeSliderSB2.sliderPosition() not in good_SecondarySubtypes:
+            self.updateSlider(self.subTypeSliderSB2, good_SecondarySubtypes[np.argmin(np.abs(np.array(good_SecondarySubtypes) - self.subTypeSliderSB2.sliderPosition()))])
+
+
+
+
+    def checkSB2combos(self):
+        good_PrimarySubtypes = [[], #O
+                                [], #B
+                                [3, 5, 7], #A
+                                [7, 9], #F
+                                [0, 1, 3, 4, 5, 6, 7, 8, 9], #G
+                                [0, 1, 2, 3, 4, 5, 7], #K
+                                [0, 1, 2, 3, 4, 5, 6, 7], #M
+                                [], #L
+                                [], #C
+                                [] #WD
+                                ]
+
+        good_Secondary_Types = [[], #O
+                                [], #B
+                                [3], #A
+                                [4, 5, 6], #F
+                                [5, 9], #G
+                                [6, 9], #K
+                                [9], #M
+                                [], #L
+                                [], #C
+                                [] #WD
+                                ]
+
+        self.limitSliders(good_PrimarySubtypes, good_Secondary_Types)
 
     def moveToNextSpectrum(self):
         """
@@ -915,13 +1156,35 @@ class Eyecheck(QMainWindow):
         # Set the spectrum entry field to the new spectrum name
         self.spectrumList.setCurrentIndex(self.specIndex)
 
-        # Set the sliders to the new spectrum's auto-classified choices
-        specTypePostSplit,  specSubTypePostSplit = self.splitSpecType(self.outData[self.specIndex,3])
 
-        self.updateSlider( self.specTypeSlider, self.specType.index(specTypePostSplit) )
-        self.updateSlider( self.subTypeSlider,  self.subType.index(specSubTypePostSplit)  )
-        self.updateSlider( self.metalSlider,    self.metalType.index(self.outData[self.specIndex,4])   )
-        
+        # Set the sliders to the new spectrum's auto-classified choices
+        auto_classified_choice = self.outData[self.specIndex,3]
+
+        if '+' in auto_classified_choice: # IF SB2
+            user_type1, user_type2 = auto_classified_choice.replace("+"," ").replace("."," ").split()[:2]
+            user_mainType1, user_subtype1 = self.splitSpecType(user_type1)
+            user_mainType2, user_subtype2 = self.splitSpecType(user_type2)
+
+            self.updateSlider(self.specTypeSlider, self.specType.index(user_mainType1))
+            self.updateSlider(self.subTypeSlider, self.subType.index(user_subtype1))
+
+            self.updateSlider(self.specTypeSliderSB2, self.specType.index(user_mainType2))
+            self.updateSlider(self.subTypeSliderSB2, self.subType.index(user_subtype2))
+
+            self.SB2button.setChecked(True)
+            self.checkSliderStates()
+
+        else:# IF Single star
+            specTypePostSplit, specSubTypePostSplit = self.splitSpecType(auto_classified_choice)
+
+            self.updateSlider(self.specTypeSlider, self.specType.index(specTypePostSplit))
+            self.updateSlider(self.subTypeSlider, self.subType.index(specSubTypePostSplit))
+            self.updateSlider(self.metalSlider, self.metalType.index(self.outData[self.specIndex,4]))
+
+            self.SB2button.setChecked(False)
+    
+
+
         # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
         # between loading templates, not between switching spectra.
         self.full_xlim = None
@@ -932,7 +1195,7 @@ class Eyecheck(QMainWindow):
         if not self.lockSmoothState.isChecked():
             self.smoothSpectrum.setChecked(False)
 
-    def getTemplateFile(self, specState = None, subState = None, metalState = None):
+    def getTemplateFile(self, specState1 = None, subState1 = None, metalState = None, specState2 = None, subState2 = None):
         """
         Description:
             This will determine the filename for the template which matches the
@@ -946,34 +1209,46 @@ class Eyecheck(QMainWindow):
         """
         # If values weren't passed in for certain states, assume we should
         # use what is chosen on the GUI sliders
-        if specState is None: specState = self.specTypeSlider.sliderPosition()
-        if subState is None: subState = self.subTypeSlider.sliderPosition()
-        if metalState is None: metalState = self.metalSlider.sliderPosition()
+        if self.SB2button.isChecked() == True:
+            if specState1 is None: specState1 = self.specTypeSlider.sliderPosition()
+            if subState1 is None: subState1 = self.subTypeSlider.sliderPosition()
 
-        # Try using the full name, i.e., SS_+M.M_Dwarf.fits
-        filename = self.specType[specState] + str(subState) + '_' + self.metalType[metalState] + '_Dwarf'
+            if specState2 is None: specState2 = self.specTypeSliderSB2.sliderPosition()
+            if subState2 is None: subState2 = self.subTypeSliderSB2.sliderPosition()
 
-        fullPath = os.path.join(self.templateDir, filename + '.fits')
+            filename = self.specType[specState1] + str(subState1) + "+" + self.specType[specState2] + str(subState2)
 
-        if os.path.isfile(fullPath):
+            fullPath = os.path.join(self.SB2templateDir, filename + '.fits')
             return fullPath
+        else:
+            if specState1 is None: specState1 = self.specTypeSlider.sliderPosition()
+            if subState1 is None: subState1 = self.subTypeSlider.sliderPosition()
+            if metalState is None: metalState = self.metalSlider.sliderPosition()
 
-        # Try using only the spectra and metallicity in the name, i.e., SS_+M.M.fits
-        filename = filename[:7]
+            # Try using the full name, i.e., SS_+M.M_Dwarf.fits
+            filename = self.specType[specState1] + str(subState1) + '_' + self.metalType[metalState] + '_Dwarf'
 
-        fullPath = os.path.join(self.templateDir, filename + '.fits')
+            fullPath = os.path.join(self.templateDir, filename + '.fits')
 
-        if os.path.isfile(fullPath):
-            return fullPath
-        
-        # Try to use just the spectral type, i.e., SS.fits
-        #filename = filename[:2]
-        filename = self.specType[specState] + str(subState)
+            if os.path.isfile(fullPath):
+                return fullPath
 
-        fullPath = os.path.join(self.templateDir, filename + '.fits')
-        
-        if os.path.isfile(fullPath):
-            return fullPath
+            # Try using only the spectra and metallicity in the name, i.e., SS_+M.M.fits
+            filename = filename[:7]
+
+            fullPath = os.path.join(self.templateDir, filename + '.fits')
+
+            if os.path.isfile(fullPath):
+                return fullPath
+            
+            # Try to use just the spectral type, i.e., SS.fits
+            #filename = filename[:2]
+            filename = self.specType[specState1] + str(subState1)
+
+            fullPath = os.path.join(self.templateDir, filename + '.fits')
+            
+            if os.path.isfile(fullPath):
+                return fullPath
 
         # Return None if file could not be found
         return None
