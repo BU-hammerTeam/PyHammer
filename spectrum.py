@@ -19,12 +19,25 @@ class Spectrum(object):
         self._guess = None
         self._normWavelength = 8000
 
+        self.letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD']
+
         # The directory containing this file
         self.thisDir = os.path.split(__file__)[0]
 
         # Store the SB2 filenames and order for access later
-        SB2ListPath = os.path.join(self.thisDir, 'resources', 'list_of_L_spec.txt')
+        SB2ListPath = os.path.join(self.thisDir, 'resources', 'list_of_SB2_spec.txt')
         self._SB2_filenameList = np.genfromtxt(SB2ListPath, dtype="U")
+
+        self._splitSB2spectypes = np.empty((self._SB2_filenameList.size, 4), dtype='U2')
+
+        for ii, filename in enumerate(self._SB2_filenameList):
+            type1, type2 = filename.replace("+"," ").replace("."," ").split()[:2]
+            mainType1, subtype1 = self.splitSpecType(type1)
+            mainType2, subtype2 = self.splitSpecType(type2)
+            self._splitSB2spectypes[ii, 0] = mainType1
+            self._splitSB2spectypes[ii, 1] = subtype1
+            self._splitSB2spectypes[ii, 2] = mainType2
+            self._splitSB2spectypes[ii, 3] = subtype2
 
         self._isSB2 = False
 
@@ -68,6 +81,11 @@ class Spectrum(object):
         self._tempLines = tempLines
         self._tempLineAvgs = avgs
         self._tempLineVars = stds**2.0
+
+    def splitSpecType(self, s):
+        head = s.rstrip('0123456789')
+        tail = s[len(head):]
+        return head, tail
 
     def defineCalcTools(self):
         """
@@ -592,8 +610,8 @@ class Spectrum(object):
         # Find best fit
         sumOfWeights = np.nansum(weights**2, 1)
         sumOfWeights[sumOfWeights == 0] = np.nan
-        distance = np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights
-        if np.all(np.isnan(distance)):
+        self.FULLdistance = np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights
+        if np.all(np.isnan(self.FULLdistance)):
             iguess = None
             #Save guess as dict       
             self._guess = {'specType':   -1, # Spectral type, 0 for O to 7 for L
@@ -601,7 +619,7 @@ class Spectrum(object):
                            'metal':      -1, # Metallicity
                            'luminosity': -1} # Luminosity class, 3 for giant, 5 for MS   
         else:
-            iguess = np.nanargmin(distance)
+            iguess = np.nanargmin(self.FULLdistance)
             if np.isin(np.int(self._tempLines[0][iguess]), np.array([0, 1, 2, 3])):
                 try:
                     isThisAWD, thisSigma = self.isWD()
@@ -621,8 +639,8 @@ class Spectrum(object):
                     stillWD = True
                     stillWD_step = 1
                     while stillWD:
-                        iguess_dist = np.partition(distance, stillWD_step)[stillWD_step]
-                        iguess = np.where(distance == iguess_dist)[0][0]
+                        iguess_dist = np.partition(self.FULLdistance, stillWD_step)[stillWD_step]
+                        iguess = np.where(self.FULLdistance == iguess_dist)[0][0]
                         if np.int(self._tempLines[0][iguess]) == 9:
                             stillWD_step += 1
                         else:
@@ -641,8 +659,8 @@ class Spectrum(object):
                         stillWD = True
                         stillWD_step = 1
                         while stillWD:
-                            iguess_dist = np.partition(distance, stillWD_step)[stillWD_step]
-                            iguess = np.where(distance == iguess_dist)[0][0]
+                            iguess_dist = np.partition(self.FULLdistance, stillWD_step)[stillWD_step]
+                            iguess = np.where(self.FULLdistance == iguess_dist)[0][0]
                             if np.int(self._tempLines[0][iguess]) == 9:
                                 stillWD_step += 1
                             else:
@@ -657,8 +675,8 @@ class Spectrum(object):
                     stillWD = True
                     stillWD_step = 1
                     while stillWD:
-                        iguess_dist = np.partition(distance, stillWD_step)[stillWD_step]
-                        iguess = np.where(distance == iguess_dist)[0][0]
+                        iguess_dist = np.partition(self.FULLdistance, stillWD_step)[stillWD_step]
+                        iguess = np.where(self.FULLdistance == iguess_dist)[0][0]
                         if np.int(self._tempLines[0][iguess]) == 9:
                             stillWD_step += 1
                         else:
@@ -675,6 +693,7 @@ class Spectrum(object):
             self._isSB2 = True
         else:
             self._isSB2 = False
+        self.self.FULLdistance = self.FULLdistance[iguess]
     
     def findRadialVelocity(self):
         """
