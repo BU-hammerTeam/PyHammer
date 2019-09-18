@@ -758,15 +758,19 @@ class Eyecheck(QMainWindow):
         if templateFile is not None:
             m = min(len(self.specObj.wavelength), len(hdulist[1].data['loglam']))
             dist = round(np.sqrt(np.nansum([(t-s)**2 for t,s in zip(hdulist[1].data['flux'][:m],self.specObj.flux[:m])])),2)
-            distSTR = '{:.5f}'.format(dist)
+            distSTR = '{:.3f}'.format(dist)
             distNorm = round(np.sqrt(np.nansum([((t-s)/err)**2 for t,s,err in zip(hdulist[1].data['flux'][:m],self.specObj.flux[:m],self.specObj.var[:m]**0.5)])),2)
-            distNormSTR = '{:.5f}'.format(distNorm)
+            distNormSTR = '{:.3f}'.format(distNorm)
+            self.specDist = dist
+            self.specDistNorm = distNorm
+            self.lineCHiSq = self.specObj.distance
+            self.distMetric.setText(distSTR+" | "+distNormSTR+" | "+'{:.5e}'.format(self.specObj.distance))
         else:
-            dist = 'None'
-        self.distMetric.setText(distSTR+" | "+distNormSTR+" | "+'{:.5f}'.format(self.specObj.distance))
-        self.specDist = dist
-        self.specDistNorm = distNorm
-        self.lineCHiSq = self.specObj.distance
+            distSTR = 'None'
+            distNormSTR = 'None'
+            self.distMetric.setText(distSTR+" | "+distNormSTR+" | "+"None")
+        
+
 
         # *** Draw the Plot ***
 
@@ -1152,6 +1156,7 @@ class Eyecheck(QMainWindow):
         ftype = self.outData[self.specIndex,1]
         self.specObj.readFile(self.options['spectraPath']+fname, ftype) # Ignore returned values
         self.specObj.normalizeFlux()
+        self.specObj.guessSpecType()
         
         # Set the spectrum entry field to the new spectrum name
         self.spectrumList.setCurrentIndex(self.specIndex)

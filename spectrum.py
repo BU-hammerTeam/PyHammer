@@ -691,9 +691,10 @@ class Spectrum(object):
 
         if self.guess['specType'] >= 10:
             self._isSB2 = True
+            self.distance = self.FULLdistance[iguess]
         else:
             self._isSB2 = False
-        self.self.FULLdistance = self.FULLdistance[iguess]
+            self.distance = self.FULLdistance[iguess]
     
     def findRadialVelocity(self):
         """
