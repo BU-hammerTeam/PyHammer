@@ -52,7 +52,7 @@ class Spectrum(object):
         # index for each spectrum that goes into a template
         #
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_07-02-2019_SB2.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_09-30-2019_SB2.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
@@ -585,12 +585,33 @@ class Spectrum(object):
         def Gauss(x, mu,sigma, A, m, b):
             return A* np.exp(-0.5 * ((x - mu)/sigma)**2) + m*x + b
 
+        def nan_helper(y):
+            """Helper to handle indices and logical indices of NaNs.
+
+            Input:
+                - y, 1d numpy array with possible NaNs
+            Output:
+                - nans, logical indices of NaNs
+                - index, a function, with signature indices= index(logical_indices),
+                  to convert logical indices of NaNs to 'equivalent' indices
+            Example:
+                >>> # linear interpolation of NaNs
+                >>> nans, x= nan_helper(y)
+                >>> y[nans]= np.interp(x(nans), x(~nans), y[~nans])
+            """
+            return np.isnan(y), lambda z: z.nonzero()[0]
+
         p0 = np.array([6564.5377, 25.0, .75, -1.0, 1.0])
-        range_index = np.where((self._wavelength >= 6200.0) & (self._wavelength <= 6900.0))[0] 
+        range_index = np.where((self._wavelength >= 6200.0) & (self._wavelength <= 6900.0))[0]
+
+        interp_flux = self._flux[range_index]
+        nans, x= nan_helper(interp_flux)
+        interp_flux[nans]= np.interp(x(nans), x(~nans), interp_flux[~nans])
+
         with warnings.catch_warnings(): 
             #warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ') 
             warnings.simplefilter("ignore")
-            popt, pcov = curve_fit(Gauss, self._wavelength[range_index], self._flux[range_index], p0=p0)#, maxfev=50000)
+            popt, pcov = curve_fit(Gauss, self._wavelength[range_index], interp_flux, p0=p0)#, maxfev=50000)
         if popt[1] > 15.0:
             return True, popt[1]
         else:
