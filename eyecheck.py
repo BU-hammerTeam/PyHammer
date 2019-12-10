@@ -20,7 +20,7 @@ class Eyecheck(QMainWindow):
         if self.specIndex == -1:    # If no initial spectrum is chosen
             qApp.quit()             # Quit the QApplication
             return                  # Return back to the main pyhammer routine
-        self.loadUserSpectrum()     # Otherwise, oad the appropriate spectrum to be displayed
+        self.loadUserSpectrum()     # Otherwise, load the appropriate spectrum to be displayed
         self.updatePlot()           # Update the plot showing the template and spectrum
 
         self.show()                 # Show the final GUI window to the user
@@ -307,8 +307,8 @@ class Eyecheck(QMainWindow):
 
 
     def btnstate(self,b):
-        bad_primary = [0, 1, 7, 8, 9]
-        bad_secondary = [0, 1, 2, 7, 8]
+        bad_primary = [0, 1, 7, 9]
+        bad_secondary = [0, 1, 2, 7]
         if b.text() == "SB2":
             if b.isChecked() == True:
                 for ii in range(len(self.metalLabel)):
@@ -326,12 +326,12 @@ class Eyecheck(QMainWindow):
 
                 if self.specTypeSlider.sliderPosition() in [0,1]:
                     self.updateSlider(self.specTypeSlider, 2)
-                elif self.specTypeSlider.sliderPosition() in [7,8,9]:
-                    self.updateSlider(self.specTypeSlider, 6)
+                elif self.specTypeSlider.sliderPosition() in [7, 9]:
+                    self.updateSlider(self.specTypeSlider, 8)
 
                 if self.specTypeSliderSB2.sliderPosition() in [0,1,2]:
                     self.updateSlider(self.specTypeSliderSB2, 3)
-                elif self.specTypeSliderSB2.sliderPosition() in [7,8]:
+                elif self.specTypeSliderSB2.sliderPosition() in [7]:
                     self.updateSlider(self.specTypeSliderSB2, 6)
 
                 self.checkSB2combos()
@@ -346,6 +346,7 @@ class Eyecheck(QMainWindow):
                 for ii in range(len(self.specTypeLabel)):
                     self.specTypeLabel[ii].setDisabled(False)
                     self.subTypeLabel[ii].setDisabled(False)
+            self.updatePlot()
 
 
     def createMenuBar(self):
@@ -992,8 +993,8 @@ class Eyecheck(QMainWindow):
         self.subTypeSlider.blockSignals(True)
         self.subTypeSliderSB2.blockSignals(True)
 
-        bad_primary = [0, 1, 7, 8, 9]
-        bad_secondary = [0, 1, 2, 7, 8]
+        bad_primary = [0, 1, 7, 9]
+        bad_secondary = [0, 1, 2, 7]
 
         if self.SB2button.isChecked() == True:
             # for ii in range(len(self.specTypeLabelSB2)):
@@ -1009,12 +1010,12 @@ class Eyecheck(QMainWindow):
 
             if self.specTypeSlider.sliderPosition() in [0,1]:
                 self.updateSlider(self.specTypeSlider, 2)
-            elif self.specTypeSlider.sliderPosition() in [7,8,9]:
-                self.updateSlider(self.specTypeSlider, 6)
+            elif self.specTypeSlider.sliderPosition() in [7 ,9]:
+                self.updateSlider(self.specTypeSlider, 8)
 
             if self.specTypeSliderSB2.sliderPosition() in [0,1,2]:
                 self.updateSlider(self.specTypeSliderSB2, 3)
-            elif self.specTypeSliderSB2.sliderPosition() in [7,8]:
+            elif self.specTypeSliderSB2.sliderPosition() in [7]:
                 self.updateSlider(self.specTypeSliderSB2, 6)
         
             self.checkSB2combos()
@@ -1047,13 +1048,38 @@ class Eyecheck(QMainWindow):
         this_good_PrimarySubtypes = good_PrimarySubtypes[self.specTypeSlider.sliderPosition()]
         this_good_Secondary_Types = good_Secondary_Types[self.specTypeSlider.sliderPosition()]
 
-        good_SecondarySubtypes = self.specObj._splitSB2spectypes[np.where((self.specObj._splitSB2spectypes[:,0] == self.specObj.letterSpt[self.specTypeSlider.sliderPosition()]) & 
-                                                                   (self.specObj._splitSB2spectypes[:,2] == self.specObj.letterSpt[self.specTypeSliderSB2.sliderPosition()]) & 
-                                                                   (self.specObj._splitSB2spectypes[:,1] == str(self.subTypeSlider.sliderPosition())))[0], 3].astype(int).tolist()
-        print(good_SecondarySubtypes)
-        print(self.specTypeSlider.sliderPosition())
-        print(self.subTypeSlider.sliderPosition())
-        print(self.specTypeSliderSB2.sliderPosition())
+        notfound_good_SecondarySubtypes = True
+        primaryType_index = self.specTypeSlider.sliderPosition()
+        primarySubType_index = self.subTypeSlider.sliderPosition()
+        secondaryType_index = self.specTypeSliderSB2.sliderPosition()
+        #counter = 0 
+        while notfound_good_SecondarySubtypes:
+            #print(counter)
+            good_SecondarySubtypes = self.specObj._splitSB2spectypes[np.where((self.specObj._splitSB2spectypes[:,0] == self.specObj.letterSpt[primaryType_index]) & 
+                                                                       (self.specObj._splitSB2spectypes[:,2] == self.specObj.letterSpt[secondaryType_index]) & 
+                                                                       (self.specObj._splitSB2spectypes[:,1] == str(primarySubType_index)))[0], 3].astype(int).tolist()
+            if not good_SecondarySubtypes:
+                #print(good_SecondarySubtypes)
+                #rint("not if")
+                #primaryType_index = 
+                #primarySubType_index = 
+                secondaryType_index = secondaryType_index - 1
+                if secondaryType_index > -9:
+                    self.updateSlider(self.subTypeSlider, np.arange(10)[primarySubType_index])
+                    self.updateSlider(self.specTypeSliderSB2, np.arange(10)[secondaryType_index])
+                else:
+                    secondaryType_index = self.specTypeSliderSB2.sliderPosition()
+                    primarySubType_index = primarySubType_index - 1
+            if good_SecondarySubtypes:
+                #print(good_SecondarySubtypes)
+                #print("if")
+                notfound_good_SecondarySubtypes = False
+            #counter += 1
+
+        #print(good_SecondarySubtypes)
+        #print(self.specTypeSlider.sliderPosition())
+        #print(self.subTypeSlider.sliderPosition())
+        #print(self.specTypeSliderSB2.sliderPosition())
 
         for ii in range(len(self.subTypeLabel)):
             self.subTypeLabel[ii].setDisabled(True)
@@ -1084,24 +1110,24 @@ class Eyecheck(QMainWindow):
         good_PrimarySubtypes = [[], #O
                                 [], #B
                                 [3, 5, 7], #A
-                                [7, 9], #F
+                                [0, 2, 5, 7, 9], #F
                                 [0, 1, 3, 4, 5, 6, 7, 8, 9], #G
                                 [0, 1, 2, 3, 4, 5, 7], #K
                                 [0, 1, 2, 3, 4, 5, 6, 7], #M
                                 [], #L
-                                [], #C
+                                [1, 3, 4, 5], #C
                                 [] #WD
                                 ]
 
         good_Secondary_Types = [[], #O
                                 [], #B
-                                [3], #A
-                                [4, 5, 6], #F
-                                [5, 9], #G
-                                [6, 9], #K
-                                [9], #M
+                                [3, 8], #A
+                                [4, 5, 6, 8], #F
+                                [5, 8, 9], #G
+                                [6, 8, 9], #K
+                                [8, 9], #M
                                 [], #L
-                                [], #C
+                                [9], #C
                                 [] #WD
                                 ]
 
