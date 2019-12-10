@@ -45,7 +45,6 @@ def main(options):
     # If the user has decided to not skip to the eyecheck, let's
     # do some processing
     if not options['eyecheck']:
-    
         # Open the input file
         try:
             infile = open(options['infile'], 'r')
@@ -65,6 +64,11 @@ def main(options):
         # and printed once at the end, if anything is put into it.
         rejectMessage = ''
 
+        infile_init = open(options['infile'], 'r')
+        for i, line in enumerate(infile_init):
+            num_spec = i + 1 
+        infile_init.close()
+        progress = ProgressBar(num_spec, fmt=ProgressBar.FULL)
         for i, line in enumerate(infile):
             # Remove extra whitespace and other unwanted characters and split
             line = line.strip()
@@ -76,8 +80,9 @@ def main(options):
                 ftype = None
 
             # Print statement of progress for user
-            print(i+1, ') Processing ', os.path.basename(fname), sep = '')
-
+            #print(i+1, ') Processing ', os.path.basename(fname), sep = '')
+            progress.current += 1
+            progress()
             # Now read in the current file (this process reads in the file, converts air to 
             # vac when necessary and interpolates onto the template grid)
             message, ftype = spec.readFile(options['spectraPath']+fname, ftype)
@@ -191,6 +196,7 @@ def main(options):
                               '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
                               ',nan,nan\n')                                     # The to-be-determined user classifications
         
+        progress.done()
         # We're done so let's close all the files
         infile.close()
         outfile.close()
@@ -961,6 +967,43 @@ def pyhammerSettingsCmd(options):
 
     # Now that all the options have been set, let's get started
     main(options)
+
+class ProgressBar(object):
+    DEFAULT = 'Progress: %(bar)s %(percent)3d%%'
+    FULL = '%(bar)s %(current)d/%(total)d (%(percent)3d%%) %(remaining)d to go'
+
+    def __init__(self, total, width=40, fmt=DEFAULT, symbol='=',
+                 output=sys.stderr):
+        assert len(symbol) == 1
+
+        self.total = total
+        self.width = width
+        self.symbol = symbol
+        self.output = output
+        self.fmt = re.sub(r'(?P<name>%\(.+?\))d',
+            r'\g<name>%dd' % len(str(total)), fmt)
+
+        self.current = 0
+
+    def __call__(self):
+        percent = self.current / float(self.total)
+        size = int(self.width * percent)
+        remaining = self.total - self.current
+        bar = '[' + self.symbol * size + ' ' * (self.width - size) + ']'
+
+        args = {
+            'total': self.total,
+            'bar': bar,
+            'current': self.current,
+            'percent': percent * 100,
+            'remaining': remaining
+        }
+        print('\r' + self.fmt % args, file=self.output, end='')
+
+    def done(self):
+        self.current = self.total
+        self()
+        print('', file=self.output)
 
 ###
 # PyHammer Entry Point
