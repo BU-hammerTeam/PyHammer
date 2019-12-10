@@ -21,6 +21,7 @@ else:
 
 # Some basic python libraries
 import os
+import re
 import getopt
 import numpy as np
 from numpy import ma
