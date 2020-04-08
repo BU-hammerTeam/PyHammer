@@ -37,6 +37,8 @@ import pickle
 import csv
 from collections import OrderedDict
 from scipy.optimize import curve_fit
+from tqdm import tqdm
+import warnings
 
 # Check which PyQt version the user may have
 # installed and import the appropriate content
