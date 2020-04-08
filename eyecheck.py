@@ -38,8 +38,8 @@ class Eyecheck(QMainWindow):
 
         # Define some basic spectra related information
         self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD']
-        self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
-        self.subTypeWD   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+        self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        #self.subTypeWD   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
         self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
         self.SB2templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates_SB2')
@@ -1109,21 +1109,21 @@ class Eyecheck(QMainWindow):
     def checkSB2combos(self):
         good_PrimarySubtypes = [[], #O
                                 [], #B
-                                [3, 5, 7], #A
-                                [0, 2, 5, 7, 9], #F
+                                [2, 3, 5, 7], #A
+                                [0, 2, 5, 6, 8], #F
                                 [0, 1, 3, 4, 5, 6, 7, 8, 9], #G
                                 [0, 1, 2, 3, 4, 5, 7], #K
                                 [0, 1, 2, 3, 4, 5, 6, 7], #M
                                 [], #L
-                                [1, 3, 4, 5], #C
+                                [0, 1, 2], #C
                                 [] #WD
                                 ]
 
         good_Secondary_Types = [[], #O
                                 [], #B
-                                [3, 8], #A
-                                [4, 5, 6, 8], #F
-                                [5, 8, 9], #G
+                                [3], #A
+                                [4, 5], #F
+                                [5, 8], #G
                                 [6, 8, 9], #K
                                 [8, 9], #M
                                 [], #L
