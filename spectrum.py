@@ -25,7 +25,7 @@ class Spectrum(object):
         self.thisDir = os.path.split(__file__)[0]
 
         # Store the SB2 filenames and order for access later
-        SB2ListPath = os.path.join(self.thisDir, 'resources', 'list_of_SB2_spec.txt')
+        SB2ListPath = os.path.join(self.thisDir, 'resources', 'list_of_SB2_temps.txt')
         self._SB2_filenameList = np.genfromtxt(SB2ListPath, dtype="U")
 
         self._splitSB2spectypes = np.empty((self._SB2_filenameList.size, 4), dtype='U2')
@@ -52,7 +52,8 @@ class Spectrum(object):
         # index for each spectrum that goes into a template
         #
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_09-30-2019_SB2.pickle')
+        #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_09-30-2019_SB2.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_04-07-2020.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
@@ -581,6 +582,7 @@ class Spectrum(object):
                     measuredLinesDict[key] = [0,np.inf]
  
         return measuredLinesDict
+        
     def isWD(self):
         def Gauss(x, mu,sigma, A, m, b):
             return A* np.exp(-0.5 * ((x - mu)/sigma)**2) + m*x + b
