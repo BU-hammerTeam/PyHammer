@@ -766,6 +766,7 @@ class Spectrum(object):
         path_SB2 = 'resources/templates_SB2/'
 
         #Spectral type O 
+
         if bestGuess['specType'] == 0:
             tempName = 'O' + str(bestGuess['subType']) + '.fits'
         #Spectral type B
@@ -804,6 +805,8 @@ class Spectrum(object):
         #Spectral type SB2
         elif self._isSB2:
             tempName = self._SB2_filenameList[bestGuess['specType'] - 10]
+        elif bestGuess['specType'] == -1:
+            return np.nan
         # Open the template
         with warnings.catch_warnings():
             # Ignore a very particular warning from some versions of astropy.io.fits

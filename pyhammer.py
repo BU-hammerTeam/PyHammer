@@ -178,6 +178,10 @@ def main(options):
                 #  6. and line indice measurements
 
                 # --- 7 ---
+                if spec.guess['specType'] == -1:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: No good spectral type. Error Message: Spectrum might be all nans or 0s.\n\n'
+                    continue
                 
                 # Translate the numbered spectral types into letters
                 if spec._isSB2:
