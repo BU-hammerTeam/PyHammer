@@ -1,5 +1,6 @@
 from pyhamimports import *
 
+
 class Spectrum(object):
     """
     Spectrum Class
@@ -10,7 +11,7 @@ class Spectrum(object):
         Because knowledge of only one spectrum is necessary at any one time,
         a single object can be used and new spectra can be loaded into the object.
     """
-    
+
     def __init__(self):
         # Define properties related to loaded spectrum
         self._wavelength = None
@@ -53,7 +54,7 @@ class Spectrum(object):
         #
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_09-30-2019_SB2.pickle')
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_04-07-2020.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_04-16-2020.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
