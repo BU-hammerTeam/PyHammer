@@ -744,7 +744,7 @@ class Eyecheck(QMainWindow):
 
         # *** Set Plot Limits ***
 
-        ax.set_xlim([3000,11000])               # Set x axis limits to constant value
+        ax.set_xlim([3500, 10500])               # Set x axis limits to constant value
         self.toolbar.update()                   # Clears out view stack
         self.full_xlim = plt.gca().get_xlim()   # Pull out default, current x-axis limit
         self.full_ylim = plt.gca().get_ylim()   # Pull out default, current y-axis limit
@@ -1123,7 +1123,7 @@ class Eyecheck(QMainWindow):
                                 [], #B
                                 [3], #A
                                 [4, 5], #F
-                                [5, 8], #G
+                                [5, 8, 9], #G
                                 [6, 8, 9], #K
                                 [8, 9], #M
                                 [], #L
