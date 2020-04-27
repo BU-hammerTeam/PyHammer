@@ -239,4 +239,3 @@ WD6.fits
 WD7.fits
 WD8.fits
 WD9.fits
-
