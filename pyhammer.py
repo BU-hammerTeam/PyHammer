@@ -19,7 +19,7 @@ def main(options):
         get all the necessary options from the user and pass
         them to this function. The general process of this
         function should be to:
-        
+
         - Define a Spectrum object to be used in reading files.
         - Load each spectrum sequentially.
         - Guess the spectral type.
@@ -66,7 +66,7 @@ def main(options):
 
         infile_init = open(options['infile'], 'r')
         for i, line in enumerate(infile_init):
-            num_spec = i + 1 
+            num_spec = i + 1
         infile_init.close()
         #progress = ProgressBar(num_spec, fmt=ProgressBar.FULL)
         with warnings.catch_warnings():

@@ -8,7 +8,7 @@
 
 # Look at version specific information
 import sys
-ver = sys.version_info # Get Python version
+ver = sys.version_info  # Get Python version
 if ver.major != 3:
     sys.exit('Python 3 is required to run PyHammer.')
 # We need a function to determine which modules
