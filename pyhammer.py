@@ -1139,7 +1139,7 @@ if (__name__ == "__main__"):
                 # Append a slash to the end if there isn't one
                 if (options['spectraPath'][-1] not in ['\\', '/']):
                     options['spectraPath'] += '\\'
-            
+
         # User indicated they want to skip to the eyecheck
         if (opt == '-e' or opt == '--eyecheck'):
             if (options['sncut'] is not None):
@@ -1161,7 +1161,7 @@ if (__name__ == "__main__"):
                 sys.exit('Cannot supply -c and -g at the same time. Use -h for more info.')
             else:
                 options['useGUI'] = False
-        
+
         # GUI interface is requested.
         if (opt == '-g' or opt == '--gui'):
             if (options['useGUI'] is not None):
@@ -1180,10 +1180,10 @@ if (__name__ == "__main__"):
         PyHammerSettingsGui(options)
         app.exec_()
     elif options['useGUI'] == False:
+        app = QApplication([])
         pyhammerSettingsCmd(options)
-
+        app.exec_()
 else:
-    
     sys.exit("Do not import pyhammer. Run this script with the run command "
              "in the python environment, or by invoking with the python command "
              "on the command line. Use the -h flag for more information.")
