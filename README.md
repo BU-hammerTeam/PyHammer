@@ -18,7 +18,7 @@ Modeled after [The Hammer: An IDL Spectral Typing Suite][thehammer] published in
 
 See the [PyHammer Wiki](https://github.com/BU-hammerTeam/PyHammer/wiki) for more information on how to install and use this program.
 
-Information on how the luminosity spectra are added to create SB2 templates can be found in the [Roulston+2020][Roulston_apjs] paper and corresponding code at [SB2][SB2].
+Information on how the luminosity spectra are added to create SB2 templates can be found in the [Roulston+2020]() paper and corresponding code at [SB2][SB2_GitHub].
 
 ### Publications
 
@@ -33,5 +33,4 @@ PyHammer 2.0.0 is detailed in our upcoming Astrophysical Journal Supplements [Ro
 [hammerGitHub]: https://github.com/jradavenport/TheHammer
 [pyhammerwiki]: https://github.com/BU-hammerTeam/PyHammer/wiki
 [Kesseli_apjs]: http://iopscience.iop.org/article/10.3847/1538-4365/aa656d/pdf
-[Roulston_apjs]: 
-[SB2]: https://github.com/broulston/SB2
+[SB2_GitHub]: https://github.com/broulston/SB2
