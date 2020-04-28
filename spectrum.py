@@ -100,7 +100,13 @@ class Spectrum(object):
         """
         # Define the wavelngth points to interpolate the spectrum to so it
         # can be compared to the templates. Note log10(e) = 0.43429448190325182
-        self.waveGrid = 10**(5*0.43429448190325182/299792.458 * np.arange(0,65000) + 3.55)
+        # self.waveGrid = 10**(5*0.43429448190325182/299792.458 * np.arange(0,65000) + 3.55)
+        waveStart = 3_550
+        waveEnd = 10_500
+        waveNum = 65_000
+        # 65,000 wavelengths gives 5km/s resolution across this region
+        # dv = 2.9979e5 * (np.diff(waveGrid) / waveGrid[1:])
+        self.waveGrid = np.logspace(np.log10(waveStart), np.log10(waveEnd), num=waveNum)
         # Define the spectral lines to be measured in the spectrum and
         # used to be matched to the templates.
         self.indexDict = OrderedDict()
