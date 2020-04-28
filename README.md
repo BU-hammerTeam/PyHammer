@@ -24,7 +24,7 @@ Information on how the luminosity spectra are added to create SB2 templates can 
 
 PyHammer 1.0.0 is detailed in our accepted Astrophysical Journal Supplements [Kesseli et al. (2017)][Kesseli_apjs].
 
-PyHammer 2.0.0 is detailed in our upcoming Astrophysical Journal Supplements [Roulston et al. (2020)][Roulston_apjs]
+PyHammer 2.0.0 is detailed in our upcoming Astrophysical Journal Supplements [Roulston et al. (2020)]()
 
 ![GUI](./resources/PyHammer2_GUI.png?raw=true)
 
