@@ -5,3 +5,15 @@ temp_input_*
 *.csv
 .DS_Store
 guess_type.txt
+measure_temp_Halpha.py
+PyHammer.app/Contents/Info.plist
+PyHammer.app/Contents/MacOS/applet
+PyHammer.app/Contents/PkgInfo
+PyHammer.app/Contents/Resources/applet.icns
+PyHammer.app/Contents/Resources/applet.rsrc
+PyHammer.app/Contents/Resources/description.rtfd/TXT.rtf
+PyHammer.app/Contents/Resources/Scripts/main.scpt
+PyHammer.app/Icon
+resources/PyHammer.scpt
+resources/templates/allspec.txt
+PyHammer.app/Icon
