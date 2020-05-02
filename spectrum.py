@@ -54,7 +54,7 @@ class Spectrum(object):
         #
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_09-30-2019_SB2.pickle')
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_04-16-2020.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_04-30-2020.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
@@ -153,8 +153,13 @@ class Spectrum(object):
         self.indexDict['C2-4737'] = [4650, 4730, 4750, 4850]
         self.indexDict['C2-5165'] = [5028, 5165, 5210, 5380] 
         self.indexDict['C2-5636'] = [5400, 5630, 5650, 5800]
-        self.indexDict['CN-6926'] = [6935, 7035, 6850, 6900]
-        self.indexDict['CN-7872'] = [7850, 8050, 7650, 7820]
+        self.indexDict['CN-6959'] = [6935, 7035, 6850, 6900]
+        self.indexDict['CN-7088'] = [7075, 7233, 7039, 7075]
+        self.indexDict['CN-7259'] = [7233, 7382, 7382, 7425]
+        self.indexDict['CN-7820'] = [7850, 8050, 7650, 7820]
+        self.indexDict['CN-8067'] = [8059, 8234, 8234, 8263]
+        self.indexDict['CN-8270'] = [8263, 8423, 8423, 8481]
+
 
         self.indexDict['WD-Halpha'] = [6519, 6609, 6645, 6700]
         self.indexDict['WD-Hbeta']  = [4823, 4900, 4945, 4980]
