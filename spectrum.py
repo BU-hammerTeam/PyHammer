@@ -816,7 +816,8 @@ class Spectrum(object):
             tempName = 'WD' + str(bestGuess['subType']) + '.fits'
         #Spectral type SB2
         elif self._isSB2:
-            tempName = self._SB2_filenameList[bestGuess['specType'] - 10]
+            # tempName = self._SB2_filenameList[bestGuess['specType'] - 10]
+            return np.nan
         elif bestGuess['specType'] == -1:
             return np.nan
         # Open the template
