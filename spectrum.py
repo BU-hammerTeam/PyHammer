@@ -53,8 +53,7 @@ class Spectrum(object):
         # index for each spectrum that goes into a template
         #
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
-        #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_09-30-2019_SB2.pickle')
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_04-30-2020.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_2020-04-30.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
@@ -659,7 +658,7 @@ class Spectrum(object):
                 try:
                     isThisAWD, thisSigma = self.isWD()
                     if isThisAWD:
-                        WD_sigma = np.array([18.3083, 35.6469, 28.7010, 26.8483, 25.3973, 20.2621, 21.1071])#0,1,2,3,4,7,8
+                        WD_sigma = np.array([18.51, 24.16, 30.58, 26.81, 35.11, 43.17, 38.74, 22.22, 15.18, 10.07])
                         WD_sigma_label = np.array([1,2,3,4,5,6,7])
                         self._guess = {'specType':   9, # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
                                        'subType':    WD_sigma_label[np.argmin(np.abs(WD_sigma-thisSigma))], # Spectral subtype
@@ -718,7 +717,7 @@ class Spectrum(object):
                             stillWD = False
                             stillWD_step += 1                     
             else: 
-                #Save guess as dict       
+                # Save guess as dict       
                 self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
                                'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
                                'metal':      self._tempLines[2][iguess], # Metallicity
@@ -730,7 +729,7 @@ class Spectrum(object):
         else:
             self._isSB2 = False
             self.distance = self.FULLdistance[iguess]
-    
+
     def findRadialVelocity(self):
         """
         findRadialVelocity(spectrum)
