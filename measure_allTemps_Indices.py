@@ -7,11 +7,13 @@ from pyhamimports import *
 from spectrum import Spectrum
 import glob
 from tqdm import tqdm
+from subprocess import check_output
 
-singleTemp_dir = "/Users/benjaminroulston/Dropbox/" \
-                 "GitHub/PyHammer/resources/templates/"
-SB2Temp_dir = "/Users/benjaminroulston/Dropbox/" \
-              "GitHub/PyHammer/resources/templates_SB2/"
+datestr = check_output(["/bin/date","+%F"])
+datestr = datestr.decode().replace('\n', '')
+
+singleTemp_dir = "resources/templates/"
+SB2Temp_dir = "resources/templates_SB2/"
 
 singleTemp_list = np.array([os.path.basename(x)
                             for x in glob.glob(singleTemp_dir + "*.fits")])
@@ -21,9 +23,8 @@ SB2Temp_list = np.array([os.path.basename(x)
                          for x in glob.glob(SB2Temp_dir + "*.fits")])
 SB2Temp_list.sort()
 
-# 0, 1, 2, 3, 4, 5, 6, 7 = O, B, A, F, G, K, M, L
-single_letter_specTypes = np.array(
-    ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'W'])
+# 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 = O, B, A, F, G, K, M, L, C, WD
+single_letter_specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'W'])
 specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD'])
 
 new_tempLines_0 = np.empty(singleTemp_list.size, dtype=int)
@@ -82,6 +83,6 @@ new_tempLines = [new_tempLines_0, new_tempLines_1,
                  new_tempLines_2, new_tempLines_3, new_tempLines_4]
 
 pklPath = os.path.join(spec.thisDir, 'resources',
-                       'tempLines_04-30-2020.pickle')
+                       f'tempLines_{datestr}.pickle')
 with open(pklPath, 'wb') as pklFile:
     pickle.dump(new_tempLines, pklFile)
