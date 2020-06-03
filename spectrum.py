@@ -1,5 +1,6 @@
 from pyhamimports import *
 
+
 class Spectrum(object):
     """
     Spectrum Class
@@ -10,7 +11,7 @@ class Spectrum(object):
         Because knowledge of only one spectrum is necessary at any one time,
         a single object can be used and new spectra can be loaded into the object.
     """
-    
+
     def __init__(self):
         # Define properties related to loaded spectrum
         self._wavelength = None
@@ -19,38 +20,73 @@ class Spectrum(object):
         self._guess = None
         self._normWavelength = 8000
 
-        # Define class instance variables used 
-        self.defineCalcTools()
+        self.letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD']
 
         # The directory containing this file
         self.thisDir = os.path.split(__file__)[0]
+
+        # Store the SB2 filenames and order for access later
+        SB2ListPath = os.path.join(self.thisDir, 'resources', 'list_of_SB2_temps.txt')
+        self._SB2_filenameList = np.genfromtxt(SB2ListPath, dtype="U")
+
+        self._splitSB2spectypes = np.empty((self._SB2_filenameList.size, 4), dtype='U2')
+
+        for ii, filename in enumerate(self._SB2_filenameList):
+            type1, type2 = filename.replace("+"," ").replace("."," ").split()[:2]
+            mainType1, subtype1 = self.splitSpecType(type1)
+            mainType2, subtype2 = self.splitSpecType(type2)
+            self._splitSB2spectypes[ii, 0] = mainType1
+            self._splitSB2spectypes[ii, 1] = subtype1
+            self._splitSB2spectypes[ii, 2] = mainType2
+            self._splitSB2spectypes[ii, 3] = subtype2
+
+        self._isSB2 = False
+
+        # Define class instance variables used 
+        self.defineCalcTools()
+
+
         
         # Read in indices measured from templates
         # tempLines is a list of arrays with format: [spts, subs, fehs, lums, lines]
         # lines is a list of 2D arrays with indices and variances for each line
         # index for each spectrum that goes into a template
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
+        #
+        #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_2020-04-30.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
-        # Get averages and stddevs for each line for each template
-        avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
-        stds = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
-        for i, ilines in enumerate(tempLines[4]):
-            weights = 1.0/np.array(ilines)[:,:,1]
-            nonzeroweights = np.sum(weights != 0, 0, dtype='float')
-            nonzeroweights[nonzeroweights <= 1.0] = np.nan
-            weightedsum = np.nansum(np.array(ilines)[:,:,0] * weights, 0)
-            sumofweights = np.nansum(weights, 0)
-            sumofweights[sumofweights == 0.0] = np.nan
-            avgs[i] = weightedsum / sumofweights
-            stds[i] = np.sqrt( np.nansum(weights * (np.array(ilines)[:,:,0] - avgs[i])**2.0, 0)
-                              / ( ((nonzeroweights-1.0)/nonzeroweights)
-                                  * sumofweights ) )
+        ## Get averages and stddevs for each line for each template
+        # avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
+        # stds = np.zeros([len(tempLines[4]), len(tempLines[4][0][0])], dtype='float')
+        # for i, ilines in enumerate(tempLines[4]):
+        #     weights = 1.0/np.array(ilines)[:,:,1]
+        #     nonzeroweights = np.sum(weights != 0, 0, dtype='float')
+        #     nonzeroweights[nonzeroweights <= 1.0] = np.nan
+        #     weightedsum = np.nansum(np.array(ilines)[:,:,0] * weights, 0)
+        #     sumofweights = np.nansum(weights, 0)
+        #     sumofweights[sumofweights == 0.0] = np.nan
+        #     avgs[i] = weightedsum / sumofweights
+        #     stds[i] = np.sqrt( np.nansum(weights * (np.array(ilines)[:,:,0] - avgs[i])**2.0, 0)
+        #                       / ( ((nonzeroweights-1.0)/nonzeroweights)
+        #                           * sumofweights ) )
+
+        avgs = np.zeros([len(tempLines[4]), len(tempLines[4][0])], dtype='float')
+        stds = np.zeros([len(tempLines[4]), len(tempLines[4][0])], dtype='float')
+
+        for ii in range(len(tempLines[4])):
+            avgs[ii, :] =  tempLines[4][ii][:,0]
+            stds[ii, :] =  np.sqrt(tempLines[4][ii][:,1])
                                   
         self._tempLines = tempLines
         self._tempLineAvgs = avgs
         self._tempLineVars = stds**2.0
+
+    def splitSpecType(self, s):
+        head = s.rstrip('0123456789')
+        tail = s[len(head):]
+        return head, tail
 
     def defineCalcTools(self):
         """
@@ -61,11 +97,15 @@ class Spectrum(object):
             they only need to be defined once and can be used for all
             spectra calculations.
         """
-        
         # Define the wavelngth points to interpolate the spectrum to so it
         # can be compared to the templates. Note log10(e) = 0.43429448190325182
-        self.waveGrid = 10**(5*0.43429448190325182/299792.458 * np.arange(0,65000) + 3.55)
-
+        # self.waveGrid = 10**(5*0.43429448190325182/299792.458 * np.arange(0,65000) + 3.55)
+        waveStart = 3_550
+        waveEnd = 10_500
+        waveNum = 65_000
+        # 65,000 wavelengths gives 5km/s resolution across this region
+        # dv = 2.9979e5 * (np.diff(waveGrid) / waveGrid[1:])
+        self.waveGrid = np.logspace(np.log10(waveStart), np.log10(waveEnd), num=waveNum)
         # Define the spectral lines to be measured in the spectrum and
         # used to be matched to the templates.
         self.indexDict = OrderedDict()
@@ -107,6 +147,22 @@ class Spectrum(object):
         self.indexDict['region3'] = [ 5700,  5800, 7480, 7580]
         self.indexDict['region4'] = [ 9100,  9200, 7480, 7580]
         self.indexDict['region5'] = [10100, 10200, 7480, 7580] 
+
+        self.indexDict['C2-4382'] = [4350, 4380, 4450, 4600]
+        self.indexDict['C2-4737'] = [4650, 4730, 4750, 4850]
+        self.indexDict['C2-5165'] = [5028, 5165, 5210, 5380] 
+        self.indexDict['C2-5636'] = [5400, 5630, 5650, 5800]
+        self.indexDict['CN-6959'] = [6935, 7035, 6850, 6900]
+        self.indexDict['CN-7088'] = [7075, 7233, 7039, 7075]
+        self.indexDict['CN-7259'] = [7233, 7382, 7382, 7425]
+        self.indexDict['CN-7820'] = [7850, 8050, 7650, 7820]
+        self.indexDict['CN-8067'] = [8059, 8234, 8234, 8263]
+        self.indexDict['CN-8270'] = [8263, 8423, 8423, 8481]
+
+
+        self.indexDict['WD-Halpha'] = [6519, 6609, 6645, 6700]
+        self.indexDict['WD-Hbeta']  = [4823, 4900, 4945, 4980]
+        self.indexDict['WD-Hgamma'] = [4290, 4405, 4430, 4460]
         
 
     ##
@@ -144,7 +200,9 @@ class Spectrum(object):
 
         if isinstance(filetype, str): filetype = filetype.lower()
 
-        if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', None]:
+        self.filename = filename
+
+        if filetype not in ['fits', 'sdssdr7', 'sdssdr12', 'txt', 'csv', 'tempfits', None]:
             # The user supplied an option not accounted for
             # in this method. Just skip the file.
             errorMessage = filename + ' with file type ' + filetype + ' is not recognized. Skipping over this file.'
@@ -177,15 +235,6 @@ class Spectrum(object):
             else:
                 filetype = 'sdssdr12'
 
-        # Try reading a plaintext file with the data in columns
-        if (filetype in ['txt', None]):
-            msg = self.__readFileTxt(filename)
-            if msg is not None: # I.e., there was a problem
-                if filetype is not None:
-                    return msg, None
-            else:
-                filetype = 'txt'
-
         # Try reading a .csv file with the data in columns
         if (filetype in ['csv', None]):
             msg = self.__readFileCsv(filename)
@@ -195,6 +244,23 @@ class Spectrum(object):
             else:
                 filetype = 'csv'
 
+        # Try reading a plaintext file with the data in columns
+        if (filetype in ['txt', None]):
+            msg = self.__readFileTxt(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'txt'
+
+        # Try reading a .fits file with the data in template fmt
+        if (filetype in ['tempfits', None]):
+            msg = self.__readFileTempFits(filename)
+            if msg is not None: # I.e., there was a problem
+                if filetype is not None:
+                    return msg, None
+            else:
+                filetype = 'tempfits'
         # If the user didn't supply a filetype for us, and we
         # didn't manage to figure out which one it was, simply
         # return with an error message stating so.
@@ -206,7 +272,6 @@ class Spectrum(object):
         # If we've made it to here, then we've loaded up the
         # data from the file properly and we can try to do
         # some further processing
-        
         self.interpOntoGrid()
         
         # Determine wavelength to normalize flux at
@@ -246,6 +311,28 @@ class Spectrum(object):
             self._wavelength = ( spec[0].header['CRVAL1'] + (spec[0].header['CRPIX1']*spec[0].header['CD1_1']) *np.arange(0,len(self._flux),1))
             # Create a simple poisson error
             err = abs(self._flux)**0.05 + 1E-16
+            self._var = err**2
+        except Exception as e:
+            errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
+            return errorMessage
+
+        return None
+
+    def __readFileTempFits(self, filename):
+        """Tries to read a template fits file"""
+        try:
+            with warnings.catch_warnings():
+                # Ignore a very particular warning from some versions of astropy.io.fits
+                # that is a known bug and causes no problems with loading fits data.
+                warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
+                spec = fits.open(filename) 
+        except IOError as e:
+            errorMessage = 'Unable to open ' + filename + '.\n' + str(e)
+            return errorMessage
+        try:
+            self._flux = spec[1].data.field('Flux')
+            self._wavelength = 10.0**spec[1].data.field('LogLam')
+            err = spec[1].data.field('PropErr')
             self._var = err**2
         except Exception as e:
             errorMessage = 'Unable to use ' + filename + '.\n' + str(e)
@@ -507,28 +594,142 @@ class Spectrum(object):
  
         return measuredLinesDict
         
+    def isWD(self):
+        def Gauss(x, mu,sigma, A, m, b):
+            return A* np.exp(-0.5 * ((x - mu)/sigma)**2) + m*x + b
+
+        def nan_helper(y):
+            """Helper to handle indices and logical indices of NaNs.
+
+            Input:
+                - y, 1d numpy array with possible NaNs
+            Output:
+                - nans, logical indices of NaNs
+                - index, a function, with signature indices= index(logical_indices),
+                  to convert logical indices of NaNs to 'equivalent' indices
+            Example:
+                >>> # linear interpolation of NaNs
+                >>> nans, x= nan_helper(y)
+                >>> y[nans]= np.interp(x(nans), x(~nans), y[~nans])
+            """
+            return np.isnan(y), lambda z: z.nonzero()[0]
+
+        p0 = np.array([6564.5377, 25.0, .75, -1.0, 1.0])
+        range_index = np.where((self._wavelength >= 6200.0) & (self._wavelength <= 6900.0))[0]
+
+        interp_flux = self._flux[range_index]
+        nans, x= nan_helper(interp_flux)
+        interp_flux[nans]= np.interp(x(nans), x(~nans), interp_flux[~nans])
+
+        with warnings.catch_warnings(): 
+            #warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ') 
+            warnings.simplefilter("ignore")
+            popt, pcov = curve_fit(Gauss, self._wavelength[range_index], interp_flux, p0=p0)#, maxfev=50000)
+        if popt[1] > 15.0:
+            return True, popt[1]
+        else:
+            return False, np.nan
+
     def guessSpecType(self):
     
         # Measure lines
         self._lines = self.measureLines()
-        
+
         # Recast values to simple 2D array
         lines = np.array(list(self._lines.values()))[np.argsort(list(self._lines.keys()))]
-        
+
         # Weight by uncertainty in object lines and template lines
         weights = 1 / (np.sqrt(self._tempLineVars) + np.sqrt(lines[:,1]))
-        
+
         # Find best fit
         sumOfWeights = np.nansum(weights**2, 1)
         sumOfWeights[sumOfWeights == 0] = np.nan
-        iguess = np.nanargmin(np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights)
-        
-        #Save guess as dict       
-        self._guess = {'specType':   self._tempLines[0][iguess], # Spectral type, 0 for O to 7 for L
-                       'subType':    self._tempLines[1][iguess], # Spectral subtype
-                       'metal':      self._tempLines[2][iguess], # Metallicity
-                       'luminosity': self._tempLines[3][iguess]} # Luminosity class, 3 for giant, 5 for MS        
-    
+        self.FULLdistance = np.nansum(((lines[:,0] - self._tempLineAvgs) * weights)**2, 1) / sumOfWeights
+        if np.all(np.isnan(self.FULLdistance)):
+            iguess = None
+            #Save guess as dict       
+            self._guess = {'specType':   -1, # Spectral type, 0 for O to 7 for L
+                           'subType':    -1, # Spectral subtype
+                           'metal':      -1, # Metallicity
+                           'luminosity': -1} # Luminosity class, 3 for giant, 5 for MS   
+        else:
+            iguess = np.nanargmin(self.FULLdistance)
+            if np.isin(np.int(self._tempLines[0][iguess]), np.array([0, 1, 2, 3])):
+                try:
+                    isThisAWD, thisSigma = self.isWD()
+                    if isThisAWD:
+                        WD_sigma = np.array([18.51, 24.16, 30.58, 26.81, 35.11, 43.17, 38.74, 22.22, 15.18, 10.07])
+                        WD_sigma_label = np.array([1,2,3,4,5,6,7])
+                        self._guess = {'specType':   9, # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                       'subType':    WD_sigma_label[np.argmin(np.abs(WD_sigma-thisSigma))], # Spectral subtype
+                                       'metal':      0, # Metallicity
+                                       'luminosity': 5} # Luminosity class, 3 for giant, 5 for MS   
+                    else:
+                        self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                      'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                                      'metal':      self._tempLines[2][iguess], # Metallicity
+                                      'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS  
+                except RuntimeError:
+                    stillWD = True
+                    stillWD_step = 1
+                    while stillWD:
+                        iguess_dist = np.partition(self.FULLdistance, stillWD_step)[stillWD_step]
+                        iguess = np.where(self.FULLdistance == iguess_dist)[0][0]
+                        if np.int(self._tempLines[0][iguess]) == 9:
+                            stillWD_step += 1
+                        else:
+                            stillWD = False
+                            stillWD_step += 1
+
+            elif np.int(self._tempLines[0][iguess]) == 9: 
+                try:
+                    isThisAWD, thisSigma = self.isWD()
+                    if isThisAWD:
+                        self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                       'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                                       'metal':      self._tempLines[2][iguess], # Metallicity
+                                       'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS  
+                    else:
+                        stillWD = True
+                        stillWD_step = 1
+                        while stillWD:
+                            iguess_dist = np.partition(self.FULLdistance, stillWD_step)[stillWD_step]
+                            iguess = np.where(self.FULLdistance == iguess_dist)[0][0]
+                            if np.int(self._tempLines[0][iguess]) == 9:
+                                stillWD_step += 1
+                            else:
+                                stillWD = False
+                                stillWD_step += 1
+
+                        self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                                       'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                                       'metal':      self._tempLines[2][iguess], # Metallicity
+                                       'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS 
+                except RuntimeError:
+                    stillWD = True
+                    stillWD_step = 1
+                    while stillWD:
+                        iguess_dist = np.partition(self.FULLdistance, stillWD_step)[stillWD_step]
+                        iguess = np.where(self.FULLdistance == iguess_dist)[0][0]
+                        if np.int(self._tempLines[0][iguess]) == 9:
+                            stillWD_step += 1
+                        else:
+                            stillWD = False
+                            stillWD_step += 1                     
+            else: 
+                # Save guess as dict       
+                self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                               'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                               'metal':      self._tempLines[2][iguess], # Metallicity
+                               'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS
+
+        if self.guess['specType'] >= 10:
+            self._isSB2 = True
+            self.distance = self.FULLdistance[iguess]
+        else:
+            self._isSB2 = False
+            self.distance = self.FULLdistance[iguess]
+
     def findRadialVelocity(self):
         """
         findRadialVelocity(spectrum)
@@ -573,7 +774,10 @@ class Spectrum(object):
         # I have it only using the spectral type and subtype for the original guess 
         # so I just cross correlate to the most common metallicity template for each spectral class
         path = 'resources/templates/'
+        path_SB2 = 'resources/templates_SB2/'
+
         #Spectral type O 
+
         if bestGuess['specType'] == 0:
             tempName = 'O' + str(bestGuess['subType']) + '.fits'
         #Spectral type B
@@ -603,13 +807,27 @@ class Spectrum(object):
         #Spectral type L
         elif bestGuess['specType'] == 7: 
             tempName = 'L' + str(bestGuess['subType']) + '.fits'
-
+        #Spectral type C
+        elif bestGuess['specType'] == 8: 
+            tempName = 'C' + str(bestGuess['subType']) + '.fits'
+        #Spectral type WD
+        elif bestGuess['specType'] == 9: 
+            tempName = 'WD' + str(bestGuess['subType']) + '.fits'
+        #Spectral type SB2
+        elif self._isSB2:
+            # tempName = self._SB2_filenameList[bestGuess['specType'] - 10]
+            return np.nan
+        elif bestGuess['specType'] == -1:
+            return np.nan
         # Open the template
         with warnings.catch_warnings():
             # Ignore a very particular warning from some versions of astropy.io.fits
             # that is a known bug and causes no problems with loading fits data.
             warnings.filterwarnings('ignore', message = 'Could not find appropriate MS Visual C Runtime ')
-            temp = fits.open(path+tempName)
+            if self._isSB2:
+                temp = fits.open(path_SB2+tempName)
+            else:
+                temp = fits.open(path+tempName)
                                     
         tempFlux = temp[1].data['flux']
         tempWave = 10**temp[1].data['loglam']

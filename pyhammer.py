@@ -19,7 +19,7 @@ def main(options):
         get all the necessary options from the user and pass
         them to this function. The general process of this
         function should be to:
-        
+
         - Define a Spectrum object to be used in reading files.
         - Load each spectrum sequentially.
         - Guess the spectral type.
@@ -45,7 +45,6 @@ def main(options):
     # If the user has decided to not skip to the eyecheck, let's
     # do some processing
     if not options['eyecheck']:
-    
         # Open the input file
         try:
             infile = open(options['infile'], 'r')
@@ -59,130 +58,151 @@ def main(options):
         if options['lineOutfile']: lineOutfile = open('spectralIndices.csv', 'w')
         outfile.write('#Filename,File Type,Radial Velocity (km/s),Guessed Spectral Type,Guessed [Fe/H],User Spectral Type,User [Fe/H]\n')
         rejectfile.write('#Filename,File Type,Spectra S/N\n')
-        if options['lineOutfile']: lineOutfile.write('#Filename,CaK,CaK_var,Cadel,Cadel_var,CaI4217,CaI4217_var,Gband,Gband_var,Hgam,Hgam_var,FeI4383,FeI4383_var,FeI4404,FeI4404_var,Hbeta,Hbeta_var,MgI,MgI_var,NaD,NaD_var,CaI6162,CaI6162_var,Halpha,Halpha_var,CaH2,CaH2_var,CaH3,CaH3_var,TiO5,TiO5_var,VO7434,VO7434_var,VO7445,VO7445_var,VO-B,VO-B_var,VO7912,VO7912_var,Rb-B,Rb-B_var,NaI,NaI_var,TiO8,TiO8_var,TiO8440,TiO8440_var,Cs-A,Cs-A_var,CaII8498,CaII8498_var,CrH-A,CrH-A_var,CaII8662,CaII8662_var,FeI8689,FeI8689_var,FeH,FeH_var\n')
+        if options['lineOutfile']: lineOutfile.write('#Filename,CaK,CaK_var,Cadel,Cadel_var,CaI4217,CaI4217_var,Gband,Gband_var,Hgam,Hgam_var,FeI4383,FeI4383_var,FeI4404,FeI4404_var,Hbeta,Hbeta_var,MgI,MgI_var,NaD,NaD_var,CaI6162,CaI6162_var,Halpha,Halpha_var,CaH2,CaH2_var,CaH3,CaH3_var,TiO5,TiO5_var,VO7434,VO7434_var,VO7445,VO7445_var,VO-B,VO-B_var,VO7912,VO7912_var,Rb-B,Rb-B_var,NaI,NaI_var,TiO8,TiO8_var,TiO8440,TiO8440_var,Cs-A,Cs-A_var,CaII8498,CaII8498_var,CrH-A,CrH-A_var,CaII8662,CaII8662_var,FeI8689,FeI8689_var,FeH,FeH_var,C2-4382,C2-4382_var,C2-4737,C2-4737_var,C2-5165,C2-5165_var,C2-5636,C2-5636_var,CN-6959,CN-6959_var,CN-7088,CN-7088_var,CN-7259,CN-7259_var,CN-7820,CN-7820_var,CN-8067,CN-8067_var,CN-8270,CN-8270_var,WD-Halpha,WD-Halpha_var,WD-Hbeta,WD-Hbeta_var,WD-Hgamma,WD-Hgamma_var\n')
 
         # Define the string to contain all failure messages. These will be compiled
         # and printed once at the end, if anything is put into it.
         rejectMessage = ''
 
-        for i, line in enumerate(infile):
-            # Remove extra whitespace and other unwanted characters and split
-            line = line.strip()
-            if ',' in line: line = line.replace(',',' ')
-            if ' ' in line:
-                fname, ftype = ' '.join(line.split()).rsplit(' ',1)
-            else:
-                fname = line
-                ftype = None
+        infile_init = open(options['infile'], 'r')
+        for i, line in enumerate(infile_init):
+            num_spec = i + 1
+        infile_init.close()
+        #progress = ProgressBar(num_spec, fmt=ProgressBar.FULL)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            for i, line in enumerate(tqdm(infile, total=num_spec)):
+                # Remove extra whitespace and other unwanted characters and split
+                line = line.strip()
+                if ',' in line: line = line.replace(',',' ')
+                if ' ' in line:
+                    fname, ftype = ' '.join(line.split()).rsplit(' ',1)
+                else:
+                    fname = line
+                    ftype = None
 
-            # Print statement of progress for user
-            print(i+1, ') Processing ', os.path.basename(fname), sep = '')
+                # Print statement of progress for user
+                #print(i+1, ') Processing ', os.path.basename(fname), sep = '')
+                # progress.current += 1
+                # progress()
+                # Now read in the current file (this process reads in the file, converts air to 
+                # vac when necessary and interpolates onto the template grid)
+                message, ftype = spec.readFile(options['spectraPath']+fname, ftype)
 
-            # Now read in the current file (this process reads in the file, converts air to 
-            # vac when necessary and interpolates onto the template grid)
-            message, ftype = spec.readFile(options['spectraPath']+fname, ftype)
-
-            # If the attempt at reading the file did not succeed, then we
-            # should just continue
-            if message is not None:
-                rejectfile.write(fname + ',' + ('N/A' if ftype is None else ftype) + ',N/A\n')
-                rejectMessage += 'FILE: ' + fname + '\nREASON: ' + message.replace('\n','') + '\n\n'
-                continue
-
-            # Now that we have the necessary data in the spec object, let's
-            # begin processing.
-
-            # --- 1 ---
-            # Calculate the signal to noise of the spectrum to potentially reject
-            snVal = spec.calcSN()
-            if options['sncut'] is not None:
-                if snVal < options['sncut']:
-                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                    rejectMessage += 'FILE: ' + fname + '\nREASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut']) + '\n\n'
+                # If the attempt at reading the file did not succeed, then we
+                # should just continue
+                if message is not None:
+                    rejectfile.write(fname + ',' + ('N/A' if ftype is None else ftype) + ',N/A\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: ' + message.replace('\n','') + '\n\n'
                     continue
-            
-            # --- 2 ---
-            # Normalize the input spectrum to the same place where the templates are normalized (8000A)
-            try:
-                spec.normalizeFlux()
-            except:
-                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not normalize\n\n'
-                continue
 
-            # --- 3 ---
-            # Call guessSpecType function for the initial guess
-            # this function measures the lines then makes a guess of all parameters
-            try:
-                spec.guessSpecType()
-            except Exception as e:
-                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not guess spectral type. Error Message: {}\n\n'.format(e)
-                continue
-            
-            # If the user wants the calculated spectral indices, write them to a file
-            if options['lineOutfile']:
-                for key, value in spec.lines.items(): 
-                    if key == 'CaK': 
-                        lineOutfile.write(fname + ',' + str(value[0]) + ',' + str(value[1])+',')
-                    elif key == 'FeH':
-                        lineOutfile.write(str(value[0]) + ',' + str(value[1])+'\n')
-                    elif key in ['region1', 'region2', 'region3', 'region4', 'region5']:
+                # Now that we have the necessary data in the spec object, let's
+                # begin processing.
+
+                # --- 1 ---
+                # Calculate the signal to noise of the spectrum to potentially reject
+                snVal = spec.calcSN()
+                if options['sncut'] is not None:
+                    if snVal < options['sncut']:
+                        rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                        rejectMessage += 'FILE: ' + fname + '\nREASON: S/N = ' + str(snVal) + ' < ' + str(options['sncut']) + '\n\n'
                         continue
-                    else:
-                        lineOutfile.write(str(value[0]) + ',' + str(value[1])+',')
-                 
-            # --- 4 ---
-            # Call findRadialVelocity function using the initial guess
-            try:
-                shift = spec.findRadialVelocity()
-            except Exception as e:
-                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not find radial velocity. Error Message: {}\n\n'.format(e)
-                continue
+                
+                # --- 2 ---
+                # Normalize the input spectrum to the same place where the templates are normalized (8000A)
+                try:
+                    spec.normalizeFlux()
+                except:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: Could not normalize\n\n'
+                    continue
 
-            # --- 5 ---
-            # Call shiftToRest that shifts the spectrum to rest wavelengths,
-            # then interp back onto the grid
-            try:
-                spec.shiftToRest(shift)
-                spec.interpOntoGrid()
-            except Exception as e:
-                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not shift to rest. Error Message: {}\n\n'.format(e)
-                continue
+                # --- 3 ---
+                # Call guessSpecType function for the initial guess
+                # this function measures the lines then makes a guess of all parameters
+                try:
+                    spec.guessSpecType()
+                except Exception as e:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: Could not guess spectral type. Error Message: {}\n\n'.format(e)
+                    continue
 
-            # --- 6 ---
-            # Repeat guessSpecType function to get a better guess of the spectral 
-            # type and metallicity 
-            try:
-                spec.guessSpecType()
-            except Exception as e:
-                rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
-                rejectMessage += 'FILE: ' + fname + '\nREASON: Could not guess spectral type. Error Message: {}\n\n'.format(e)
-                continue
+                # --- 4 ---
+                # Call findRadialVelocity function using the initial guess
+                try:
+                    shift = spec.findRadialVelocity()
+                except Exception as e:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: Could not find radial velocity. Error Message: {}\n\n'.format(e)
+                    continue
 
-            # End of the automatic guessing. We should have:
-            #  1. Spectrum object with observed wavelength, flux, var,
-            #  2. rest wavelength,
-            #  3. spectral type (guessed),
-            #  4. radial velocity and uncertainty,
-            #  5. metallicity estimate,
-            #  6. and line indice measurements
+                # --- 5 ---
+                # Call shiftToRest that shifts the spectrum to rest wavelengths,
+                # then interp back onto the grid
+                try:
+                    spec.shiftToRest(shift)
+                    spec.interpOntoGrid()
+                except Exception as e:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: Could not shift to rest. Error Message: {}\n\n'.format(e)
+                    continue
 
-            # --- 7 ---
+                # --- 6 ---
+                # Repeat guessSpecType function to get a better guess of the spectral 
+                # type and metallicity 
+                try:
+                    spec.guessSpecType()
+                except Exception as e:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: Could not guess spectral type. Error Message: {}\n\n'.format(e)
+                    continue
+
+                # If the user wants the calculated spectral indices, write them to a file
+                if options['lineOutfile']:
+                    for key, value in spec.lines.items(): 
+                        if key == 'CaK': 
+                            lineOutfile.write(fname + ',' + str(value[0]) + ',' + str(value[1])+',')
+                        elif key == 'WD-Hgamma':
+                            lineOutfile.write(str(value[0]) + ',' + str(value[1])+'\n')
+                        elif key in ['region1', 'region2', 'region3', 'region4', 'region5']:
+                            continue
+                        else:
+                            lineOutfile.write(str(value[0]) + ',' + str(value[1])+',')
+                     
+                # End of the automatic guessing. We should have:
+                #  1. Spectrum object with observed wavelength, flux, var,
+                #  2. rest wavelength,
+                #  3. spectral type (guessed),
+                #  4. radial velocity and uncertainty,
+                #  5. metallicity estimate,
+                #  6. and line indice measurements
+
+                # --- 7 ---
+                if spec.guess['specType'] == -1:
+                    rejectfile.write(fname + ',' + ftype + ',' + str(snVal) + '\n')
+                    rejectMessage += 'FILE: ' + fname + '\nREASON: No good spectral type. Error Message: Spectrum might be all nans or 0s.\n\n'
+                    continue
+                
+                # Translate the numbered spectral types into letters
+                if spec._isSB2:
+                    # Write the file
+                    outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
+                                  ftype + ',' +                                     # The filetype
+                                  str(shift) + ',' +                                # The RV shift
+                                  spec._SB2_filenameList[spec.guess['specType'] - 10][:-5] + ',' +    # The auto-guessed spectral type
+                                  '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
+                                  ',nan,nan\n')                                     # The to-be-determined user classifications
+                else:
+                    letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD'][spec.guess['specType']]
+                    # Write the file
+                    outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
+                                  ftype + ',' +                                     # The filetype
+                                  str(shift) + ',' +                                # The RV shift
+                                  letterSpt + str(spec.guess['subType']) + ',' +    # The auto-guessed spectral type
+                                  '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
+                                  ',nan,nan\n')                                     # The to-be-determined user classifications
             
-            # Translate the numbered spectral types into letters
-            letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L'][spec.guess['specType']]
-            
-            # Write the file
-            outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
-                          ftype + ',' +                                     # The filetype
-                          str(shift) + ',' +                                # The RV shift
-                          letterSpt + str(spec.guess['subType']) + ',' +    # The auto-guessed spectral type
-                          '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
-                          ',nan,nan\n')                                     # The to-be-determined user classifications
-        
+        #progress.done()
         # We're done so let's close all the files
         infile.close()
         outfile.close()
@@ -580,7 +600,7 @@ class PyHammerSettingsGui(QMainWindow):
         self.textArea.setFont(font)
         self.selectSpectraButton.clicked.connect(self.selectSpectraButtonClicked)
         self.selectSpectraButton.setToolTip('Select a set of spectrum files\nto add to the input file')
-        self.dataTypeList.addItems(['SDSSdr12', 'SDSSdr7', 'fits', 'txt', 'csv'])
+        self.dataTypeList.addItems(['SDSSdr12', 'SDSSdr7', 'fits', 'txt', 'csv','tempfits'])
         self.applyType.clicked.connect(self.applyTypeClicked)
         self.applyType.setToolTip('<b>Optional:</b> Append the selected data\ntype to every file in the list to give a\nhint to PyHammer about the file type')
         self.createFrame.hide()
@@ -954,6 +974,43 @@ def pyhammerSettingsCmd(options):
     # Now that all the options have been set, let's get started
     main(options)
 
+class ProgressBar(object):
+    DEFAULT = 'Progress: %(bar)s %(percent)3d%%'
+    FULL = '%(bar)s %(current)d/%(total)d (%(percent)3d%%) %(remaining)d to go'
+
+    def __init__(self, total, width=40, fmt=DEFAULT, symbol='=',
+                 output=sys.stderr):
+        assert len(symbol) == 1
+
+        self.total = total
+        self.width = width
+        self.symbol = symbol
+        self.output = output
+        self.fmt = re.sub(r'(?P<name>%\(.+?\))d',
+            r'\g<name>%dd' % len(str(total)), fmt)
+
+        self.current = 0
+
+    def __call__(self):
+        percent = self.current / float(self.total)
+        size = int(self.width * percent)
+        remaining = self.total - self.current
+        bar = '[' + self.symbol * size + ' ' * (self.width - size) + ']'
+
+        args = {
+            'total': self.total,
+            'bar': bar,
+            'current': self.current,
+            'percent': percent * 100,
+            'remaining': remaining
+        }
+        print('\r' + self.fmt % args, file=self.output, end='')
+
+    def done(self):
+        self.current = self.total
+        self()
+        print('', file=self.output)
+
 ###
 # PyHammer Entry Point
 #
@@ -1082,7 +1139,7 @@ if (__name__ == "__main__"):
                 # Append a slash to the end if there isn't one
                 if (options['spectraPath'][-1] not in ['\\', '/']):
                     options['spectraPath'] += '\\'
-            
+
         # User indicated they want to skip to the eyecheck
         if (opt == '-e' or opt == '--eyecheck'):
             if (options['sncut'] is not None):
@@ -1104,7 +1161,7 @@ if (__name__ == "__main__"):
                 sys.exit('Cannot supply -c and -g at the same time. Use -h for more info.')
             else:
                 options['useGUI'] = False
-        
+
         # GUI interface is requested.
         if (opt == '-g' or opt == '--gui'):
             if (options['useGUI'] is not None):
@@ -1123,10 +1180,10 @@ if (__name__ == "__main__"):
         PyHammerSettingsGui(options)
         app.exec_()
     elif options['useGUI'] == False:
+        app = QApplication([])
         pyhammerSettingsCmd(options)
-
+        app.exec_()
 else:
-    
     sys.exit("Do not import pyhammer. Run this script with the run command "
              "in the python environment, or by invoking with the python command "
              "on the command line. Use the -h flag for more information.")

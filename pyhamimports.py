@@ -8,7 +8,7 @@
 
 # Look at version specific information
 import sys
-ver = sys.version_info # Get Python version
+ver = sys.version_info  # Get Python version
 if ver.major != 3:
     sys.exit('Python 3 is required to run PyHammer.')
 # We need a function to determine which modules
@@ -21,6 +21,7 @@ else:
 
 # Some basic python libraries
 import os
+import re
 import getopt
 import numpy as np
 from numpy import ma
@@ -35,6 +36,9 @@ import bisect
 import pickle
 import csv
 from collections import OrderedDict
+from scipy.optimize import curve_fit
+from tqdm import tqdm
+import warnings
 
 # Check which PyQt version the user may have
 # installed and import the appropriate content
