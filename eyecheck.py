@@ -37,9 +37,9 @@ class Eyecheck(QMainWindow):
         """
 
         # Define some basic spectra related information
-        self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD']
+        self.specType  = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'DA']
         self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-        #self.subTypeWD   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.subTypeWD   = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.5', '5.0', '5.5', '6.5', '7.0']
         self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
         self.templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates')
         self.SB2templateDir = os.path.join(os.path.split(__file__)[0], 'resources', 'templates_SB2')
@@ -346,6 +346,7 @@ class Eyecheck(QMainWindow):
                 for ii in range(len(self.specTypeLabel)):
                     self.specTypeLabel[ii].setDisabled(False)
                     self.subTypeLabel[ii].setDisabled(False)
+            self.updateSliderLabel()
             self.updatePlot()
 
 
@@ -546,6 +547,7 @@ class Eyecheck(QMainWindow):
 
         # Return the labels and slider so we can access them later
         return tickLabels, slider
+
 
     def createButtons(self, title, buttonTexts, tooltips, callbacks):
         """
@@ -908,7 +910,7 @@ class Eyecheck(QMainWindow):
             a class from the gui_utils to allow the user to select a non-
             standard spectrum choice.
         """
-        option = OptionWindow(self, ['Wd', 'Wdm', 'Carbon', 'Gal', 'Unknown'], instruction = 'Pick an odd type')
+        option = OptionWindow(self, ['CV', 'Gal', 'Unknown'], instruction = 'Pick an odd type')
         if option.choice is not None:
             # Store the user's respose in the outData
             self.outData[self.specIndex,5] = option.choice
@@ -1006,8 +1008,7 @@ class Eyecheck(QMainWindow):
 
             # for ii in bad_secondary:
             #     self.specTypeLabelSB2[ii].setDisabled(True)
-
-
+            
             if self.specTypeSlider.sliderPosition() in [0,1]:
                 self.updateSlider(self.specTypeSlider, 2)
             elif self.specTypeSlider.sliderPosition() in [7 ,9]:
@@ -1028,7 +1029,6 @@ class Eyecheck(QMainWindow):
             #     self.specTypeLabel[ii].setDisabled(False)
             #     self.subTypeLabel[ii].setDisabled(False)
 
-
             if self.specTypeSlider.sliderPosition() == 5:
                 self.subTypeLabel[-1].setDisabled(True)
                 self.subTypeLabel[-2].setDisabled(True)
@@ -1037,6 +1037,8 @@ class Eyecheck(QMainWindow):
             else:
                 self.subTypeLabel[-1].setEnabled(True)
                 self.subTypeLabel[-2].setEnabled(True)
+
+        self.updateSliderLabel()
 
         self.specTypeSlider.blockSignals(False)
         self.specTypeSliderSB2.blockSignals(False)
@@ -1057,7 +1059,14 @@ class Eyecheck(QMainWindow):
             #print(counter)
             good_SecondarySubtypes = self.specObj._splitSB2spectypes[np.where((self.specObj._splitSB2spectypes[:,0] == self.specObj.letterSpt[primaryType_index]) & 
                                                                        (self.specObj._splitSB2spectypes[:,2] == self.specObj.letterSpt[secondaryType_index]) & 
-                                                                       (self.specObj._splitSB2spectypes[:,1] == str(primarySubType_index)))[0], 3].astype(int).tolist()
+                                                                       (self.specObj._splitSB2spectypes[:,1] == str(primarySubType_index)))[0], 3]  # .astype(int).tolist()
+            if (secondaryType_index == 9) or (secondaryType_index == -1):
+                # print(primaryType_index, primarySubType_index, secondaryType_index, good_SecondarySubtypes, self.subTypeWD)
+                good_SecondarySubtypes = [int(np.where(np.array(self.subTypeWD) == ii)[0][0]) for ii in good_SecondarySubtypes if ii is not None]
+            else:
+                # print(primaryType_index, primarySubType_index, secondaryType_index, good_SecondarySubtypes)
+                good_SecondarySubtypes = good_SecondarySubtypes.astype(int).tolist()
+
             if not good_SecondarySubtypes:
                 #print(good_SecondarySubtypes)
                 #rint("not if")
@@ -1070,6 +1079,9 @@ class Eyecheck(QMainWindow):
                 else:
                     secondaryType_index = self.specTypeSliderSB2.sliderPosition()
                     primarySubType_index = primarySubType_index - 1
+                    if primarySubType_index < -10:
+                        primarySubType_index = 9
+                        
             if good_SecondarySubtypes:
                 #print(good_SecondarySubtypes)
                 #print("if")
@@ -1166,8 +1178,9 @@ class Eyecheck(QMainWindow):
             self.updatePlot()
 
     def splitSpecType(self, s):
-        head = s.rstrip('0123456789')
-        tail = s[len(head):]
+        # head = s.rstrip('0123456789')
+        # tail = s[len(head):]
+        head, tail, _ = re.split('(\d.*)', s)
         return head, tail
 
     def loadUserSpectrum(self):
@@ -1207,15 +1220,17 @@ class Eyecheck(QMainWindow):
 
         else:# IF Single star
             specTypePostSplit, specSubTypePostSplit = self.splitSpecType(auto_classified_choice)
-
             self.updateSlider(self.specTypeSlider, self.specType.index(specTypePostSplit))
-            self.updateSlider(self.subTypeSlider, self.subType.index(specSubTypePostSplit))
+
+            if specTypePostSplit == 'DA':
+                self.updateSlider(self.subTypeSlider, self.subTypeWD.index(specSubTypePostSplit))
+            else:
+                self.updateSlider(self.subTypeSlider, self.subType.index(specSubTypePostSplit))
+
             self.updateSlider(self.metalSlider, self.metalType.index(self.outData[self.specIndex,4]))
 
             self.SB2button.setChecked(False)
     
-
-
         # Reset the indicator for whether the plot is zoomed. It should only stay zoomed
         # between loading templates, not between switching spectra.
         self.full_xlim = None
@@ -1247,6 +1262,13 @@ class Eyecheck(QMainWindow):
             if specState2 is None: specState2 = self.specTypeSliderSB2.sliderPosition()
             if subState2 is None: subState2 = self.subTypeSliderSB2.sliderPosition()
 
+            if (specState2 == 9):  # USE WD DA#.#.fits filename
+                filename = self.specType[specState1] + str(subState1) + "+DA" + self.subTypeWD[subState2]
+                fullPath = os.path.join(self.SB2templateDir, filename + '.fits')
+
+                if os.path.isfile(fullPath):
+                    return fullPath
+
             filename = self.specType[specState1] + str(subState1) + "+" + self.specType[specState2] + str(subState2)
 
             fullPath = os.path.join(self.SB2templateDir, filename + '.fits')
@@ -1255,6 +1277,13 @@ class Eyecheck(QMainWindow):
             if specState1 is None: specState1 = self.specTypeSlider.sliderPosition()
             if subState1 is None: subState1 = self.subTypeSlider.sliderPosition()
             if metalState is None: metalState = self.metalSlider.sliderPosition()
+
+            if (specState1 == 9):  # USE WD DA#.#.fits filename
+                filename = "DA" + self.subTypeWD[subState1]
+                fullPath = os.path.join(self.templateDir, filename + '.fits')
+
+                if os.path.isfile(fullPath):
+                    return fullPath
 
             # Try using the full name, i.e., SS_+M.M_Dwarf.fits
             filename = self.specType[specState1] + str(subState1) + '_' + self.metalType[metalState] + '_Dwarf'
@@ -1289,6 +1318,29 @@ class Eyecheck(QMainWindow):
         slider.setValue(value)
         slider.setSliderPosition(value)
         slider.blockSignals(False)
+
+    def updateSliderLabel(self):
+        if self.SB2button.isChecked() == True:
+            for ii, label in enumerate(self.subType):
+                    self.subTypeLabel[ii].setText(label)
+            if self.specTypeSliderSB2.sliderPosition() != 9:
+                for ii, label in enumerate(self.subType):
+                    self.subTypeLabelSB2[ii].setText(label)
+            else:  # WD change subtype labels to the Sion+1983 convention
+                for ii, label in enumerate(self.subTypeWD):
+                    self.subTypeLabelSB2[ii].setText(label)
+        else:
+            if self.specTypeSlider.sliderPosition() != 9:
+                for ii, label in enumerate(self.subType):
+                    self.subTypeLabel[ii].setText(label)
+            else:  # WD change subtype labels to the Sion+1983 convention
+                for ii, label in enumerate(self.subTypeWD):
+                    self.subTypeLabel[ii].setText(label)
+
+
+        # for ii, label in enumerate(text):
+        #     sliderLabel[ii].setText(label)
+
 
     def closeEvent(self, event):
         """
