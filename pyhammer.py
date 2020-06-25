@@ -193,7 +193,7 @@ def main(options):
                                   '{:+2.1f}'.format(spec.guess['metal']) +          # The auto-guessed metallicity
                                   ',nan,nan\n')                                     # The to-be-determined user classifications
                 else:
-                    letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'DA'][spec.guess['specType']]
+                    letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'dC', 'DA'][spec.guess['specType']]
                     # Write the file
                     outfile.write(options['spectraPath']+fname + ',' +              # The spectra path and filename
                                   ftype + ',' +                                     # The filetype
@@ -256,8 +256,8 @@ def notifyUser(useGUI, message, details = None):
 
     if not useGUI:
         # Simple case, just print the message.
-        print(message, flush = True)
-        print(details, flush = True)
+        print(message, flush=True)
+        print(details, flush=True)
     else:
         # More involved case, create a base pyqt window
         # derive a message box from it to display the
