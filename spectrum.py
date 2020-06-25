@@ -20,8 +20,9 @@ class Spectrum(object):
         self._guess = None
         self._normWavelength = 8000
 
-        self.letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'DA']
+        self.letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'dC', 'DA']
         self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.subTypeC = ['G', 'K', 'M', '', '', '', '', '', '', '']
         self.subTypeWD   = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.5', '5.0', '5.5', '6.5', '7.0']
         self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
 
@@ -37,6 +38,8 @@ class Spectrum(object):
         for ii, filename in enumerate(self._SB2_filenameList):
             if 'DA' in filename:
                 type1, type2 = filename.replace("+"," ").replace(".fits"," ").split()[:2]
+            elif 'dC' in filename:
+                type1, type2 = filename.replace("+"," ").replace(".fits"," ").split()[:2]
             else:
                 type1, type2 = filename.replace("+"," ").replace("."," ").split()[:2]
             mainType1, subtype1 = self.splitSpecType(type1)
@@ -45,6 +48,14 @@ class Spectrum(object):
             self._splitSB2spectypes[ii, 1] = subtype1
             self._splitSB2spectypes[ii, 2] = mainType2
             self._splitSB2spectypes[ii, 3] = subtype2
+
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 1]=='G', 1] = '0'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 1]=='K', 1] = '1'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 1]=='M', 1] = '2'
+
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 3]=='G', 3] = '0'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 3]=='K', 3] = '1'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 3]=='M', 3] = '2'
 
         self._isSB2 = False
 
@@ -92,7 +103,11 @@ class Spectrum(object):
     def splitSpecType(self, s):
         # head = s.rstrip('0123456789')
         # tail = s[len(head):]
-        head, tail, _ = re.split('(\d.*)', s)
+        if 'dC' in s:
+            head = 'dC'
+            tail = s[-1]
+        else:
+            head, tail, _ = re.split('(\d.*)', s)
         return head, tail
 
     def defineCalcTools(self):
@@ -723,6 +738,12 @@ class Spectrum(object):
                         else:
                             stillWD = False
                             stillWD_step += 1                     
+            elif np.int(self._tempLines[0][iguess]) == 8:
+                # Save guess as dict       
+                self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                               'subType':    self.subTypeC[int(self._tempLines[1][iguess])], # Spectral subtype
+                               'metal':      self._tempLines[2][iguess], # Metallicity
+                               'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS
             else: 
                 # Save guess as dict       
                 self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
@@ -816,7 +837,7 @@ class Spectrum(object):
             tempName = 'L' + str(bestGuess['subType']) + '.fits'
         #Spectral type C
         elif bestGuess['specType'] == 8: 
-            tempName = 'C' + str(bestGuess['subType']) + '.fits'
+            tempName = 'dC' + str(bestGuess['subType']) + '.fits'
         #Spectral type WD
         elif bestGuess['specType'] == 9: 
             tempName = 'DA' + str(bestGuess['subType']) + '.fits'
