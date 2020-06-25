@@ -24,11 +24,11 @@ SB2Temp_list = np.array([os.path.basename(x)
 SB2Temp_list.sort()
 
 # 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 = O, B, A, F, G, K, M, L, C, WD
-single_letter_specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'W'])
-specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD'])
+single_letter_specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'D'])
+specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'dC', 'DA'])
 
 new_tempLines_0 = np.empty(singleTemp_list.size, dtype=int)
-new_tempLines_1 = np.empty(singleTemp_list.size, dtype=int)
+new_tempLines_1 = np.empty(singleTemp_list.size, dtype=np.float64)
 new_tempLines_2 = np.empty(singleTemp_list.size, dtype=np.float64)
 new_tempLines_3 = np.ones(singleTemp_list.size, dtype=int) * 5
 new_tempLines_4 = []
@@ -37,7 +37,7 @@ for ii in range(singleTemp_list.size):
     new_tempLines_0[ii] = np.where(
         single_letter_specTypes == singleTemp_list[ii][0])[0][0]
     if new_tempLines_0[ii] == 9:
-        new_tempLines_1[ii] = singleTemp_list[ii][2]
+        new_tempLines_1[ii] = spec.splitSpecType(singleTemp_list[ii].replace(".fits", ""))[1]
     else:
         new_tempLines_1[ii] = singleTemp_list[ii][1]
     if len(singleTemp_list[ii].replace("_", " ").split()) == 1:

@@ -20,7 +20,11 @@ class Spectrum(object):
         self._guess = None
         self._normWavelength = 8000
 
-        self.letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'WD']
+        self.letterSpt = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'dC', 'DA']
+        self.subType   = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.subTypeC = ['G', 'K', 'M', '', '', '', '', '', '', '']
+        self.subTypeWD   = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.5', '5.0', '5.5', '6.5', '7.0']
+        self.metalType = ['-2.0', '-1.5', '-1.0', '-0.5', '+0.0', '+0.5', '+1.0']
 
         # The directory containing this file
         self.thisDir = os.path.split(__file__)[0]
@@ -29,16 +33,29 @@ class Spectrum(object):
         SB2ListPath = os.path.join(self.thisDir, 'resources', 'list_of_SB2_temps.txt')
         self._SB2_filenameList = np.genfromtxt(SB2ListPath, dtype="U")
 
-        self._splitSB2spectypes = np.empty((self._SB2_filenameList.size, 4), dtype='U2')
+        self._splitSB2spectypes = np.empty((self._SB2_filenameList.size, 4), dtype='U3')
 
         for ii, filename in enumerate(self._SB2_filenameList):
-            type1, type2 = filename.replace("+"," ").replace("."," ").split()[:2]
+            if 'DA' in filename:
+                type1, type2 = filename.replace("+"," ").replace(".fits"," ").split()[:2]
+            elif 'dC' in filename:
+                type1, type2 = filename.replace("+"," ").replace(".fits"," ").split()[:2]
+            else:
+                type1, type2 = filename.replace("+"," ").replace("."," ").split()[:2]
             mainType1, subtype1 = self.splitSpecType(type1)
             mainType2, subtype2 = self.splitSpecType(type2)
             self._splitSB2spectypes[ii, 0] = mainType1
             self._splitSB2spectypes[ii, 1] = subtype1
             self._splitSB2spectypes[ii, 2] = mainType2
             self._splitSB2spectypes[ii, 3] = subtype2
+
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 1]=='G', 1] = '0'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 1]=='K', 1] = '1'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 1]=='M', 1] = '2'
+
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 3]=='G', 3] = '0'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 3]=='K', 3] = '1'
+        self._splitSB2spectypes[self._splitSB2spectypes[:, 3]=='M', 3] = '2'
 
         self._isSB2 = False
 
@@ -53,7 +70,7 @@ class Spectrum(object):
         # index for each spectrum that goes into a template
         #
         #pklPath = os.path.join(self.thisDir, 'resources', 'tempLines.pickle')
-        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_2020-04-30.pickle')
+        pklPath = os.path.join(self.thisDir, 'resources', 'tempLines_2020-06-16.pickle')
         with open(pklPath, 'rb') as pklFile:
             tempLines = pickle.load(pklFile)
         
@@ -84,8 +101,13 @@ class Spectrum(object):
         self._tempLineVars = stds**2.0
 
     def splitSpecType(self, s):
-        head = s.rstrip('0123456789')
-        tail = s[len(head):]
+        # head = s.rstrip('0123456789')
+        # tail = s[len(head):]
+        if 'dC' in s:
+            head = 'dC'
+            tail = s[-1]
+        else:
+            head, tail, _ = re.split('(\d.*)', s)
         return head, tail
 
     def defineCalcTools(self):
@@ -659,9 +681,9 @@ class Spectrum(object):
                     isThisAWD, thisSigma = self.isWD()
                     if isThisAWD:
                         WD_sigma = np.array([18.51, 24.16, 30.58, 26.81, 35.11, 43.17, 38.74, 22.22, 15.18, 10.07])
-                        WD_sigma_label = np.array([1,2,3,4,5,6,7])
+                        # WD_sigma_label = np.array([1,2,3,4,5,6,7])
                         self._guess = {'specType':   9, # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
-                                       'subType':    WD_sigma_label[np.argmin(np.abs(WD_sigma-thisSigma))], # Spectral subtype
+                                       'subType':    np.float64(self.subTypeWD[np.argmin(np.abs(WD_sigma-thisSigma))]), # Spectral subtype
                                        'metal':      0, # Metallicity
                                        'luminosity': 5} # Luminosity class, 3 for giant, 5 for MS   
                     else:
@@ -686,7 +708,7 @@ class Spectrum(object):
                     isThisAWD, thisSigma = self.isWD()
                     if isThisAWD:
                         self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
-                                       'subType':    np.int(self._tempLines[1][iguess]), # Spectral subtype
+                                       'subType':    self._tempLines[1][iguess], # Spectral subtype
                                        'metal':      self._tempLines[2][iguess], # Metallicity
                                        'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS  
                     else:
@@ -716,6 +738,12 @@ class Spectrum(object):
                         else:
                             stillWD = False
                             stillWD_step += 1                     
+            elif np.int(self._tempLines[0][iguess]) == 8:
+                # Save guess as dict       
+                self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
+                               'subType':    self.subTypeC[int(self._tempLines[1][iguess])], # Spectral subtype
+                               'metal':      self._tempLines[2][iguess], # Metallicity
+                               'luminosity': np.int(self._tempLines[3][iguess])} # Luminosity class, 3 for giant, 5 for MS
             else: 
                 # Save guess as dict       
                 self._guess = {'specType':   np.int(self._tempLines[0][iguess]), # Spectral type, 0 for O to 7 for L, 8 = C, 9 = WD
@@ -809,10 +837,10 @@ class Spectrum(object):
             tempName = 'L' + str(bestGuess['subType']) + '.fits'
         #Spectral type C
         elif bestGuess['specType'] == 8: 
-            tempName = 'C' + str(bestGuess['subType']) + '.fits'
+            tempName = 'dC' + str(bestGuess['subType']) + '.fits'
         #Spectral type WD
         elif bestGuess['specType'] == 9: 
-            tempName = 'WD' + str(bestGuess['subType']) + '.fits'
+            tempName = 'DA' + str(bestGuess['subType']) + '.fits'
         #Spectral type SB2
         elif self._isSB2:
             # tempName = self._SB2_filenameList[bestGuess['specType'] - 10]
