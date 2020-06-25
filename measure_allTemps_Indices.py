@@ -25,7 +25,7 @@ SB2Temp_list.sort()
 
 # 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 = O, B, A, F, G, K, M, L, C, WD
 single_letter_specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'D'])
-specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'C', 'DA'])
+specTypes = np.array(['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'dC', 'DA'])
 
 new_tempLines_0 = np.empty(singleTemp_list.size, dtype=int)
 new_tempLines_1 = np.empty(singleTemp_list.size, dtype=np.float64)
